@@ -371,7 +371,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             Bảng đối soát tiêu chuẩn cấu trúc
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {/* Pillar 1: Metadata */}
             <div className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
@@ -482,7 +482,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             {/* Pillar 4: IMRaD Sections */}
             <div
               onClick={() => onNavigateTab('sections')}
-              className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
+              className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
               title="Nhấp để chuyển tới tab Nội dung"
             >
               <h5 className="font-bold text-xs text-zinc-900 flex items-center justify-between gap-1.5">
@@ -514,7 +514,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             {/* Pillar 5: Figures & Tables */}
             <div
               onClick={() => onNavigateTab('sections')}
-              className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
+              className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
               title="Nhấp để chuyển tới tab Nội dung (Bảng & Hình)"
             >
               <h5 className="font-bold text-xs text-zinc-900 flex items-center justify-between gap-1.5">
@@ -540,7 +540,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 6: Vancouver Citations */}
-            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
+            <div className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 6. Trích dẫn Vancouver
               </h5>
