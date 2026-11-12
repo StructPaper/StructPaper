@@ -222,7 +222,7 @@ const Shell: React.FC<{
           }
     }
     transition={isTest ? { duration: 0 } : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-    className="bg-[#F8F9FA] w-full max-w-xl h-[70vh] max-h-[80vh] flex flex-col rounded-[32px] shadow-2xl border border-white/40 overflow-hidden"
+    className="bg-[#F8F9FA] w-full max-w-xl h-[80vh] max-h-[90vh] flex flex-col rounded-[32px] shadow-2xl border border-white/40 overflow-hidden"
   >
     <div className="flex-shrink-0 px-6 pt-5 pb-3 flex items-start justify-between gap-3 border-b border-zinc-200/60">
       <div className="min-w-0">

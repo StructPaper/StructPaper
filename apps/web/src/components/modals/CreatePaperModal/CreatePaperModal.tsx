@@ -290,7 +290,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                 mass: 0.8,
               }
         }
-        className={`bg-[#F8F9FA] w-full ${inBatch ? 'max-w-2xl' : 'max-w-xl'} max-h-[80vh] rounded-[40px] overflow-hidden shadow-2xl flex flex-col border border-white/20 select-text`}
+        className={`bg-[#F8F9FA] w-full ${inBatch ? 'max-w-2xl h-[88vh]' : step === 2 || batchPending ? 'max-w-xl h-[88vh]' : 'max-w-xl'} max-h-[90vh] rounded-[40px] overflow-hidden shadow-2xl flex flex-col border border-white/20 select-text`}
       >
         {/* Header - Eatzy OrderDetailsModal Identity */}
         <div className="flex-shrink-0 px-7 sm:px-8 py-5 pb-0 flex items-center justify-between sticky top-0 z-10 shadow-xs">
@@ -320,9 +320,9 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
         </div>
 
         {/* Modal Content with Horizontal Step Slider */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-7">
+        <div className="flex-1 min-h-0 flex flex-col p-6 sm:p-7 overflow-hidden">
           {!inBatch && !batchPending && (
-          <label className="block mb-4">
+          <label className="flex-shrink-0 block mb-4">
             <span className="block text-[11px] font-bold text-slate-500 mb-1 pl-1">Tên tài liệu</span>
             <input
               value={docName}
@@ -353,6 +353,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                 animate={isTest ? undefined : { opacity: 1, x: 0 }}
                 exit={isTest ? undefined : { opacity: 0, x: -20 }}
                 transition={isTest ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                className="flex-1 min-h-0 overflow-y-auto"
               >
                 <StepUploadFile
                   onSuccess={handleStep1Complete}
@@ -368,6 +369,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                 animate={isTest ? undefined : { opacity: 1, x: 0 }}
                 exit={isTest ? undefined : { opacity: 0, x: 20 }}
                 transition={isTest ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                className="flex-1 min-h-0 flex flex-col overflow-hidden"
               >
                 {batchPending ? (
                   <StepBatchTemplates

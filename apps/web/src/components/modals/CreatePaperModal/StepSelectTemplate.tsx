@@ -34,9 +34,9 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3">
       {/* Top Header info */}
-      <div className="flex items-center justify-between">
+      <div className="flex-shrink-0 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
@@ -52,7 +52,7 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
       </div>
 
       {/* Grid of Compact Template Cards */}
-      <div className="p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 pr-1 custom-scrollbar">
         {journals.map((journal) => (
           <CompactTemplateCard
             key={journal.id}
@@ -64,7 +64,7 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
       </div>
 
       {/* Action Footer: Continue to Editor Button */}
-      <div className="pt-3 border-t border-slate-200/60 flex items-center justify-between">
+      <div className="flex-shrink-0 pt-3 border-t border-slate-200/60 flex items-center justify-between">
         <div className="text-xs text-slate-500 font-medium">
           Mẫu đang chọn:{' '}
           <span className="font-black text-slate-900">

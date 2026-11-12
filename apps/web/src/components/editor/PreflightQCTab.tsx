@@ -258,7 +258,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => onNavigateTab(issue.fixTab as EditorTabKey)}
-                                      className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                                      className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-xl text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
                                     >
                                       <span>Sửa ngay</span>
                                       <ArrowRight className="w-3 h-3 text-zinc-500" />
@@ -333,7 +333,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                                         <button
                                           type="button"
                                           onClick={() => onNavigateTab(issue.fixTab as EditorTabKey)}
-                                          className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                                          className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-xl text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
                                         >
                                           <span>Sửa ngay</span>
                                           <ArrowRight className="w-3 h-3 text-zinc-500" />
@@ -373,7 +373,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {/* Pillar 1: Metadata */}
-            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
+            <div className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 1. Tiêu đề & Định danh
               </h5>
@@ -412,7 +412,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 2: Authors */}
-            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
+            <div className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 2. Tác giả & Đơn vị
               </h5>
@@ -441,7 +441,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 3: Abstracts & Keywords */}
-            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
+            <div className="p-3.5 rounded-3xl bg-gray-200/50 space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 3. Tóm tắt & Từ khóa
               </h5>

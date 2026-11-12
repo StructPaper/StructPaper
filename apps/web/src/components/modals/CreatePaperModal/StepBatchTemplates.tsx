@@ -31,8 +31,8 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
   const setAll = (id: string) => setOwn(files.map(() => id));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3">
+      <div className="flex-shrink-0 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
@@ -62,14 +62,14 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
       </div>
 
       {!perFile ? (
-        <div className="p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[46vh] overflow-y-auto pr-1 custom-scrollbar">
+        <div className="flex-1 min-h-0 p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto pr-1 custom-scrollbar">
           {journals.map((j) => (
             <CompactTemplateCard key={j.id} managed={j} isSelected={shared.id === j.id} onSelect={setShared} />
           ))}
         </div>
       ) : (
-        <div className="space-y-2" data-testid="batch-template-list">
-          <label className="flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
+        <div className="flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden" data-testid="batch-template-list">
+          <label className="flex-shrink-0 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
             <span>Đặt cùng một mẫu cho tất cả các tệp</span>
             <select
               data-testid="batch-template-all"
@@ -85,7 +85,7 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
               ))}
             </select>
           </label>
-          <ul className="max-h-[40vh] overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+          <ul className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
             {files.map((f, i) => (
               <li key={`${i}:${f.name}`} className="flex items-center gap-2.5 rounded-2xl bg-white border border-slate-200 px-3 py-2">
                 <FileText className="w-4 h-4 text-slate-400 shrink-0" />
@@ -111,7 +111,7 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
         </div>
       )}
 
-      <div className="pt-3 border-t border-slate-200/60 flex items-center justify-between">
+      <div className="flex-shrink-0 pt-3 border-t border-slate-200/60 flex items-center justify-between">
         <div className="text-xs text-slate-500 font-medium" data-testid="batch-template-hint">
           {perFile ? (
             <>
