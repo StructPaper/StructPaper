@@ -106,6 +106,7 @@ export interface V1PaperEquation {
 export interface V1SectionPageLayout {
   columns?: '1-column' | '2-column';
   orientation?: 'portrait' | 'landscape';
+  turned?: boolean;
 }
 
 export interface V1PaperSection {

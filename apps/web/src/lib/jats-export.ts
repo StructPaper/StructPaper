@@ -5,6 +5,7 @@ import { stripCaptionLabel } from './docx-table-extras';
 import { resolvePublication, hasPublicationValue } from './publication';
 import { displayHeading } from './headings';
 import { resolveTheme } from './theme-config';
+import { articleTypeJats } from './article-types';
 /**
  * JATS 1.2 XML export for the VNUHCM journal platform.
  *
@@ -17,6 +18,8 @@ export interface JatsOptions {
   /** Numeric/string article id on the platform (the "a-#" segment). */
   articleId?: string;
   staticBaseUrl?: string;
+  /** File extension actually written for a figure (when the image was converted while packing). */
+  extByFigure?: Record<number, string>;
 }
 
 const DEFAULT_STATIC_BASE = 'https://static.vnuhcmjournal.com.vn/articles';
@@ -34,17 +37,40 @@ function imageExt(src: string): string {
   return /^(png|jpe?g|gif|webp|svg)$/i.test(file) ? file.toLowerCase().replace('jpeg', 'jpg') : 'png';
 }
 
-export function figureHref(paper: CompletePaper, figNum: number, src: string, opts: JatsOptions): string {
-  const ext = imageExt(src || '');
+/**
+ * Path of a figure file relative to the static root: `<initial>/v-#/i-#/a-#/img-n.ext` when the volume, issue and
+ * article id are known (the platform convention), else `images/img-n.ext`.
+ */
+export function figureRelPath(paper: CompletePaper, figNum: number, src: string, opts: JatsOptions): { path: string; onPlatform: boolean } {
+  const ext = opts.extByFigure?.[figNum] || imageExt(src || '');
   const md = paper.metadata;
   const pubInfo = resolvePublication(md);
-  const articleId = opts.articleId || md.publication?.articleId;
-  // The platform URL needs real volume/issue/article numbers; otherwise keep a relative path.
+  const articleId = (opts.articleId || md.publication?.articleId || '').trim();
   if (!articleId || !hasPublicationValue(pubInfo.volume) || !hasPublicationValue(pubInfo.issue)) {
-    return `images/img-${figNum}.${ext}`;
+    return { path: `images/img-${figNum}.${ext}`, onPlatform: false };
   }
-  const base = (opts.staticBaseUrl || DEFAULT_STATIC_BASE).replace(/\/$/, '');
-  return `${base}/${journalInitial(md.journalId)}/v-${pubInfo.volume.trim()}/i-${pubInfo.issue.trim()}/a-${articleId}/img-${figNum}.${ext}`;
+  return {
+    path: `${journalInitial(md.journalId)}/v-${pubInfo.volume.trim()}/i-${pubInfo.issue.trim()}/a-${articleId}/img-${figNum}.${ext}`,
+    onPlatform: true,
+  };
+}
+
+export function figureHref(paper: CompletePaper, figNum: number, src: string, opts: JatsOptions): string {
+  const { path, onPlatform } = figureRelPath(paper, figNum, src, opts);
+  return onPlatform ? `${(opts.staticBaseUrl || DEFAULT_STATIC_BASE).replace(/\/$/, '')}/${path}` : path;
+}
+
+/** The figures of a paper with the number the XML gives them (same rule as the body: own number, else order). */
+export function listJatsFigures(paper: CompletePaper): { num: number; src: string }[] {
+  const out: { num: number; src: string }[] = [];
+  let figId = 0;
+  for (const s of paper.sections as PaperSection[]) {
+    if (s.type === 'figure' && s.figure) {
+      figId += 1;
+      out.push({ num: s.figure.num || figId, src: s.figure.src || '' });
+    }
+  }
+  return out;
 }
 
 // Per-export context: ids that must be unique (xml:id) and the reference ids that actually exist.
@@ -217,7 +243,7 @@ export function exportToJatsXml(paper: CompletePaper, opts: JatsOptions = {}): s
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD v1.2 20190208//EN" "JATS-archivearticle1.dtd">
-<article xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML" dtd-version="1.2" article-type="${xmlEscape(md.articleType || 'research-article')}" xml:lang="vi">
+<article xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML" dtd-version="1.2" article-type="${xmlEscape(articleTypeJats(md))}" xml:lang="vi">
 <front>
 <journal-meta>
 <journal-id journal-id-type="publisher-id">${xmlEscape(md.journalId)}</journal-id>

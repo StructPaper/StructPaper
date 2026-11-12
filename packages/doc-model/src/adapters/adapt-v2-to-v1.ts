@@ -405,6 +405,8 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
   }
   const titleOriginal = v2Doc.layoutOverrides?.titleOriginal as string | undefined;
   if (titleOriginal) (metadata as any).titleOriginal = titleOriginal;
+  const articleTypeEn = v2Doc.layoutOverrides?.articleTypeEn as string | undefined;
+  if (articleTypeEn) (metadata as any).articleTypeEn = articleTypeEn;
 
   return {
     id: v2Doc.id,

@@ -1,4 +1,5 @@
 import { escapeLatex } from './latex-escape';
+import { suggestArticleTypeEn } from './article-types';
 
 /**
  * Closing English summary page, as printed by the journal after the references:
@@ -39,11 +40,7 @@ export function toAsciiName(s: string): string {
 
 /** "Bài nghiên cứu" -> "Research Article" etc. */
 export function articleTypeToEnglish(vi: string): string {
-  const t = (vi || '').toLowerCase();
-  if (/tổng quan|review/.test(t)) return 'Review Article';
-  if (/ca lâm sàng|case/.test(t)) return 'Case Report';
-  if (/thư|letter/.test(t)) return 'Letter';
-  return 'Research Article';
+  return suggestArticleTypeEn(vi);
 }
 
 /**

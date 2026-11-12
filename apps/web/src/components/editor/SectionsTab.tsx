@@ -18,8 +18,6 @@ import {
   useSectionMediaHandlers,
   useSectionInspectors,
   getSectionId,
-  PageGroupOverview,
-  useSectionPageGroups,
   type DisplayedSectionItem,
 } from './sections';
 import { useEditorCommandBus } from './command-bus-adapter';
@@ -31,7 +29,6 @@ import {
 } from './dispatchers/sections-dispatchers';
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
 
-const DEFAULT_PAGE_DEFAULTS = { oneColumn: false, landscape: false };
 
 const useIsomorphicLayoutEffect =
   typeof document !== 'undefined' ? useLayoutEffect : useEffect;
@@ -41,7 +38,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   onChange,
   references,
   commandBus: propCommandBus,
-  layoutDefaults = DEFAULT_PAGE_DEFAULTS,
+  focusRequest,
 }) => {
   const contextCommandBus = useEditorCommandBus().commandBus;
   const activeBus = propCommandBus || contextCommandBus;
@@ -272,8 +269,6 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
     [sectionCounts]
   );
 
-  // Page groups: runs of sections that share one page layout (a marker starts a new page)
-  const pageGroups = useSectionPageGroups(sections, layoutDefaults);
   const [scrollRequest, setScrollRequest] = useState<{ id: string; n: number } | null>(null);
   const jumpToSection = useCallback((id: string) => {
     if (filterTypeRef.current !== 'all') {
@@ -283,6 +278,14 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
     }
     setScrollRequest((r) => ({ id, n: (r?.n ?? 0) + 1 }));
   }, [updateSectionsFilter]);
+
+  // A click in the PDF preview: show and highlight that section
+  useEffect(() => {
+    if (!focusRequest) return;
+    jumpToSection(focusRequest.id);
+    setNewlyAddedId(focusRequest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest]);
 
   // Filtered display entries with precomputed adjacent-figure context
   const displayedItems = useMemo<DisplayedSectionItem[]>(() => {
@@ -302,12 +305,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         originalIdx,
         isPrevFigure,
         prevFigureCaption: isPrevFigure ? prevSec.figure?.caption : undefined,
-        pageGroup: pageGroups.infos[pageGroups.groupOf.get(sec.id) ?? 0],
-        isGroupStart: pageGroups.startIds.has(sec.id),
       });
     }
     return items;
-  }, [sections, filterType, pageGroups]);
+  }, [sections, filterType]);
 
   // Handlers for section modification via dispatchers (stable callbacks reading latest refs)
   const handleUpdateSection = useCallback((index: number, updated: PaperSection) => {
@@ -580,9 +581,6 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         onAddEquation={() => handleAddEquation()}
         counts={toolbarCounts}
       />
-
-      {/* Page groups at a glance */}
-      <PageGroupOverview groups={pageGroups.groups} onJump={jumpToSection} />
 
       {/* Main Scrollable Sections & Blocks List */}
       <SectionBlockList

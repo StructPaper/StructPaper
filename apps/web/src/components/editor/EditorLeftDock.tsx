@@ -37,6 +37,9 @@ interface EditorLeftDockProps {
   onDownloadDocx: () => void;
   isExportingDocx: boolean;
   onDownloadZip: () => void;
+  onDownloadXml?: () => void;
+  onDownloadXmlPackage?: () => void;
+  isExportingXml?: boolean;
   isExportingZip: boolean;
   onDownloadPdf?: () => void;
   isExportingPdf?: boolean;
@@ -70,6 +73,9 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
   onDownloadDocx,
   isExportingDocx,
   onDownloadZip,
+  onDownloadXml,
+  onDownloadXmlPackage,
+  isExportingXml,
   isExportingZip,
   onDownloadPdf,
   isExportingPdf = false,
@@ -192,7 +198,7 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
     };
   }, [isDownloadOpen, isStatusOpen]);
 
-  const isAnyExporting = isExportingDocx || isExportingZip || isExportingPdf || isExportingTypst;
+  const isAnyExporting = isExportingDocx || isExportingZip || isExportingPdf || isExportingTypst || !!isExportingXml;
 
   return (
     <aside
@@ -302,6 +308,9 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
           onDownloadDocx={onDownloadDocx}
           onDownloadPdf={onDownloadPdf}
           onDownloadZip={onDownloadZip}
+          onDownloadXml={onDownloadXml}
+          onDownloadXmlPackage={onDownloadXmlPackage}
+          isExportingXml={isExportingXml}
           onDownloadTypst={onDownloadTypst}
           compiledPdfUrl={compiledPdfUrl}
         />

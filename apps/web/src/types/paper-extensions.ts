@@ -52,6 +52,8 @@ export interface PaperEquation {
 export interface SectionPageLayout {
   columns?: '1-column' | '2-column';
   orientation?: 'portrait' | 'landscape';
+  /** Written by turning a page in the preview, not by the editor: dropped again when it becomes redundant. */
+  turned?: boolean;
 }
 
 /**

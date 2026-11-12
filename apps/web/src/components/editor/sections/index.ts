@@ -23,6 +23,3 @@ export * from './SegmentedOptions';
 export * from './CitationSectionItem';
 export * from './SectionInsertDivider';
 export * from './utils';
-export * from './PageGroupHeader';
-export * from './PageGroupOverview';
-export * from './useSectionPageGroups';

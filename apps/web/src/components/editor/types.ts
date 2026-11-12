@@ -57,8 +57,8 @@ export interface SectionsTabProps {
   references?: PaperReference[];
   commandBus?: CommandBus;
   onDispatch?: (command: unknown) => void;
-  /** Document-wide layout (what a section without its own page layout follows); drives the page groups. */
-  layoutDefaults?: { oneColumn: boolean; landscape: boolean };
+  /** Open and highlight this section (a click in the PDF preview); a new `n` repeats it for the same id. */
+  focusRequest?: { id: string; n: number } | null;
 }
 
 export interface ReferencesTabProps {
@@ -86,4 +86,12 @@ export interface LivePreviewPaneProps {
   compileStartedAt?: number | null;
   /** Label of the running job, e.g. 'Đang xuất PDF…' while exporting. */
   busyLabel?: string;
+  /** A click on text in the preview: open the section of the editor that produced it. */
+  onFocusSection?: (sectionId: string) => void;
+  /** A click on the title, abstract, authors or references in the preview: open that tab. */
+  onFocusTab?: (tab: 'metadata' | 'authors' | 'abstract' | 'refs') => void;
+  /** The preview turned a page: the changed sections. */
+  onSectionsChange?: (sections: PaperSection[]) => void;
+  /** What a document does when a section has no page-layout marker. */
+  layoutDefaults?: { oneColumn: boolean; landscape: boolean };
 }

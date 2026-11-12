@@ -473,6 +473,7 @@ export function migrateV1toV2(
       sectionExtras: collectSectionExtras(v1Paper.sections),
       publication: (v1Paper.metadata as any)?.publication,
       titleOriginal: (v1Paper.metadata as any)?.titleOriginal,
+      articleTypeEn: (v1Paper.metadata as any)?.articleTypeEn,
       templateId: v1Paper.templateId,
       templateName: v1Paper.templateName,
       status: v1Paper.status,

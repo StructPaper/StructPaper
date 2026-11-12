@@ -5,6 +5,7 @@ import { MetadataTabProps } from './types';
 import { Select, SelectOption, DatePicker } from '../ui';
 import { FileText, Calendar, BookOpen, Tag } from 'lucide-react';
 import { PublicationInfoFields } from './PublicationInfoFields';
+import { ArticleTypeField } from './ArticleTypeField';
 import { useTabScrollRestoration } from './hooks';
 import {
   useEditorCommandBus,
@@ -74,18 +75,6 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
   useEffect(() => {
     autoResize(abstractEnRef.current);
   }, [metadata.abstractEn]);
-
-  // Determine available article types based on journal ID
-  // Only VNUHCM-HS has 8 multiple article types; all others only have 'Bài báo nghiên cứu'
-  const isHealthSciences = !metadata.journalId || metadata.journalId === 'VNUHCM-HS' || metadata.journalId.includes('HS');
-  const articleOptions = isHealthSciences ? HS_ARTICLE_TYPE_OPTIONS : STANDARD_ARTICLE_TYPE_OPTIONS;
-
-  // Auto-normalize if an unsupported article type is selected for a non-HS journal
-  useEffect(() => {
-    if (!isHealthSciences && metadata.articleType && !STANDARD_ARTICLE_TYPE_OPTIONS.some((o) => o.value === metadata.articleType)) {
-      dispatchMetadataField(activeBus, 'articleType', 'Bài báo nghiên cứu', onChange, metadata);
-    }
-  }, [isHealthSciences, metadata.articleType, activeBus, onChange, metadata]);
 
   const handleKeywordsChange = (val: string) => {
     const list = val.split(',').map((k) => k.trim()).filter(Boolean);
@@ -163,15 +152,7 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
 
       {/* Article Type & DOI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div>
-          <Select
-            label="Loại bài báo (Article Type):"
-            value={metadata.articleType || 'Bài báo nghiên cứu'}
-            onChange={(val) => dispatchMetadataField(activeBus, 'articleType', val, onChange, metadata)}
-            options={articleOptions}
-            size="md"
-          />
-        </div>
+        <ArticleTypeField metadata={metadata} onChange={onChange} commandBus={activeBus} />
 
       </div>
 

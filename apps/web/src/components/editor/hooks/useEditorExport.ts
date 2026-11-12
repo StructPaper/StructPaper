@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { CompletePaper } from '@/types/paper';
 import { generateLatexPackageZip, exportToJatsXml } from '@/lib/exporters';
 import { exportPaperToDocx } from '@/lib/docx-export';
+import { buildJatsPackage, jatsReadinessWarnings } from '@/lib/jats-package';
 import { sileo } from '@/components/DynamicIslandToast';
 
 export type ExportedFormat = 'docx' | 'pdf' | 'xml';
@@ -95,16 +96,31 @@ export function useEditorExport({
       setIsExportingXml(true);
       const xml = exportToJatsXml(formData);
       const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-      const fileName = `${exportBaseName(formData)}.xml`;
+      const articleId = (formData.metadata.publication?.articleId || '').trim();
+      const fileName = `${(articleId || exportBaseName(formData)).replace(/[\\/:*?"<>|]/g, '_')}.xml`;
       downloadBlob(blob, fileName);
       onExported?.('xml', blob, fileName);
-      notify('Đã xuất file XML (JATS) thành công!');
+      const warn = jatsReadinessWarnings(formData);
+      notify(warn.length ? `Đã xuất XML (JATS). Lưu ý: ${warn[0]}` : 'Đã xuất file XML (JATS) thành công!');
     } catch (e: any) {
       sileo.error({ title: 'Lỗi xuất XML', description: e?.message || String(e) });
     } finally {
       setIsExportingXml(false);
     }
   }, [formData, notify, onExported]);
+
+  const handleDownloadXmlPackage = useCallback(async () => {
+    try {
+      setIsExportingXml(true);
+      const pkg = await buildJatsPackage(formData, exportBaseName(formData));
+      downloadBlob(pkg.blob, `${pkg.xmlName.replace(/\.xml$/, '')}_XML.zip`);
+      notify(pkg.warnings.length ? `Đã tải gói XML + hình. Lưu ý: ${pkg.warnings[0]}` : 'Đã tải gói XML + hình (.zip)!');
+    } catch (e: any) {
+      sileo.error({ title: 'Lỗi tạo gói XML', description: e?.message || String(e) });
+    } finally {
+      setIsExportingXml(false);
+    }
+  }, [formData, notify]);
 
   const handleDownloadZip = useCallback(async () => {
     try {
@@ -157,5 +173,6 @@ export function useEditorExport({
     handleDownloadZip,
     handleDownloadPdf,
     handleDownloadXml,
+    handleDownloadXmlPackage,
   };
 }

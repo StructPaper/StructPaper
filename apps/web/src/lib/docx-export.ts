@@ -3,7 +3,8 @@ import type { CompletePaper, PaperMetadata } from '@/types/paper';
 import { resolveTheme } from './theme-config';
 import { getJournalTemplate } from './templates';
 import { hasPublicationValue, resolvePublication, UNKNOWN } from './publication';
-import { articleTypeToEnglish, hasEnglishPageContent, toAsciiName } from './latex-english-page';
+import { hasEnglishPageContent, toAsciiName } from './latex-english-page';
+import { articleTypeEnglish } from './article-types';
 import { collectExportAssets, defaultImageLoader, type ImageLoader } from './docx-export-assets';
 import { buildFrontMatter, buildHeadersFooters, FONT_SANS, FONT_SERIF, type FrontMatter } from './docx-export-front';
 import { pageFor, segmentSections } from './docx-export-layout';
@@ -58,7 +59,7 @@ function frontMatterFor(paper: CompletePaper, lang: 'vi' | 'en'): FrontMatter {
   const published = hasPublicationValue(pub.published) ? journalDate(pub.published) : pub.published;
   return {
     lang,
-    articleType: en ? articleTypeToEnglish(md.articleType) : md.articleType || 'Bài nghiên cứu',
+    articleType: en ? articleTypeEnglish(md) : md.articleType || 'Bài nghiên cứu',
     title: (en ? md.titleEn : md.title) || '',
     authors: (md.authors || []).map((a) => {
       const aff = multi && a.affiliationIds?.length ? a.affiliationIds.join(',') : '';

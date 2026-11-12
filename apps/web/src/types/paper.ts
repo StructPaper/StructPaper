@@ -51,7 +51,7 @@ export interface PaperMetadata {
   year: string;
   firstPage: number;
   lastPage: number;
-  titleOriginal?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
+  titleOriginal?: string; articleTypeEn?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
 }
 
 export interface PaperFigure {

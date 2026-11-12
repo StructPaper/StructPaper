@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, Download, FileCheck, FileText, RefreshCw, X } from 'lucide-react';
+import { Archive, Code2, Download, FileCheck, FileText, RefreshCw, X } from 'lucide-react';
 
 export interface DockDownloadMenuProps {
   isDownloadOpen: boolean;
@@ -19,6 +19,9 @@ export interface DockDownloadMenuProps {
   onDownloadDocx: () => void;
   onDownloadPdf?: () => void;
   onDownloadZip: () => void;
+  onDownloadXml?: () => void;
+  onDownloadXmlPackage?: () => void;
+  isExportingXml?: boolean;
   onDownloadTypst?: () => void;
   compiledPdfUrl: string | null;
 }
@@ -39,6 +42,9 @@ export const DockDownloadMenu: React.FC<DockDownloadMenuProps> = ({
   onDownloadDocx,
   onDownloadPdf,
   onDownloadZip,
+  onDownloadXml,
+  onDownloadXmlPackage,
+  isExportingXml,
   onDownloadTypst,
   compiledPdfUrl,
 }) => (
@@ -210,6 +216,53 @@ export const DockDownloadMenu: React.FC<DockDownloadMenuProps> = ({
             </div>
             {isExportingZip && <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600 flex-shrink-0" />}
           </button>
+
+          {/* 3b. XML (JATS) và gói XML + hình theo quy ước của hệ thống tạp chí */}
+          {onDownloadXml && (
+            <button
+              id="download-xml-btn"
+              data-testid="download-xml"
+              type="button"
+              onClick={() => {
+                setIsDownloadOpen(false);
+                onDownloadXml();
+              }}
+              disabled={isExportingXml}
+              className="w-full px-2.5 py-1.5 rounded-xl hover:bg-amber-50/70 hover:text-amber-900 flex items-center gap-2 font-medium text-left cursor-pointer transition-colors group"
+            >
+              <Code2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-zinc-800">XML (JATS)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 bg-amber-50 text-amber-700 font-bold rounded">.xml</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 font-normal truncate">Tên file theo Mã bài, kiểm tra bằng JATS4R</p>
+              </div>
+              {isExportingXml && <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 flex-shrink-0" />}
+            </button>
+          )}
+          {onDownloadXmlPackage && (
+            <button
+              id="download-xml-package-btn"
+              data-testid="download-xml-package"
+              type="button"
+              onClick={() => {
+                setIsDownloadOpen(false);
+                onDownloadXmlPackage();
+              }}
+              disabled={isExportingXml}
+              className="w-full px-2.5 py-1.5 rounded-xl hover:bg-amber-50/70 hover:text-amber-900 flex items-center gap-2 font-medium text-left cursor-pointer transition-colors group"
+            >
+              <Archive className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-zinc-800">XML + hình</span>
+                  <span className="text-[10px] px-1.5 py-0.2 bg-amber-50 text-amber-700 font-bold rounded">.zip</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 font-normal truncate">Hình đặt theo v-tập/i-số/a-mã bài</p>
+              </div>
+            </button>
+          )}
 
           {/* 4. Tải file Typst (.typ) */}
           {onDownloadTypst && (

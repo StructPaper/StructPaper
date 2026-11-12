@@ -11,7 +11,8 @@ import { SIZE9_PREAMBLE } from './latex-size9';
 import { displayHeading } from './headings';
 import { resolvePublication, hasPublicationValue, UNKNOWN } from './publication';
 import { qrBlockFor } from './qr-latex';
-import { buildEnglishPage, hasEnglishPageContent, articleTypeToEnglish, toAsciiName } from './latex-english-page';
+import { buildEnglishPage, hasEnglishPageContent, toAsciiName } from './latex-english-page';
+import { articleTypeEnglish } from './article-types';
 import {
   resolveLatexFigureFilename,
   appendFigureImagesToZip,
@@ -449,7 +450,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
           titleEn: metadata.titleEn || '',
           abstractEn: metadata.abstractEn || '',
           keywordsEn: cleanKw(metadata.keywordsEn),
-          articleTypeEn: articleTypeToEnglish(metadata.articleType),
+          articleTypeEn: articleTypeEnglish(metadata),
           // the English page prints names without diacritics ("Vo Thi Nguyen")
           authorsFormatted: toAsciiName(authorsFormatted),
           citeAuthorsEn: escapeLatex(toAsciiName(citeAuthors)),
