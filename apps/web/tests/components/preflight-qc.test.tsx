@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { computePreflightCheckWrapper } from '@/components/editor/preflight-wrapper';
 import { PreflightQCTab } from '@/components/editor/PreflightQCTab';
 import type { CompletePaper } from '@/types/paper';
 
 describe('Preflight QC & PreflightQCTab Integration', () => {
+  afterEach(() => {
+    cleanup();
+  });
   const samplePaper: CompletePaper = {
     id: 'paper-test-1',
     metadata: {
@@ -134,5 +137,57 @@ describe('Preflight QC & PreflightQCTab Integration', () => {
     fireEvent.click(fixButton);
 
     expect(handleNavigate).toHaveBeenCalled();
+  });
+
+  it('renders minimalist VS Code-style collapsible problems tree with groups and responds to toggle', () => {
+    const paperWithIssues: CompletePaper = {
+      ...samplePaper,
+      metadata: {
+        ...samplePaper.metadata,
+        title: 'Ngắn',
+        keywords: ['chỉ một'],
+      },
+    };
+
+    const handleNavigate = vi.fn();
+    render(<PreflightQCTab paper={paperWithIssues} onNavigateTab={handleNavigate} />);
+
+    // Verify tree container is rendered
+    expect(screen.getByTestId('preflight-issues-tree')).toBeDefined();
+
+    // Verify metadata group header
+    const metadataGroupBtn = screen.getByTestId('preflight-group-metadata');
+    expect(metadataGroupBtn).toBeDefined();
+    expect(metadataGroupBtn.getAttribute('aria-expanded')).toBe('true');
+
+    // Click to collapse group
+    fireEvent.click(metadataGroupBtn);
+    expect(metadataGroupBtn.getAttribute('aria-expanded')).toBe('false');
+
+    // Click to re-expand group
+    fireEvent.click(metadataGroupBtn);
+    expect(metadataGroupBtn.getAttribute('aria-expanded')).toBe('true');
+
+    // Toggle all groups
+    const toggleAllBtn = screen.getByRole('button', { name: /Thu gọn tất cả/i });
+    fireEvent.click(toggleAllBtn);
+    expect(metadataGroupBtn.getAttribute('aria-expanded')).toBe('false');
+
+    const expandAllBtn = screen.getByRole('button', { name: /Mở rộng tất cả/i });
+    fireEvent.click(expandAllBtn);
+    expect(metadataGroupBtn.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('renders clean success banner when paper has zero preflight issues', () => {
+    const perfectPreflight = {
+      ...computePreflightCheckWrapper(samplePaper),
+      issues: [],
+      score: 100,
+    };
+
+    render(<PreflightQCTab preflight={perfectPreflight} onNavigateTab={vi.fn()} />);
+
+    expect(screen.getByText(/Bản thảo hoàn hảo và đầy đủ 100%/i)).toBeDefined();
+    expect(screen.queryByTestId('preflight-issues-tree')).toBeNull();
   });
 });

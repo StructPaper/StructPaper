@@ -22,19 +22,18 @@ describe('EditorDocumentMenuBarSlot (Platform Slot)', () => {
     cleanup();
   });
 
-  it('renders DocumentMenuBar on Web platform', () => {
+  it('suppresses DocumentMenuBar on Web and Desktop platforms in favor of TitleBar', () => {
     const webPlatform = createFakePlatform({ kind: 'web' });
-    render(
+    const { unmount } = render(
       <PlatformProvider value={webPlatform}>
         <EditorDocumentMenuBarSlot {...baseProps} />
       </PlatformProvider>
     );
 
-    expect(screen.getByTestId('save-status')).toBeTruthy();
-    expect(screen.getByDisplayValue('Bản thảo slot test')).toBeTruthy();
-  });
+    expect(screen.queryByTestId('save-status')).toBeNull();
+    expect(screen.queryByDisplayValue('Bản thảo slot test')).toBeNull();
+    unmount();
 
-  it('suppresses DocumentMenuBar on Desktop platform so controls live in DesktopTitleBar', () => {
     const desktopPlatform = createFakePlatform({ kind: 'desktop' });
     render(
       <PlatformProvider value={desktopPlatform}>

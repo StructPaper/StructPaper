@@ -290,10 +290,10 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                 mass: 0.8,
               }
         }
-        className={`bg-[#F8F9FA] w-full ${inBatch ? 'max-w-2xl' : 'max-w-xl'} rounded-[40px] overflow-hidden shadow-2xl flex flex-col border border-white/20 select-text`}
+        className={`bg-[#F8F9FA] w-full ${inBatch ? 'max-w-2xl' : 'max-w-xl'} max-h-[80vh] rounded-[40px] overflow-hidden shadow-2xl flex flex-col border border-white/20 select-text`}
       >
         {/* Header - Eatzy OrderDetailsModal Identity */}
-        <div className="px-7 sm:px-8 py-5 pb-0 flex items-center justify-between sticky top-0 z-10 shadow-xs">
+        <div className="flex-shrink-0 px-7 sm:px-8 py-5 pb-0 flex items-center justify-between sticky top-0 z-10 shadow-xs">
           <div>
             <div className="flex items-center gap-2.5">
               
@@ -320,7 +320,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
         </div>
 
         {/* Modal Content with Horizontal Step Slider */}
-        <div className="p-6 sm:p-7">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-7">
           {!inBatch && !batchPending && (
           <label className="block mb-4">
             <span className="block text-[11px] font-bold text-slate-500 mb-1 pl-1">Tên tài liệu</span>

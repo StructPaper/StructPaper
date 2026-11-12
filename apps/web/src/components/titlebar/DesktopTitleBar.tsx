@@ -15,9 +15,13 @@ import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
 
 /**
- * Custom desktop window chrome bar replacing the OS title bar in Tauri.
- * Displays full editor controls (App icon, AutoSave switch, Paper title & save state)
- * on Editor routes, and a minimal Logo + Window Controls chrome on all other routes.
+ * Top-level application chrome bar.
+ * Rendered on both Desktop and Web platforms.
+ * Displays full editor controls (App icon, File menu, AutoSave switch, Paper title & save state)
+ * on Editor routes, and a minimal Logo on all other routes.
+ *
+ * On Desktop: includes native window caption controls (Minimize, Maximize, Close).
+ * On Web: identical chrome without the window control buttons.
  */
 export const DesktopTitleBar: React.FC = () => {
   const { kind } = useCapabilities();
@@ -25,10 +29,7 @@ export const DesktopTitleBar: React.FC = () => {
   const { autoSaveEnabled, toggleAutoSave, documentSession } = useEditorSession();
   const { handleMouseDown, handleDoubleClick } = useWindowDrag();
 
-  if (kind !== 'desktop') {
-    return null;
-  }
-
+  const isDesktop = kind === 'desktop';
   const isEditorRoute = isEditorTitleBarRoute(pathname);
   const isLocalOnly =
     isEditorRoute &&
@@ -39,10 +40,10 @@ export const DesktopTitleBar: React.FC = () => {
   return (
     <header
       data-testid="desktop-titlebar"
-      data-tauri-drag-region
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
-      className="fixed top-0 left-0 right-0 z-[100005] h-[38px] w-full bg-gray-200/80 backdrop-blur-sm flex items-center justify-between pl-3 pr-0 select-none"
+      data-tauri-drag-region={isDesktop ? '' : undefined}
+      onMouseDown={isDesktop ? handleMouseDown : undefined}
+      onDoubleClick={isDesktop ? handleDoubleClick : undefined}
+      className={`fixed top-0 left-0 right-0 z-[100005] h-[38px] w-full bg-gray-200/80 backdrop-blur-sm flex items-center justify-between pl-3 ${isDesktop ? 'pr-0' : 'pr-3'} select-none`}
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <AppLogoMark showWordmark={!isEditorRoute} />
@@ -72,7 +73,7 @@ export const DesktopTitleBar: React.FC = () => {
 
       <div
         data-testid="titlebar-drag-region"
-        data-tauri-drag-region
+        data-tauri-drag-region={isDesktop ? '' : undefined}
         className="flex-1 h-full min-w-[24px]"
         aria-hidden="true"
       />
@@ -89,7 +90,7 @@ export const DesktopTitleBar: React.FC = () => {
         </span>
       )}
 
-      <WindowControls />
+      {isDesktop && <WindowControls />}
     </header>
   );
 };

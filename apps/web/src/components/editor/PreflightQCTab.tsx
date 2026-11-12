@@ -1,16 +1,49 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PreflightQCTabProps, EditorTabKey } from './types';
 import {
   AlertCircle,
   AlertTriangle,
-  Info,
-  CheckCircle2,
+  AlignLeft,
   ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  FileText,
+  Info,
+  Layers,
+  Quote,
+  Users,
+  XCircle,
 } from 'lucide-react';
 import { computePreflightCheckWrapper } from './preflight-wrapper';
 import { useTabScrollRestoration } from './hooks';
+import {
+  getCompactIssueDetail,
+  groupValidationIssues,
+  type ValidationGroupKey,
+} from '@/components/documents/validation-report-helpers';
+import type { ValidationIssue } from '@/lib/validation/validators';
+
+const SEVERITY_ICON: Record<string, React.ReactNode> = {
+  error: <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />,
+  warning: <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />,
+  info: <Info className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />,
+};
+
+const GROUP_ICON: Record<ValidationGroupKey, React.ReactNode> = {
+  general: <AlertCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  metadata: <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  authors: <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  abstract: <AlignLeft className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  sections: <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  refs: <BookOpen className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  citation: <Quote className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+};
+
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
 export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
   preflight,
@@ -19,11 +52,60 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useTabScrollRestoration('preflight', scrollContainerRef);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Evaluates preflight check via wrapper (ready for @structpaper/qc-engine in Phase 5)
   const activePreflight = useMemo(() => {
     return computePreflightCheckWrapper(preflight || paper);
   }, [preflight, paper]);
+
+  const validationIssues: ValidationIssue[] = useMemo(() => {
+    return (activePreflight.issues || []).map((issue) => {
+      let fixTab = issue.fixTab;
+      if (!fixTab) {
+        if (issue.category === 'metadata') fixTab = 'metadata';
+        else if (issue.category === 'author') fixTab = 'authors';
+        else if (issue.category === 'abstract') fixTab = 'abstract';
+        else if (issue.category === 'content' || issue.category === 'table_fig') fixTab = 'sections';
+        else if (issue.category === 'reference') fixTab = 'refs';
+      }
+
+      return {
+        id: issue.id,
+        severity: issue.severity,
+        code: `preflight.${issue.category}`,
+        title: issue.title,
+        message: issue.message,
+        suggestion: issue.suggestion,
+        category: issue.category,
+        fixTab,
+      };
+    });
+  }, [activePreflight.issues]);
+
+  const groups = useMemo(() => groupValidationIssues(validationIssues), [validationIssues]);
+
+  const toggleGroup = (key: ValidationGroupKey) => {
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const allCollapsed = useMemo(() => {
+    if (groups.length === 0) return false;
+    return groups.every((g) => Boolean(collapsed[g.key]));
+  }, [groups, collapsed]);
+
+  const toggleAllGroups = () => {
+    const nextState = !allCollapsed;
+    const next: Record<string, boolean> = {};
+    for (const g of groups) {
+      next[g.key] = nextState;
+    }
+    setCollapsed(next);
+  };
+
+  const totalErrors = activePreflight.issues?.filter((i) => i.severity === 'error').length || 0;
+  const totalWarnings = activePreflight.issues?.filter((i) => i.severity === 'warning').length || 0;
+  const totalIssues = activePreflight.issues?.length || 0;
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-4 p-4 sm:p-5 sm:pt-4 sm:pb-1">
@@ -60,97 +142,218 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
 
       {/* Internal Scrollable Content */}
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-6">
-        {/* Issues list */}
+        {/* Issues list (VS Code-style collapsible grouped tree) */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4 text-zinc-700" />
-              Báo cáo các mục cần bổ sung ({activePreflight.issues?.length || 0})
-            </h4>
-            <span className="text-[11px] text-zinc-500 font-medium">
-              {activePreflight.issues?.filter((i) => i.severity === 'error').length || 0} mục bắt buộc,{' '}
-              {activePreflight.issues?.filter((i) => i.severity === 'warning').length || 0} khuyến nghị
-            </span>
-          </div>
 
-          {activePreflight.issues && activePreflight.issues.length > 0 ? (
-            <div className="space-y-2.5">
-              {activePreflight.issues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className={`p-3.5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 transition-all ${
-                    issue.severity === 'error'
-                      ? 'bg-red-50/60 border-red-200'
-                      : issue.severity === 'warning'
-                        ? 'bg-amber-50/60 border-amber-200'
-                        : 'bg-blue-50/60 border-blue-200'
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5 flex-1">
-                    <div className="mt-0.5">
-                      {issue.severity === 'error' ? (
-                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                      ) : issue.severity === 'warning' ? (
-                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          {totalIssues > 0 ? (
+            <div
+              data-testid="preflight-issues-tree"
+              className="space-y-1 select-text"
+            >
+              <div className="px-1 py-1 flex items-center justify-between gap-2 text-xs text-zinc-500">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-zinc-500">
+                    {groups.length} nhóm tài liệu có lưu ý
+                  </span>
+                </div>
+                {groups.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAllGroups}
+                    className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
+                  >
+                    {allCollapsed ? 'Mở rộng tất cả' : 'Thu gọn tất cả'}
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                {groups.map((group) => {
+                  const isCollapsed = Boolean(collapsed[group.key]);
+                  return (
+                    <div key={group.key} className="space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.key)}
+                        aria-expanded={!isCollapsed}
+                        data-testid={`preflight-group-${group.key}`}
+                        className="w-full px-3 py-2 rounded-xl flex items-center gap-2 text-left hover:bg-zinc-200/80 active:bg-zinc-300/80 transition-colors cursor-pointer select-none"
+                      >
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-zinc-600 shrink-0 transition-transform duration-150 ${
+                            isCollapsed ? '-rotate-90' : ''
+                          }`}
+                          strokeWidth={2.5}
+                        />
+                        {GROUP_ICON[group.key]}
+                        <span className="text-[12.5px] font-bold text-zinc-900 shrink-0">
+                          {group.label}
+                        </span>
+                        <span className="text-[11px] text-zinc-400 truncate">
+                          {group.hint}
+                        </span>
+                        <span
+                          className={`ml-auto shrink-0 min-w-[20px] h-[20px] px-1.5 rounded-full text-[10.5px] font-bold inline-flex items-center justify-center tabular-nums ${
+                            group.errorCount > 0
+                              ? 'bg-rose-100 text-rose-700 border border-rose-200/60'
+                              : 'bg-zinc-200/80 text-zinc-700'
+                          }`}
+                        >
+                          {group.issues.length}
+                        </span>
+                      </button>
+
+                      {isTest ? (
+                        !isCollapsed && (
+                          <ul className="ml-5 pl-3 border-l-2 border-zinc-300/70 my-1 space-y-1">
+                            {group.issues.map((issue) => {
+                              const detail = getCompactIssueDetail(issue);
+                              return (
+                                <li
+                                  key={issue.id}
+                                  className="group/row flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-xl p-2 sm:px-3 sm:py-2 hover:bg-zinc-200/75 active:bg-zinc-300/70 transition-colors"
+                                >
+                                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                                    {SEVERITY_ICON[issue.severity]}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[12.5px] font-semibold text-zinc-900 leading-snug">
+                                          {issue.title}
+                                        </span>
+                                        {detail && (
+                                          <span className="text-[11px] text-zinc-400 font-normal">
+                                            ({detail})
+                                          </span>
+                                        )}
+                                        <span
+                                          className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                                            issue.severity === 'error'
+                                              ? 'bg-rose-100/70 text-rose-700'
+                                              : issue.severity === 'warning'
+                                                ? 'bg-amber-100/70 text-amber-800'
+                                                : 'bg-sky-100/70 text-sky-700'
+                                          }`}
+                                        >
+                                          {issue.severity === 'error'
+                                            ? 'Bắt buộc'
+                                            : issue.severity === 'warning'
+                                              ? 'Khuyến nghị'
+                                              : 'Gợi ý'}
+                                        </span>
+                                      </div>
+                                      {issue.message && (
+                                        <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug">
+                                          {issue.message}
+                                        </p>
+                                      )}
+                                      {issue.suggestion && (
+                                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                                          💡 {issue.suggestion}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {issue.fixTab && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onNavigateTab(issue.fixTab as EditorTabKey)}
+                                      className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                                    >
+                                      <span>Sửa ngay</span>
+                                      <ArrowRight className="w-3 h-3 text-zinc-500" />
+                                    </button>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )
                       ) : (
-                        <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <AnimatePresence initial={false}>
+                          {!isCollapsed && (
+                            <motion.div
+                              key={`preflight-issues-${group.key}`}
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                              className="overflow-hidden"
+                            >
+                              <ul className="ml-5 pl-3 border-l-2 border-zinc-300/70 my-1.5 space-y-1">
+                                {group.issues.map((issue) => {
+                                  const detail = getCompactIssueDetail(issue);
+                                  return (
+                                    <li
+                                      key={issue.id}
+                                      className="group/row flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-xl p-2 sm:px-3 sm:py-2 hover:bg-zinc-200/75 active:bg-zinc-300/70 transition-colors"
+                                    >
+                                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                                        {SEVERITY_ICON[issue.severity]}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-[12.5px] font-semibold text-zinc-900 leading-snug">
+                                              {issue.title}
+                                            </span>
+                                            {detail && (
+                                              <span className="text-[11px] text-zinc-400 font-normal">
+                                                ({detail})
+                                              </span>
+                                            )}
+                                            <span
+                                              className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                                                issue.severity === 'error'
+                                                  ? 'bg-rose-100/70 text-rose-700'
+                                                  : issue.severity === 'warning'
+                                                    ? 'bg-amber-100/70 text-amber-800'
+                                                    : 'bg-sky-100/70 text-sky-700'
+                                              }`}
+                                            >
+                                              {issue.severity === 'error'
+                                                ? 'Bắt buộc'
+                                                : issue.severity === 'warning'
+                                                  ? 'Khuyến nghị'
+                                                  : 'Gợi ý'}
+                                            </span>
+                                          </div>
+                                          {issue.message && (
+                                            <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug">
+                                              {issue.message}
+                                            </p>
+                                          )}
+                                          {issue.suggestion && (
+                                            <p className="text-[11px] text-zinc-400 mt-0.5">
+                                              💡 {issue.suggestion}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {issue.fixTab && (
+                                        <button
+                                          type="button"
+                                          onClick={() => onNavigateTab(issue.fixTab as EditorTabKey)}
+                                          className="shrink-0 self-end sm:self-center px-2.5 py-1 rounded-lg text-xs font-bold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200/90 shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                                        >
+                                          <span>Sửa ngay</span>
+                                          <ArrowRight className="w-3 h-3 text-zinc-500" />
+                                        </button>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       )}
                     </div>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <h5
-                          className={`font-bold text-xs ${
-                            issue.severity === 'error'
-                              ? 'text-red-950'
-                              : issue.severity === 'warning'
-                                ? 'text-amber-950'
-                                : 'text-blue-950'
-                          }`}
-                        >
-                          {issue.title}
-                        </h5>
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
-                            issue.severity === 'error'
-                              ? 'bg-red-200 text-red-800'
-                              : issue.severity === 'warning'
-                                ? 'bg-amber-200 text-amber-800'
-                                : 'bg-blue-200 text-blue-800'
-                          }`}
-                        >
-                          {issue.severity === 'error'
-                            ? 'Bắt buộc'
-                            : issue.severity === 'warning'
-                              ? 'Khuyến nghị'
-                              : 'Gợi ý'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-700 leading-snug">{issue.message}</p>
-                      <p className="text-[11px] text-zinc-500 italic">💡 {issue.suggestion}</p>
-                    </div>
-                  </div>
-
-                  {issue.fixTab && (
-                    <button
-                      type="button"
-                      onClick={() => onNavigateTab(issue.fixTab as EditorTabKey)}
-                      className={`text-xs font-bold py-1.5 px-3 rounded-xl border flex items-center gap-1 flex-shrink-0 self-end sm:self-center transition-colors cursor-pointer shadow-2xs ${
-                        issue.severity === 'error'
-                          ? 'bg-white text-red-700 border-red-300 hover:bg-red-50'
-                          : issue.severity === 'warning'
-                            ? 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
-                            : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
-                      }`}
-                    >
-                      <span>Sửa ngay</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-lime-50 border border-lime-200 text-lime-800 text-xs flex items-center gap-3">
+            <div className="p-4 rounded-2xl bg-lime-50/80 border border-lime-200/80 text-lime-800 text-xs flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-lime-600 flex-shrink-0" />
               <div>
                 <h5 className="font-bold">Bản thảo hoàn hảo và đầy đủ 100%!</h5>
@@ -168,14 +371,14 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             Bảng đối soát tiêu chuẩn cấu trúc
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {/* Pillar 1: Metadata */}
-            <div className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 1. Tiêu đề & Định danh
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tiêu đề tiếng Việt:</span>
                   {activePreflight.titleOk ? (
                     <span className="text-lime-700 font-bold flex items-center gap-1">
@@ -187,7 +390,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tiêu đề tiếng Anh:</span>
                   {activePreflight.titleEnOk ? (
                     <span className="text-lime-700 font-bold flex items-center gap-1">
@@ -209,16 +412,16 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 2: Authors */}
-            <div className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 2. Tác giả & Đơn vị
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Số lượng tác giả:</span>
                   <span className="font-bold text-zinc-900">{activePreflight.authorsCount} tác giả</span>
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Đơn vị công tác:</span>
                   <span className="font-bold text-zinc-900">{activePreflight.affiliationsCount} cơ quan</span>
                 </div>
@@ -238,12 +441,12 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 3: Abstracts & Keywords */}
-            <div className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 3. Tóm tắt & Từ khóa
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tóm tắt tiếng Việt:</span>
                   {activePreflight.abstractOk ? (
                     <span className="text-lime-700 font-bold flex items-center gap-1">
@@ -255,7 +458,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Abstract tiếng Anh:</span>
                   {activePreflight.abstractEnOk ? (
                     <span className="text-lime-700 font-bold flex items-center gap-1">
@@ -279,7 +482,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             {/* Pillar 4: IMRaD Sections */}
             <div
               onClick={() => onNavigateTab('sections')}
-              className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2 cursor-pointer hover:bg-gray-200/80 transition-all group"
+              className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
               title="Nhấp để chuyển tới tab Nội dung"
             >
               <h5 className="font-bold text-xs text-zinc-900 flex items-center justify-between gap-1.5">
@@ -287,13 +490,13 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                 <span className="text-[10px] text-zinc-400 group-hover:text-zinc-700 transition-colors font-medium">Sửa →</span>
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Mở đầu / Giới thiệu:</span>
                   <span className={activePreflight.foundImradSections.intro ? 'text-lime-700 font-bold' : 'text-zinc-400 font-normal'}>
                     {activePreflight.foundImradSections.intro ? '✓ Có' : 'Chưa rõ'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Phương pháp (Methods):</span>
                   <span className={activePreflight.foundImradSections.methods ? 'text-lime-700 font-bold' : 'text-zinc-400 font-normal'}>
                     {activePreflight.foundImradSections.methods ? '✓ Có' : 'Chưa rõ'}
@@ -311,7 +514,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             {/* Pillar 5: Figures & Tables */}
             <div
               onClick={() => onNavigateTab('sections')}
-              className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2 cursor-pointer hover:bg-gray-200/80 transition-all group"
+              className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 cursor-pointer hover:bg-zinc-50/90 hover:border-zinc-300 transition-all group"
               title="Nhấp để chuyển tới tab Nội dung (Bảng & Hình)"
             >
               <h5 className="font-bold text-xs text-zinc-900 flex items-center justify-between gap-1.5">
@@ -319,11 +522,11 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                 <span className="text-[10px] text-zinc-400 group-hover:text-zinc-700 transition-colors font-medium">Sửa →</span>
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tổng số bảng biểu:</span>
                   <span className="font-bold text-zinc-900">{activePreflight.totalTables} bảng</span>
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tổng số hình ảnh:</span>
                   <span className="font-bold text-zinc-900">{activePreflight.totalFigures} hình</span>
                 </div>
@@ -337,16 +540,16 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
             </div>
 
             {/* Pillar 6: Vancouver Citations */}
-            <div className="p-3.5 rounded-3xl bg-gray-200/50 shadow-2xs space-y-2">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-zinc-200/80 shadow-2xs space-y-2 transition-all">
               <h5 className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
                 6. Trích dẫn Vancouver
               </h5>
               <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Tổng số tài liệu:</span>
                   <span className="font-bold text-zinc-900">{activePreflight.totalReferences} mục</span>
                 </div>
-                <div className="flex items-center justify-between py-0.5 border-b border-zinc-200/60">
+                <div className="flex items-center justify-between py-0.5 border-b border-zinc-100">
                   <span className="text-zinc-500">Chưa gọi trong bài:</span>
                   {activePreflight.uncitedReferences.length === 0 ? (
                     <span className="text-lime-700 font-bold">0 mục (Tốt)</span>

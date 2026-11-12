@@ -140,7 +140,7 @@ describe('DesktopTitleBar', () => {
     vi.clearAllMocks();
   });
 
-  it('does not render on Web platform', () => {
+  it('renders TitleBar on Web platform without window controls (no minimize, maximize, close buttons)', () => {
     const webPlatform = createFakePlatform({ kind: 'web' });
     render(
       <PlatformProvider value={webPlatform}>
@@ -150,7 +150,12 @@ describe('DesktopTitleBar', () => {
       </PlatformProvider>
     );
 
-    expect(screen.queryByTestId('desktop-titlebar')).toBeNull();
+    expect(screen.getByTestId('desktop-titlebar')).toBeTruthy();
+    expect(screen.getByTestId('titlebar-logo')).toBeTruthy();
+    // Web platform must NOT have window controls (minimize, maximize, close)
+    expect(screen.queryByTestId('titlebar-minimize-btn')).toBeNull();
+    expect(screen.queryByTestId('titlebar-maximize-btn')).toBeNull();
+    expect(screen.queryByTestId('titlebar-close-btn')).toBeNull();
   });
 
   it.each(['/', '/papers', '/upload', '/templates', '/settings', '/preview'])(
@@ -307,7 +312,7 @@ describe('DesktopTitleBar', () => {
     expect(service.toggleMaximize).toHaveBeenCalledTimes(2);
   });
 
-  it('configures --titlebar-height for Desktop vs Web in DesktopChromeShell and clears titlebar in sticky toolbars & mobile nav', () => {
+  it('configures --titlebar-height for Desktop and Web in DesktopChromeShell and clears titlebar in sticky toolbars & mobile nav', () => {
     mockPathname.mockReturnValue('/papers');
     const webPlatform = createFakePlatform({ kind: 'web' });
     const { container: webContainer, unmount: unmountWeb } = render(
@@ -323,8 +328,10 @@ describe('DesktopTitleBar', () => {
     );
 
     const webShell = webContainer.firstElementChild as HTMLElement;
-    expect(webShell.style.getPropertyValue('--titlebar-height')).toBe('0px');
-    expect(webShell.className).not.toContain('pt-[var(--titlebar-height)]');
+    expect(webShell.style.getPropertyValue('--titlebar-height')).toBe('38px');
+    expect(webShell.className).toContain('pt-[var(--titlebar-height)]');
+    expect(screen.getByTestId('desktop-titlebar')).toBeTruthy();
+    expect(screen.queryByTestId('titlebar-close-btn')).toBeNull();
     const toolbar = screen.getByTestId('hub-toolbar');
     expect(toolbar.className).toContain('sticky');
     expect(toolbar.className).toContain('top-[var(--titlebar-height,0px)]');
@@ -351,6 +358,7 @@ describe('DesktopTitleBar', () => {
     const desktopShell = desktopContainer.firstElementChild as HTMLElement;
     expect(desktopShell.style.getPropertyValue('--titlebar-height')).toBe('38px');
     expect(desktopShell.className).toContain('pt-[var(--titlebar-height)]');
+    expect(screen.getByTestId('titlebar-close-btn')).toBeTruthy();
 
     const desktopToolbar = screen.getByTestId('hub-toolbar');
     expect(desktopToolbar.className).toContain('sticky');

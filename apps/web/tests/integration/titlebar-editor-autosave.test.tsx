@@ -356,4 +356,33 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
     errSpy.mockRestore();
     okSpy.mockRestore();
   });
+
+  it('renders TitleBar on Web platform replacing DocumentMenuBar without 3 window controls', async () => {
+    const webPlatform = createFakePlatform({ kind: 'web' });
+    const paper = createTestPaper({ id: 'paper-web-titlebar-1', displayName: 'Bài báo trên Web' });
+
+    render(
+      <PlatformProvider value={webPlatform}>
+        <EditorSessionProvider>
+          <PaperProvider>
+            <DesktopTitleBar />
+            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+          </PaperProvider>
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    // TitleBar is active on Web
+    expect(screen.getByTestId('desktop-titlebar')).toBeTruthy();
+    expect(screen.getByTestId('titlebar-file-menu-trigger')).toBeTruthy();
+    expect(screen.getByTestId('titlebar-paper-title').textContent).toBe('Bài báo trên Web');
+
+    // DocumentMenuBar is suppressed in favor of TitleBar
+    expect(screen.queryByTestId('save-status')).toBeNull();
+
+    // The 3 window control buttons must NOT exist on Web
+    expect(screen.queryByTestId('titlebar-minimize-btn')).toBeNull();
+    expect(screen.queryByTestId('titlebar-maximize-btn')).toBeNull();
+    expect(screen.queryByTestId('titlebar-close-btn')).toBeNull();
+  });
 });

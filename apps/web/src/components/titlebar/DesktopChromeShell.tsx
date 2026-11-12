@@ -10,18 +10,16 @@ export interface DesktopChromeShellProps {
 }
 
 /**
- * Coordinates desktop custom window chrome spacing across all routes
- * via `--titlebar-height`, remaining completely transparent on Web builds.
+ * Coordinates application chrome spacing across all routes
+ * via `--titlebar-height`, applying a 38px offset for both Desktop and Web builds.
  */
 export const DesktopChromeShell: React.FC<DesktopChromeShellProps> = ({ children }) => {
-  const { kind } = useCapabilities();
-  const isDesktop = kind === 'desktop';
-  const titleBarHeight = isDesktop ? `${DESKTOP_TITLEBAR_HEIGHT_PX}px` : '0px';
+  const titleBarHeight = `${DESKTOP_TITLEBAR_HEIGHT_PX}px`;
 
   return (
     <div
       style={{ '--titlebar-height': titleBarHeight } as React.CSSProperties}
-      className={isDesktop ? 'pt-[var(--titlebar-height)] min-h-screen bg-[#F8F9FA]' : undefined}
+      className="pt-[var(--titlebar-height)] min-h-screen bg-[#F8F9FA]"
     >
       <DesktopTitleBar />
       {children}

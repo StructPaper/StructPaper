@@ -1,4 +1,4 @@
-export { DesktopTitleBar } from './DesktopTitleBar';
+export { DesktopTitleBar, DesktopTitleBar as TitleBar } from './DesktopTitleBar';
 export { DesktopChromeShell, type DesktopChromeShellProps } from './DesktopChromeShell';
 export { AppLogoMark, type AppLogoMarkProps } from './AppLogoMark';
 export { AutoSaveToggle, type AutoSaveToggleProps } from './AutoSaveToggle';
