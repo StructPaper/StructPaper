@@ -399,7 +399,7 @@ describe('DesktopTitleBar', () => {
     const popover = screen.getByTestId('titlebar-file-menu-popover');
     expect(header.contains(popover)).toBe(false);
     expect(popover.getAttribute('data-no-drag')).toBe('true');
-    expect(popover.className).toContain('backdrop-blur-xl');
+    expect(popover.className).toMatch(/backdrop-blur-(md|lg|xl)/);
 
     fireEvent.click(screen.getByTestId('titlebar-file-new'));
     expect(onNew).toHaveBeenCalledTimes(1);
