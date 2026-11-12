@@ -136,3 +136,46 @@ describe('title style', () => {
     expect(validateForImport(paper).issues.some((i) => i.code === 'field.title.allcaps')).toBe(false);
   });
 });
+
+describe('minimalist validation noise reduction', () => {
+  it('consolidates multiple missing editorial dates into a single warning instead of 3 cards', () => {
+    const paper = paperWith([p('a', 'Nội dung')]);
+    const r = validateForImport(paper);
+    const missingDates = r.issues.filter((i) => i.code === 'field.date.missing');
+    expect(missingDates).toHaveLength(1);
+    expect(missingDates[0].title).toContain('3 mốc ngày');
+  });
+
+  it('does not emit duplicate citation warnings between preflight and core checks', () => {
+    const paper = paperWith([p('a', 'Xem [9].')]);
+    paper.references = [{ id: 1, raw: 'Author A. 2025.', isCited: false, citationCount: 0 }];
+    const r = validateForImport(paper);
+    expect(r.issues.filter((i) => i.code === 'citation.missing' || i.id === 'iss_missing_cites')).toHaveLength(1);
+    expect(r.issues.filter((i) => i.code === 'citation.uncited' || i.id === 'iss_uncited_refs')).toHaveLength(1);
+  });
+
+  it('consolidates multiple figures missing sources and empty paragraphs into summary issues', () => {
+    const paper = paperWith([
+      p('p1', ''),
+      p('p2', '   '),
+      { id: 'f1', type: 'figure', content: '', figure: { id: 'fig-1', num: 1, src: 'data:img', caption: 'Hình 1', source: '' } },
+      { id: 'f2', type: 'figure', content: '', figure: { id: 'fig-2', num: 2, src: 'data:img', caption: 'Hình 2', source: '' } },
+    ]);
+    const r = validateForImport(paper);
+    const figSources = r.issues.filter((i) => i.code === 'figure.source');
+    const emptyParas = r.issues.filter((i) => i.id.startsWith('iss_empty_para'));
+    expect(figSources).toHaveLength(1);
+    expect(figSources[0].title).toContain('2 hình thiếu nguồn');
+    expect(emptyParas).toHaveLength(1);
+    expect(emptyParas[0].title).toContain('2 đoạn văn bản để trống');
+  });
+
+  it('hides optional style info nudges on import while preserving them on export', () => {
+    const paper = paperWith([p('a', 'Nội dung [1].')]);
+    paper.references = [{ id: 1, raw: 'Ref 1', isCited: true, citationCount: 1 }];
+    const imp = validateForImport(paper);
+    const exp = validateForExport(paper);
+    expect(imp.issues.some((i) => i.id === 'iss_methods' || i.id === 'iss_conclusion' || i.id === 'iss_keywords_en')).toBe(false);
+    expect(exp.issues.some((i) => i.id === 'iss_methods' || i.id === 'iss_conclusion')).toBe(true);
+  });
+});

@@ -81,10 +81,11 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
     ['accepted', 'Ngày chấp nhận'],
   ];
   const parsed: Record<string, number | null> = {};
+  const missingDates: string[] = [];
   dates.forEach(([key, label]) => {
     const v = (md.dates?.[key] as string) || '';
     if (!v.trim()) {
-      push({ id: `date_${key}_missing`, severity: 'warning', code: 'field.date.missing', title: `Thiếu ${label}`, message: `${label} chưa được điền.`, suggestion: 'Nhập theo định dạng dd/mm/yyyy.', fixTab: 'metadata' });
+      missingDates.push(label);
       parsed[key] = null;
       return;
     }
@@ -93,6 +94,27 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
       push({ id: `date_${key}_format`, severity: 'error', code: 'field.date.format', title: `${label} sai định dạng`, message: `Giá trị "${v}" không phải ngày hợp lệ dd/mm/yyyy.`, suggestion: 'Nhập lại, ví dụ 08/09/2025.', fixTab: 'metadata' });
     }
   });
+  if (missingDates.length === 1) {
+    push({
+      id: 'date_missing',
+      severity: 'warning',
+      code: 'field.date.missing',
+      title: `Thiếu ${missingDates[0]}`,
+      message: `${missingDates[0]} chưa được điền.`,
+      suggestion: 'Nhập theo định dạng dd/mm/yyyy.',
+      fixTab: 'metadata',
+    });
+  } else if (missingDates.length > 1) {
+    push({
+      id: 'date_missing',
+      severity: 'warning',
+      code: 'field.date.missing',
+      title: `Thiếu ${missingDates.length} mốc ngày biên tập`,
+      message: `Chưa điền: ${missingDates.join(', ')}.`,
+      suggestion: 'Nhập theo định dạng dd/mm/yyyy.',
+      fixTab: 'metadata',
+    });
+  }
   if (parsed.received && parsed.revised && parsed.revised < parsed.received) {
     push({ id: 'date_order_revised', severity: 'error', code: 'field.date.order', title: 'Ngày sửa bài trước ngày nhận bài', message: 'Ngày sửa bài phải sau hoặc bằng ngày nhận bài.', fixTab: 'metadata' });
   }
@@ -160,12 +182,14 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
   }
 
   // ---- captions, sources, equations ----
+  const missingFigureSources: string[] = [];
+  const missingTableSources: string[] = [];
   (paper.sections || []).forEach((sec, idx) => {
     if (sec.type === 'figure' && sec.figure && !(sec.figure.source || '').trim()) {
-      push({ id: `fig_source_${idx}`, severity: 'warning', code: 'figure.source', title: `Hình ${sec.figure.num ?? ''} thiếu nguồn`, message: 'Mỗi hình cần ghi "Nguồn: …".', suggestion: 'Ghi "Nguồn: Kết quả của nhóm tác giả" nếu do tác giả tạo ra.', fixTab: 'sections' });
+      missingFigureSources.push(sec.figure.num != null ? String(sec.figure.num) : `#${idx + 1}`);
     }
     if (sec.type === 'table' && sec.table && !(sec.table.source || '').trim()) {
-      push({ id: `tbl_source_${idx}`, severity: 'warning', code: 'table.source', title: `Bảng ${sec.table.num ?? ''} thiếu nguồn`, message: 'Mỗi bảng cần ghi "Nguồn: …".', fixTab: 'sections' });
+      missingTableSources.push(sec.table.num != null ? String(sec.table.num) : `#${idx + 1}`);
     }
     if (sec.type === 'equation') {
       const err = checkLatexMath(sec.equation?.latex || '');
@@ -175,21 +199,117 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
     }
   });
 
+  const pushMissingSource = (
+    items: string[],
+    opts: { id: string; code: string; singularLabel: string; nounLower: string; suggestion?: string }
+  ) => {
+    if (items.length === 0) return;
+    const preview = items.slice(0, 6).join(', ') + (items.length > 6 ? ', …' : '');
+    if (items.length === 1) {
+      push({
+        id: opts.id,
+        severity: 'warning',
+        code: opts.code,
+        title: `${opts.singularLabel} ${items[0]} thiếu nguồn`,
+        message: `Mỗi ${opts.nounLower} cần ghi "Nguồn: …".`,
+        suggestion: opts.suggestion,
+        fixTab: 'sections',
+      });
+      return;
+    }
+    push({
+      id: opts.id,
+      severity: 'warning',
+      code: opts.code,
+      title: `${items.length} ${opts.nounLower} thiếu nguồn`,
+      message: `Chưa ghi "Nguồn: …": ${opts.singularLabel} ${preview}.`,
+      suggestion: opts.suggestion,
+      fixTab: 'sections',
+    });
+  };
+
+  pushMissingSource(missingFigureSources, {
+    id: 'fig_source',
+    code: 'figure.source',
+    singularLabel: 'Hình',
+    nounLower: 'hình',
+    suggestion: 'Ghi "Nguồn: Kết quả của nhóm tác giả" nếu do tác giả tạo ra.',
+  });
+  pushMissingSource(missingTableSources, {
+    id: 'tbl_source',
+    code: 'table.source',
+    singularLabel: 'Bảng',
+    nounLower: 'bảng',
+  });
+
   return issues;
+}
+
+const CORE_SUPERSEDED_PREFLIGHT_IDS = new Set(['iss_missing_cites', 'iss_uncited_refs']);
+const IMPORT_ADVISORY_PREFLIGHT_IDS = new Set(['iss_keywords_en', 'iss_methods', 'iss_conclusion']);
+
+function collapsePreflightBatch(
+  issues: ValidationIssue[],
+  prefix: string,
+  summaryId: string,
+  pluralTitle: (count: number) => string
+): ValidationIssue[] {
+  const matching = issues.filter((i) => i.id.startsWith(prefix));
+  if (matching.length <= 1) return issues;
+  const first = matching[0];
+  let inserted = false;
+  return issues.flatMap((item) => {
+    if (!item.id.startsWith(prefix)) return [item];
+    if (inserted) return [];
+    inserted = true;
+    return [
+      {
+        ...first,
+        id: summaryId,
+        title: pluralTitle(matching.length),
+      },
+    ];
+  });
 }
 
 function fromPreflight(paper: CompletePaper, gate: ValidationGate): ValidationIssue[] {
   const check = computePreflightCheck(paper);
-  return (check.issues || []).map((i: StructuralIssue) => ({
-    id: i.id,
-    gate,
-    severity: i.severity,
-    code: `preflight.${i.category}`,
-    title: i.title,
-    message: i.message,
-    suggestion: i.suggestion,
-    fixTab: i.fixTab,
-  }));
+  const hasAbstract = Boolean((paper.metadata?.abstract || '').trim());
+  const hasKeywords = (paper.metadata?.keywords || []).some((k) => k.trim().length > 0);
+  const hasEmptyTitle = !(paper.metadata?.title || '').trim();
+
+  const mapped = (check.issues || [])
+    .filter((i: StructuralIssue) => {
+      if (CORE_SUPERSEDED_PREFLIGHT_IDS.has(i.id)) return false;
+      if (i.id === 'iss_abstract' && hasAbstract) return false;
+      if (i.id === 'iss_keywords' && hasKeywords) return false;
+      if (gate === 'export' && i.id === 'iss_title' && hasEmptyTitle) return false;
+      if (gate === 'import' && IMPORT_ADVISORY_PREFLIGHT_IDS.has(i.id)) return false;
+      return true;
+    })
+    .map((i: StructuralIssue) => ({
+      id: i.id,
+      gate,
+      severity: gate === 'import' && i.id === 'iss_missing_citation' ? ('warning' as const) : i.severity,
+      code: `preflight.${i.category}`,
+      title: i.title,
+      message: i.message,
+      suggestion: i.suggestion,
+      fixTab: i.fixTab,
+    }));
+
+  const collapsedParas = collapsePreflightBatch(
+    mapped,
+    'iss_empty_para_',
+    'iss_empty_para',
+    (count) => `${count} đoạn văn bản để trống`
+  );
+  return collapsePreflightBatch(
+    collapsedParas,
+    'iss_empty_heading_',
+    'iss_empty_heading',
+    (count) => `${count} tiêu đề mục để trống`
+  );
 }
 
 function dedupe(issues: ValidationIssue[]): ValidationIssue[] {

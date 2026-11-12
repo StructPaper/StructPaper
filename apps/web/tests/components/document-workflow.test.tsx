@@ -93,15 +93,71 @@ describe('ImportValidationModal (gate 1)', () => {
     render(
       <ImportValidationModal
         isOpen
-        report={report([issue({ gate: 'import', severity: 'warning', title: 'Thiếu tiêu đề tiếng Anh' })], 'import', true)}
+        fileLabel="Bai bao thu nghiem"
+        report={report([issue({ gate: 'import', severity: 'warning', title: 'Thiếu tiêu đề tiếng Anh', fixTab: 'metadata' })], 'import', true)}
         onClose={() => {}}
         onAutoFix={() => {}}
         onContinue={onContinue}
       />
     );
+    expect(screen.getByText('Bai bao thu nghiem')).toBeTruthy();
     expect(screen.getByText('Thiếu tiêu đề tiếng Anh')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Vào chỉnh sửa' }));
     expect(onContinue).toHaveBeenCalled();
+  });
+
+  it('groups issues in a collapsible light VS-Code-style tree with count badges', () => {
+    render(
+      <ImportValidationModal
+        isOpen
+        report={report([
+          issue({
+            id: 'a',
+            gate: 'import',
+            severity: 'error',
+            code: 'numbering.table',
+            title: 'Bảng đánh số sai thứ tự',
+            message: 'Bảng thứ 1 đang mang số 3',
+            fixTab: 'sections',
+          }),
+          issue({
+            id: 'b',
+            gate: 'import',
+            severity: 'warning',
+            code: 'figure.source',
+            title: '2 hình thiếu nguồn',
+            message: 'Chưa ghi "Nguồn: …": Hình 1, 2.',
+            fixTab: 'sections',
+          }),
+          issue({
+            id: 'c',
+            gate: 'import',
+            severity: 'warning',
+            code: 'preflight.metadata',
+            title: 'Thiếu tiêu đề tiếng Anh (Title)',
+            message: 'Quy chuẩn tạp chí ĐHQG-HCM bắt buộc có tiêu đề tiếng Anh.',
+            suggestion: 'Bổ sung tiêu đề tiếng Anh trong tab "Thông tin chung".',
+            fixTab: 'metadata',
+          }),
+        ], 'import', true)}
+        onClose={() => {}}
+        onAutoFix={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    const groupBtn = screen.getByTestId('validation-group-sections');
+    expect(groupBtn.textContent).toContain('Nội dung, Bảng & Hình');
+    expect(groupBtn.textContent).toContain('2');
+    expect(screen.getByText('Hình 1, 2')).toBeTruthy();
+    // Preflight boilerplate suggestion/paragraph should stay hidden from card clutter
+    expect(screen.queryByText(/Bổ sung tiêu đề tiếng Anh trong tab/)).toBeNull();
+
+    // Collapsing hides its items, re-expanding restores them
+    fireEvent.click(groupBtn);
+    expect(screen.queryByText('Bảng đánh số sai thứ tự')).toBeNull();
+    fireEvent.click(groupBtn);
+    expect(screen.getByText('Bảng đánh số sai thứ tự')).toBeTruthy();
   });
 
   it('refuses to continue when the file is effectively empty', () => {

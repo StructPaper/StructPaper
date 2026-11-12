@@ -1,56 +1,143 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle, XCircle, Info, Wand2, CheckCircle2, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  AlignLeft,
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  FileText,
+  Info,
+  Layers,
+  Quote,
+  Users,
+  Wand2,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { ModalPortal } from '@/components/modals/ModalPortal';
 import type { ValidationIssue, ValidationReport } from '@/lib/validation/validators';
+import {
+  buildIssueTooltip,
+  getCompactIssueDetail,
+  groupValidationIssues,
+  type ValidationGroupKey,
+} from './validation-report-helpers';
 
-const SEVERITY_STYLE: Record<ValidationIssue['severity'], { box: string; icon: React.ReactNode; label: string }> = {
-  error: { box: 'bg-red-50 border-red-200 text-red-800', icon: <XCircle className="w-4 h-4 text-red-500 shrink-0" />, label: 'Lỗi' },
-  warning: { box: 'bg-amber-50 border-amber-200 text-amber-800', icon: <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />, label: 'Cảnh báo' },
-  info: { box: 'bg-sky-50 border-sky-200 text-sky-800', icon: <Info className="w-4 h-4 text-sky-500 shrink-0" />, label: 'Gợi ý' },
+const SEVERITY_ICON: Record<ValidationIssue['severity'], React.ReactNode> = {
+  error: <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-[2px]" />,
+  warning: <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-[2px]" />,
+  info: <Info className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-[2px]" />,
+};
+
+const GROUP_ICON: Record<ValidationGroupKey, React.ReactNode> = {
+  general: <AlertCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  metadata: <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  authors: <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  abstract: <AlignLeft className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  sections: <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  refs: <BookOpen className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  citation: <Quote className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
 };
 
 export const ValidationReportView: React.FC<{
   report: ValidationReport;
   onFix?: (issue: ValidationIssue) => void;
 }> = ({ report, onFix }) => {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupValidationIssues(report.issues), [report.issues]);
+
   if (report.issues.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl bg-lime-50 border border-lime-200 text-lime-800 px-4 py-3 text-sm font-semibold">
-        <CheckCircle2 className="w-4 h-4" /> Không phát hiện vấn đề nào.
+      <div
+        data-testid="validation-issues"
+        className="flex items-center gap-2 rounded-2xl bg-lime-50/80 border border-lime-200/80 text-lime-800 px-3.5 py-2.5 text-[12.5px] font-semibold"
+      >
+        <CheckCircle2 className="w-4 h-4 text-[#65A30D] shrink-0" />
+        <span>Không phát hiện vấn đề nào.</span>
       </div>
     );
   }
-  const order = { error: 0, warning: 1, info: 2 } as const;
-  const sorted = [...report.issues].sort((a, b) => order[a.severity] - order[b.severity]);
+
+  const toggleGroup = (key: ValidationGroupKey) => {
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
-    <ul className="space-y-2 max-h-[48vh] overflow-y-auto pr-1" data-testid="validation-issues">
-      {sorted.map((issue) => {
-        const st = SEVERITY_STYLE[issue.severity];
+    <div
+      data-testid="validation-issues"
+      className="max-h-[48vh] overflow-y-auto select-text"
+    >
+      {groups.map((group) => {
+        const isCollapsed = Boolean(collapsed[group.key]);
         return (
-          <li key={issue.id} className={`rounded-2xl border px-3.5 py-2.5 ${st.box}`} data-severity={issue.severity}>
-            <div className="flex items-start gap-2">
-              {st.icon}
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold leading-snug">{issue.title}</p>
-                <p className="text-xs opacity-90 mt-0.5">{issue.message}</p>
-                {issue.suggestion && <p className="text-xs opacity-75 mt-0.5 italic">{issue.suggestion}</p>}
-              </div>
-              {issue.fixTab && onFix && (
-                <button
-                  type="button"
-                  onClick={() => onFix(issue)}
-                  className="shrink-0 px-2 py-0.5 rounded-lg bg-white/80 hover:bg-white text-[10px] font-bold border border-current/20"
-                >
-                  Đi tới
-                </button>
-              )}
-            </div>
-          </li>
+          <div key={group.key}>
+            <button
+              type="button"
+              onClick={() => toggleGroup(group.key)}
+              aria-expanded={!isCollapsed}
+              data-testid={`validation-group-${group.key}`}
+              className="w-full px-3 py-2 flex items-center gap-1.5 text-left hover:bg-zinc-50/90 transition-colors cursor-pointer"
+            >
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-zinc-600 shrink-0 transition-transform duration-150 ${
+                  isCollapsed ? '-rotate-90' : ''
+                }`}
+                strokeWidth={2.5}
+              />
+              {GROUP_ICON[group.key]}
+              <span className="text-[12px] font-bold text-zinc-800 shrink-0">{group.label}</span>
+              <span className="text-[11px] text-zinc-400 truncate">{group.hint}</span>
+              <span
+                className={`ml-auto shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold inline-flex items-center justify-center tabular-nums ${
+                  group.errorCount > 0
+                    ? 'bg-rose-50 text-rose-600'
+                    : 'bg-zinc-100 text-zinc-600'
+                }`}
+              >
+                {group.issues.length}
+              </span>
+            </button>
+
+            {!isCollapsed && (
+              <ul className="ml-[18px] mr-2 mb-2 pl-2.5 border-l border-zinc-200/80 space-y-0.5">
+                {group.issues.map((issue) => {
+                  const detail = getCompactIssueDetail(issue);
+                  const tooltip = buildIssueTooltip(issue);
+                  return (
+                    <li
+                      key={issue.id}
+                      data-severity={issue.severity}
+                      title={tooltip || undefined}
+                      className="group/row flex items-start gap-2 rounded-lg px-2 py-1 hover:bg-zinc-100/75 transition-colors"
+                    >
+                      {SEVERITY_ICON[issue.severity]}
+                      <div className="min-w-0 flex-1 text-[12px] leading-snug">
+                        <span className="font-medium text-zinc-800">{issue.title}</span>
+                        {detail && (
+                          <span className="ml-1.5 text-[11px] text-zinc-400">{detail}</span>
+                        )}
+                      </div>
+                      {issue.fixTab && onFix && (
+                        <button
+                          type="button"
+                          onClick={() => onFix(issue)}
+                          className="shrink-0 opacity-75 group-hover/row:opacity-100 px-1.5 py-0.5 rounded-md text-[10.5px] font-semibold text-zinc-500 hover:text-zinc-900 hover:bg-white border border-transparent hover:border-zinc-200 transition-all cursor-pointer"
+                        >
+                          Đi tới
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 };
 
@@ -63,32 +150,65 @@ interface GateProps {
   onFix?: (issue: ValidationIssue) => void;
 }
 
-const Shell: React.FC<{ title: string; subtitle: string; onClose: () => void; children: React.ReactNode }> = ({
-  title,
-  subtitle,
-  onClose,
-  children,
-}) => (
-  <div className="bg-[#F8F9FA] w-full max-w-xl rounded-[32px] shadow-2xl border border-white/20 overflow-hidden" role="dialog" aria-label={title}>
+const Shell: React.FC<{
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}> = ({ title, subtitle, onClose, children }) => (
+  <div
+    className="bg-[#F8F9FA] w-full max-w-xl rounded-[32px] shadow-2xl border border-white/40 overflow-hidden"
+    role="dialog"
+    aria-label={title}
+  >
     <div className="px-6 pt-5 pb-3 flex items-start justify-between gap-3">
-      <div>
-        <h3 className="text-lg font-black text-slate-900 tracking-tight">{title}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+      <div className="min-w-0">
+        <h3 className="text-[17px] font-black text-slate-900 tracking-tight">{title}</h3>
+        {subtitle && (
+          <p className="text-xs text-slate-500 mt-0.5 truncate" title={subtitle}>
+            {subtitle}
+          </p>
+        )}
       </div>
-      <button type="button" onClick={onClose} aria-label="Đóng" className="w-9 h-9 rounded-full bg-gray-200/70 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Đóng"
+        className="w-9 h-9 shrink-0 rounded-full bg-gray-200/70 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-zinc-800 transition-colors cursor-pointer"
+      >
         <X className="w-4 h-4" />
       </button>
     </div>
-    <div className="px-6 pb-6 space-y-4">{children}</div>
+    <div className="px-6 pb-6 space-y-3">{children}</div>
   </div>
 );
 
-const Counts: React.FC<{ report: ValidationReport }> = ({ report }) => (
-  <div className="flex gap-2 text-xs font-bold">
-    <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-700">{report.errorCount} lỗi</span>
-    <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">{report.warningCount} cảnh báo</span>
-  </div>
-);
+const Counts: React.FC<{ report: ValidationReport }> = ({ report }) => {
+  const infoCount = report.issues.filter((i) => i.severity === 'info').length;
+  if (report.issues.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-[11.5px] font-semibold px-0.5">
+      {report.errorCount > 0 && (
+        <span className="inline-flex items-center gap-1 text-rose-600">
+          <XCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>{report.errorCount} lỗi</span>
+        </span>
+      )}
+      {report.warningCount > 0 && (
+        <span className="inline-flex items-center gap-1 text-amber-600">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>{report.warningCount} cảnh báo</span>
+        </span>
+      )}
+      {infoCount > 0 && (
+        <span className="inline-flex items-center gap-1 text-zinc-500">
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          <span>{infoCount} gợi ý</span>
+        </span>
+      )}
+    </div>
+  );
+};
 
 /** GATE 1 — shown after importing the original Word file, before the editor opens. */
 export const ImportValidationModal: React.FC<
@@ -100,14 +220,18 @@ export const ImportValidationModal: React.FC<
     <ModalPortal isOpen={isOpen} onClose={onClose} zIndex={130}>
       <Shell
         title="Kiểm tra tài liệu vừa nhập"
-        subtitle={`${fileLabel ? fileLabel + ' · ' : ''}Rà soát trường thông tin còn thiếu và số thứ tự trước khi vào soạn thảo`}
+        subtitle={fileLabel?.trim() || undefined}
         onClose={onClose}
       >
         <Counts report={report} />
         <ValidationReportView report={report} onFix={onFix} />
         <div className="flex items-center justify-between gap-2 pt-1">
           {canFix ? (
-            <button type="button" onClick={onAutoFix} className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 hover:bg-zinc-50">
+            <button
+              type="button"
+              onClick={onAutoFix}
+              className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 hover:bg-zinc-50 transition-colors cursor-pointer"
+            >
               <Wand2 className="w-3.5 h-3.5" /> Tự động đánh lại số thứ tự
             </button>
           ) : (
@@ -117,14 +241,14 @@ export const ImportValidationModal: React.FC<
             type="button"
             disabled={!report.canProceed}
             onClick={onContinue}
-            className="px-5 py-2 rounded-full bg-[#78C841] text-zinc-950 text-xs font-black disabled:opacity-40 hover:brightness-95"
+            className="px-5 py-2 rounded-full bg-[#78C841] text-zinc-950 text-xs font-black disabled:opacity-40 hover:brightness-95 transition cursor-pointer"
           >
             Vào chỉnh sửa
           </button>
         </div>
         {report.errorCount + report.warningCount > 0 && (
-          <p className="text-[11px] text-slate-500">
-            Các mục còn lại vẫn hiển thị ở thẻ “Kiểm tra” trong trình soạn thảo và sẽ được kiểm tra lại trước khi xuất file.
+          <p className="text-[11px] text-zinc-400">
+            Vẫn có thể vào soạn thảo ngay; các mục này được giữ trong thẻ “Kiểm tra”.
           </p>
         )}
       </Shell>
@@ -147,8 +271,8 @@ export const ExportGateModal: React.FC<
           !report.canProceed
             ? 'PDF chưa biên dịch được nên chưa thể xuất. Hãy sửa lỗi biên dịch trước.'
             : report.issues.length > 0
-              ? `Tài liệu còn ${report.issues.length} mục chưa hoàn thiện. Bạn vẫn có thể xuất, nhưng nên bổ sung trước khi gửi.`
-              : 'Không phát hiện vấn đề. Bạn có thể xuất file.'
+              ? `Còn ${report.issues.length} mục cần lưu ý trước khi xuất bản.`
+              : 'Không phát hiện vấn đề. Sẵn sàng xuất file.'
         }
         onClose={onClose}
       >
@@ -157,11 +281,19 @@ export const ExportGateModal: React.FC<
         <div className="flex items-center justify-between gap-2 pt-1">
           <div className="flex gap-2">
             {canFix && (
-              <button type="button" onClick={onAutoFix} className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 hover:bg-zinc-50">
+              <button
+                type="button"
+                onClick={onAutoFix}
+                className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 hover:bg-zinc-50 transition-colors cursor-pointer"
+              >
                 <Wand2 className="w-3.5 h-3.5" /> Tự động đánh lại số thứ tự
               </button>
             )}
-            <button type="button" onClick={onClose} className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+            >
               Quay lại sửa
             </button>
           </div>
@@ -169,7 +301,7 @@ export const ExportGateModal: React.FC<
             type="button"
             disabled={!report.canProceed}
             onClick={onExport}
-            className="px-5 py-2 rounded-full bg-[#78C841] text-zinc-950 text-xs font-black disabled:opacity-40 hover:brightness-95"
+            className="px-5 py-2 rounded-full bg-[#78C841] text-zinc-950 text-xs font-black disabled:opacity-40 hover:brightness-95 transition cursor-pointer"
           >
             {report.issues.length > 0 ? `Vẫn xuất ${label}` : `Xuất ${label}`}
           </button>
