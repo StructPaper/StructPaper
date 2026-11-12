@@ -69,6 +69,8 @@ export function estimateSectionHeight(sec?: PaperSection): number {
       return 180;
     case 'table':
       return 260;
+    case 'equation':
+      return 220;
     case 'figure':
       return 300;
     default:

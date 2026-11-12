@@ -7,12 +7,22 @@ import {
   writeAutoSavePreference,
 } from '@/lib/editor/autosave-preferences';
 import type { DocumentSaveState } from '@/lib/editor/save-status';
+import type { SaveState } from '@/lib/documents/autosave-controller';
+import type { ExportFormat } from '@/components/documents/DocumentMenuBar';
 
 export interface EditorDocumentSession {
   paperId?: string;
   title: string;
   saveState: DocumentSaveState;
+  rawSaveState?: SaveState;
+  savedAt?: number | null;
+  exporting?: Partial<Record<ExportFormat, boolean>>;
   onManualSave?: () => Promise<void> | void;
+  onRename?: (name: string) => void;
+  onNew?: () => void;
+  onOpen?: () => void;
+  onExport?: (format: ExportFormat) => void;
+  onKeepMine?: () => Promise<void> | void;
 }
 
 export interface EditorSessionContextValue {

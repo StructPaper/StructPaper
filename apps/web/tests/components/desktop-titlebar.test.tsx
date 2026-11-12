@@ -71,11 +71,27 @@ const NOOP_MANUAL_SAVE = () => {};
 function EditorSessionBridgeMock({
   title = 'Phân tích dữ liệu lâm sàng VNUHCM',
   saveState = 'saved',
+  rawSaveState,
+  savedAt,
+  exporting,
   onManualSave = NOOP_MANUAL_SAVE,
+  onRename,
+  onNew,
+  onOpen,
+  onExport,
+  onKeepMine,
 }: {
   title?: string;
   saveState?: 'saved' | 'saving' | 'unsaved' | 'error';
+  rawSaveState?: 'idle' | 'dirty' | 'saving' | 'saved' | 'saved-local' | 'conflict' | 'error';
+  savedAt?: number | null;
+  exporting?: { docx?: boolean; pdf?: boolean; xml?: boolean };
   onManualSave?: () => void;
+  onRename?: (name: string) => void;
+  onNew?: () => void;
+  onOpen?: () => void;
+  onExport?: (format: 'docx' | 'pdf' | 'xml') => void;
+  onKeepMine?: () => void;
 }) {
   const { setDocumentSession } = useEditorSession();
 
@@ -84,10 +100,31 @@ function EditorSessionBridgeMock({
       paperId: 'paper-123',
       title,
       saveState,
+      rawSaveState,
+      savedAt,
+      exporting,
       onManualSave,
+      onRename,
+      onNew,
+      onOpen,
+      onExport,
+      onKeepMine,
     });
     return () => setDocumentSession(null);
-  }, [title, saveState, onManualSave, setDocumentSession]);
+  }, [
+    title,
+    saveState,
+    rawSaveState,
+    savedAt,
+    exporting,
+    onManualSave,
+    onRename,
+    onNew,
+    onOpen,
+    onExport,
+    onKeepMine,
+    setDocumentSession,
+  ]);
 
   return null;
 }
@@ -322,5 +359,172 @@ describe('DesktopTitleBar', () => {
     const mobileTopBar = desktopContainer.querySelector('.sm\\:hidden.sticky') as HTMLElement;
     expect(mobileTopBar).toBeTruthy();
     expect(mobileTopBar.className).toContain('top-[var(--titlebar-height,0px)]');
+  });
+
+  it('renders TitleBar File menu on /editor when document actions are available and blocks window drag', () => {
+    mockPathname.mockReturnValue('/editor');
+    const { service } = createSpyWindowService(false);
+    const desktopPlatform = createFakePlatform({
+      kind: 'desktop',
+      overrides: { window: service },
+    });
+    const onNew = vi.fn();
+    const onOpen = vi.fn();
+    const onManualSave = vi.fn();
+    const onExport = vi.fn();
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <EditorSessionBridgeMock
+            onNew={onNew}
+            onOpen={onOpen}
+            onManualSave={onManualSave}
+            onExport={onExport}
+            exporting={{ pdf: true }}
+          />
+          <DesktopTitleBar />
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    expect(screen.getByTestId('titlebar-exporting-badge').textContent).toContain('PDF');
+
+    const trigger = screen.getByTestId('titlebar-file-menu-trigger');
+    fireEvent.mouseDown(trigger, { buttons: 1, detail: 1 });
+    expect(service.startDragging).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    const header = screen.getByTestId('desktop-titlebar');
+    const popover = screen.getByTestId('titlebar-file-menu-popover');
+    expect(header.contains(popover)).toBe(false);
+    expect(popover.getAttribute('data-no-drag')).toBe('true');
+    expect(popover.className).toContain('backdrop-blur-xl');
+
+    fireEvent.click(screen.getByTestId('titlebar-file-new'));
+    expect(onNew).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByTestId('titlebar-file-open'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByTestId('titlebar-file-save'));
+    expect(onManualSave).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(trigger);
+    expect((screen.getByTestId('titlebar-export-pdf') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('titlebar-export-docx'));
+    expect(onExport).toHaveBeenCalledWith('docx');
+  });
+
+  it('supports inline click-to-rename on titlebar-paper-title when onRename is provided', () => {
+    mockPathname.mockReturnValue('/editor');
+    const { service } = createSpyWindowService(false);
+    const desktopPlatform = createFakePlatform({
+      kind: 'desktop',
+      overrides: { window: service },
+    });
+    const onRename = vi.fn();
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <EditorSessionBridgeMock title="Tên cũ" onRename={onRename} />
+          <DesktopTitleBar />
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    const titleBtn = screen.getByTestId('titlebar-paper-title') as HTMLButtonElement;
+    const pencilWrap = screen.getByTestId('titlebar-paper-title-pencil');
+    expect(pencilWrap.className).toContain('max-w-0');
+    expect(pencilWrap.className).toContain('group-hover:max-w-[14px]');
+
+    vi.spyOn(titleBtn, 'getBoundingClientRect').mockReturnValue({
+      width: 260,
+      height: 24,
+      top: 0,
+      left: 0,
+      right: 260,
+      bottom: 24,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.click(titleBtn);
+
+    const editorWrap = screen.getByTestId('titlebar-paper-title-editor-wrap');
+    expect(editorWrap.style.minWidth).toBe('260px');
+
+    const input = screen.getByTestId('titlebar-paper-title-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Tên bị hủy' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onRename).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('titlebar-paper-title'));
+    const input2 = screen.getByTestId('titlebar-paper-title-input') as HTMLInputElement;
+    fireEvent.change(input2, { target: { value: '  Tên mới từ TitleBar  ' } });
+    fireEvent.keyDown(input2, { key: 'Enter' });
+    expect(onRename).toHaveBeenCalledWith('Tên mới từ TitleBar');
+  });
+
+  it('shows plain gray CloudOff icon on right corner of TitleBar outside Saved pill when rawSaveState is saved-local', () => {
+    mockPathname.mockReturnValue('/editor');
+    const desktopPlatform = createFakePlatform({ kind: 'desktop' });
+    const savedAt = new Date(2026, 10, 12, 9, 15, 30).getTime();
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <EditorSessionBridgeMock
+            saveState="saved"
+            rawSaveState="saved-local"
+            savedAt={savedAt}
+          />
+          <DesktopTitleBar />
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    const header = screen.getByTestId('desktop-titlebar');
+    const pill = screen.getByTestId('titlebar-save-state');
+    const dragRegion = screen.getByTestId('titlebar-drag-region');
+    const localIcon = screen.getByTestId('titlebar-local-only-icon');
+
+    expect(pill.getAttribute('data-save-state')).toBe('saved');
+    expect(pill.textContent).toContain('Saved');
+    expect(pill.contains(localIcon)).toBe(false);
+    expect(header.contains(localIcon)).toBe(true);
+    expect(
+      Boolean(dragRegion.compareDocumentPosition(localIcon) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(localIcon.getAttribute('title')).toContain('chưa đồng bộ máy chủ');
+    expect(localIcon.className).toContain('text-zinc-500');
+  });
+
+  it('renders conflict override action in TitleBar when rawSaveState is conflict', () => {
+    mockPathname.mockReturnValue('/editor');
+    const desktopPlatform = createFakePlatform({ kind: 'desktop' });
+    const onKeepMine = vi.fn();
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <EditorSessionBridgeMock
+            saveState="error"
+            rawSaveState="conflict"
+            onKeepMine={onKeepMine}
+          />
+          <DesktopTitleBar />
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    const pill = screen.getByTestId('titlebar-save-state');
+    expect(pill.getAttribute('data-save-state')).toBe('error');
+    const resolveBtn = screen.getByTestId('titlebar-conflict-resolve');
+    fireEvent.click(resolveBtn);
+    expect(onKeepMine).toHaveBeenCalledTimes(1);
   });
 });

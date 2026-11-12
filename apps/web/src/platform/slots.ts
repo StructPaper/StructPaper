@@ -3,6 +3,7 @@
 import { registerSlot } from '@structpaper/platform';
 import { DownloadDesktopCard } from '@/components/platform/DownloadDesktopCard';
 import { CheckForUpdateCard } from '@/components/platform/CheckForUpdateCard';
+import { DocumentMenuBar, type DocumentMenuBarProps } from '@/components/documents/DocumentMenuBar';
 
 let registered = false;
 
@@ -18,6 +19,12 @@ export function registerAppSlots(): void {
   registerSlot('app-distribution', {
     web: DownloadDesktopCard,
     desktop: CheckForUpdateCard,
+  });
+
+  // Web renders the inline DocumentMenuBar; Desktop surfaces these actions inside DesktopTitleBar.
+  registerSlot<DocumentMenuBarProps>('editor-document-menubar', {
+    web: DocumentMenuBar,
+    desktop: null,
   });
 
   registered = true;

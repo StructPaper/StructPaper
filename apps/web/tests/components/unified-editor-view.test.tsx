@@ -546,4 +546,28 @@ describe('Task 4.2: Modals Refactoring & Enhancements', () => {
     const savedFig = onSave.mock.calls[0][0] as PaperFigure;
     expect(savedFig.assetId).toBe(mockFigure.assetId);
   });
+
+  it('marks manuscript dirty when renamed from DocumentMenuBar so back navigation asks for confirmation', () => {
+    const onUpdatePaper = vi.fn();
+
+    render(
+      <PaperProvider>
+        <UnifiedEditorView paper={mockPaper} onUpdatePaper={onUpdatePaper} />
+      </PaperProvider>
+    );
+
+    const docNameInput = screen.getByLabelText('Tên tài liệu') as HTMLInputElement;
+    expect(docNameInput).toBeTruthy();
+
+    fireEvent.change(docNameInput, { target: { value: 'Tên hiển thị mới' } });
+    fireEvent.blur(docNameInput);
+
+    expect(screen.getByTestId('save-status').getAttribute('data-state')).toBe('dirty');
+
+    const backBtn = screen.getAllByRole('button', { name: /Quay lại danh sách bài báo/i })[0];
+    fireEvent.click(backBtn);
+
+    expect(screen.getByTestId('editor-exit-confirm-modal')).toBeDefined();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
 });

@@ -6,6 +6,7 @@ export * from './slots';
 
 export {
   usePlatform,
+  useOptionalPlatform,
   useCapabilities,
   useUpdateService,
   useAppUpdater,

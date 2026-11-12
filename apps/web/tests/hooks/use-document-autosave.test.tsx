@@ -77,4 +77,37 @@ describe('useDocumentAutosave with the auto-save switch off', () => {
     expect(saveLocal).toHaveBeenCalledTimes(1);
     expect(saveLocal.mock.calls[0][0].metadata.title).toBe('Đã sửa');
   });
+
+  it('marks dirty while auto-save is off and clears baseline after manual saveNow so re-enabling does not duplicate-save', async () => {
+    const saveLocal = vi.fn(async (_p: CompletePaper) => true);
+    const base = paperOf('d2', 'Bản thảo gốc');
+    const { result, rerender } = renderHook(
+      ({ paper, enabled }) => useDocumentAutosave({ paper, documentId: 'd2', saveLocal, remote: false, debounceMs: 100, enabled }),
+      { initialProps: { paper: base, enabled: false } }
+    );
+
+    const edited = { ...base, metadata: { ...base.metadata, title: 'Sửa thủ công' } };
+    rerender({ paper: edited, enabled: false });
+
+    expect(result.current.state).toBe('dirty');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(saveLocal).not.toHaveBeenCalled();
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.saveNow(edited);
+    });
+    expect(outcome).toBe('saved-local');
+    expect(saveLocal).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toBe('saved-local');
+
+    // Turning AutoSave back ON with no new edits after manual save must NOT trigger another save
+    rerender({ paper: edited, enabled: true });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(saveLocal).toHaveBeenCalledTimes(1);
+  });
 });

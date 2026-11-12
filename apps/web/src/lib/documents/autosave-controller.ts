@@ -21,7 +21,7 @@ export interface AutosaveOptions {
   debounceMs?: number;
   saveLocal: (paper: CompletePaper) => Promise<boolean>;
   sync?: DocumentSync | null;
-  onState?: (state: SaveState, info?: { error?: unknown; savedAt?: number }) => void;
+  onState?: (state: SaveState, info?: { error?: unknown; savedAt?: number; paper?: CompletePaper }) => void;
 }
 
 export class AutosaveController {
@@ -39,13 +39,20 @@ export class AutosaveController {
     return this.state;
   }
 
-  private emit(state: SaveState, info?: { error?: unknown; savedAt?: number }) {
+  private emit(state: SaveState, info?: { error?: unknown; savedAt?: number; paper?: CompletePaper }) {
     this.state = state;
     try {
       this.opts.onState?.(state, info);
     } catch {
       /* listener errors must never break saving */
     }
+  }
+
+  /** Mark the document as having unsaved edits without scheduling an automatic save timer. */
+  markDirty(paper?: CompletePaper): void {
+    if (this.disposed) return;
+    if (paper) this.latest = paper;
+    if (this.state !== 'saving' && this.state !== 'dirty') this.emit('dirty');
   }
 
   /** Call on every edit. Cheap: only stores the reference and (re)starts the debounce. */
@@ -61,7 +68,7 @@ export class AutosaveController {
   }
 
   /** Save right now (explicit "Lưu"): also asks the server to keep a versioned snapshot. */
-  async saveNow(paper?: CompletePaper): Promise<void> {
+  async saveNow(paper?: CompletePaper): Promise<SaveState> {
     if (paper) this.latest = paper;
     this.pendingSnapshot = true;
     if (this.timer) {
@@ -69,6 +76,7 @@ export class AutosaveController {
       this.timer = null;
     }
     await this.run();
+    return this.state;
   }
 
   /** Flush a pending debounce (tab hidden / navigating away / before export). */
@@ -84,13 +92,14 @@ export class AutosaveController {
 
   /** User chose "keep my version" after a conflict. */
   async resolveKeepMine(): Promise<void> {
-    if (!this.latest || !this.opts.sync) return;
+    const paper = this.latest;
+    if (!paper || !this.opts.sync) return;
     this.emit('saving');
     try {
-      await this.opts.sync.push(this.latest, { force: true });
-      this.emit('saved', { savedAt: Date.now() });
+      await this.opts.sync.push(paper, { force: true });
+      this.emit('saved', { savedAt: Date.now(), paper });
     } catch (e) {
-      this.emit('saved-local', { error: e });
+      this.emit('saved-local', { error: e, paper });
     }
   }
 
@@ -105,10 +114,13 @@ export class AutosaveController {
     this.timer = null;
   }
 
-  private run(): Promise<void> {
+  private async run(): Promise<void> {
     if (this.running) {
       this.rerun = true;
-      return this.running;
+      while (this.running) {
+        await this.running;
+      }
+      return;
     }
     this.running = this.execute().finally(() => {
       this.running = null;
@@ -117,7 +129,9 @@ export class AutosaveController {
         void this.run();
       }
     });
-    return this.running;
+    while (this.running) {
+      await this.running;
+    }
   }
 
   private async execute(): Promise<void> {
@@ -141,16 +155,16 @@ export class AutosaveController {
 
     const sync = this.opts.sync;
     if (!sync) {
-      this.emit('saved-local', { savedAt: Date.now() });
+      this.emit('saved-local', { savedAt: Date.now(), paper });
       return;
     }
     try {
       await sync.push(paper, { snapshot });
       // If the user kept typing while we saved, stay "dirty" until the re-run completes.
-      this.emit(this.latest !== paper ? 'dirty' : 'saved', { savedAt: Date.now() });
+      this.emit(this.latest !== paper ? 'dirty' : 'saved', { savedAt: Date.now(), paper });
     } catch (e) {
       if (e instanceof ApiError && e.isConflict) this.emit('conflict', { error: e });
-      else this.emit('saved-local', { error: e, savedAt: Date.now() });
+      else this.emit('saved-local', { error: e, savedAt: Date.now(), paper });
     }
   }
 }

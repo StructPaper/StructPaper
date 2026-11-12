@@ -2,13 +2,16 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import { CloudOff } from 'lucide-react';
 import { useCapabilities } from '@structpaper/platform';
 import { useEditorSession } from '@/context/EditorSessionContext';
+import { formatLocalOnlyTooltip } from '@/lib/editor/save-status';
 import { isEditorTitleBarRoute } from './titlebar-routes';
 import { useWindowDrag } from './useWindowDrag';
 import { AppLogoMark } from './AppLogoMark';
 import { AutoSaveToggle } from './AutoSaveToggle';
 import { DocumentStatusIndicator } from './DocumentStatusIndicator';
+import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
 
 /**
@@ -27,6 +30,11 @@ export const DesktopTitleBar: React.FC = () => {
   }
 
   const isEditorRoute = isEditorTitleBarRoute(pathname);
+  const isLocalOnly =
+    isEditorRoute &&
+    documentSession?.saveState === 'saved' &&
+    documentSession?.rawSaveState === 'saved-local';
+  const localOnlyTooltip = formatLocalOnlyTooltip(documentSession?.savedAt);
 
   return (
     <header
@@ -41,11 +49,22 @@ export const DesktopTitleBar: React.FC = () => {
 
         {isEditorRoute && (
           <>
+            <TitleBarFileMenu
+              onNew={documentSession?.onNew}
+              onOpen={documentSession?.onOpen}
+              onSave={documentSession?.onManualSave}
+              onExport={documentSession?.onExport}
+              exporting={documentSession?.exporting}
+            />
             <AutoSaveToggle enabled={autoSaveEnabled} onToggle={toggleAutoSave} />
             <DocumentStatusIndicator
               title={documentSession?.title}
               saveState={documentSession?.saveState ?? 'saved'}
+              rawSaveState={documentSession?.rawSaveState}
+              savedAt={documentSession?.savedAt}
               onManualSave={documentSession?.onManualSave}
+              onRename={documentSession?.onRename}
+              onKeepMine={documentSession?.onKeepMine}
             />
           </>
         )}
@@ -57,6 +76,18 @@ export const DesktopTitleBar: React.FC = () => {
         className="flex-1 h-full min-w-[24px]"
         aria-hidden="true"
       />
+
+      {isLocalOnly && (
+        <span
+          data-testid="titlebar-local-only-icon"
+          data-no-drag="true"
+          title={localOnlyTooltip}
+          aria-label={localOnlyTooltip}
+          className="inline-flex items-center justify-center px-2 h-full text-zinc-500 shrink-0 select-none"
+        >
+          <CloudOff className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+        </span>
+      )}
 
       <WindowControls />
     </header>

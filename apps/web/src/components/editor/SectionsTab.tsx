@@ -279,9 +279,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
     if (filterTypeRef.current !== 'all') {
       filterTypeRef.current = 'all';
       setFilterType('all');
+      updateSectionsFilter('all');
     }
     setScrollRequest((r) => ({ id, n: (r?.n ?? 0) + 1 }));
-  }, []);
+  }, [updateSectionsFilter]);
 
   // Filtered display entries with precomputed adjacent-figure context
   const displayedItems = useMemo<DisplayedSectionItem[]>(() => {

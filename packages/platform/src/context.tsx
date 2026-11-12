@@ -31,6 +31,11 @@ export function usePlatform(): PlatformServices {
   return ctx;
 }
 
+/** Reads platform services without throwing when rendered outside PlatformProvider. */
+export function useOptionalPlatform(): PlatformServices | null {
+  return React.useContext(PlatformContext);
+}
+
 export function useCapabilities(): Capabilities {
   return usePlatform().capabilities;
 }

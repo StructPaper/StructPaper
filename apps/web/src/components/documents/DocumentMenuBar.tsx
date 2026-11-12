@@ -6,7 +6,7 @@ import type { SaveState } from '@/lib/documents/autosave-controller';
 
 export type ExportFormat = 'docx' | 'pdf' | 'xml';
 
-interface Props {
+export interface DocumentMenuBarProps {
   name: string;
   onRename: (name: string) => void;
   saveState: SaveState;
@@ -29,7 +29,7 @@ const STATE_UI: Record<SaveState, { text: string; cls: string; icon: React.React
   error: { text: 'Lưu thất bại', cls: 'text-red-700', icon: <AlertTriangle className="w-3.5 h-3.5" /> },
 };
 
-export const DocumentMenuBar: React.FC<Props> = ({
+export const DocumentMenuBar: React.FC<DocumentMenuBarProps> = ({
   name,
   onRename,
   saveState,

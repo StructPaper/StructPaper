@@ -132,4 +132,53 @@ describe('AutosaveController', () => {
     await vi.advanceTimersByTimeAsync(1100);
     expect(saveLocal).toHaveBeenCalledTimes(1);
   });
+
+  it('saveNow() returns the settled SaveState outcome (saved, saved-local, conflict, error)', async () => {
+    const push = vi.fn<(...a: any[]) => Promise<any>>()
+      .mockResolvedValueOnce({ rev: 1 })
+      .mockRejectedValueOnce(new ApiError(0, 'offline'))
+      .mockRejectedValueOnce(new ApiError(412, 'conflict'));
+
+    const localFailOnce = vi.fn<(_p: CompletePaper) => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    const { ctl } = setup({ push }, localFailOnce);
+
+    expect(await ctl.saveNow(mk('v1'))).toBe('saved');
+    expect(await ctl.saveNow(mk('v2'))).toBe('saved-local');
+    expect(await ctl.saveNow(mk('v3'))).toBe('conflict');
+    expect(await ctl.saveNow(mk('v4'))).toBe('error');
+  });
+
+  it('saveNow() waits through an in-flight rerun before returning the latest SaveState', async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((r) => (releaseFirst = r));
+    const push = vi.fn<(...a: any[]) => Promise<any>>()
+      .mockImplementationOnce(async () => {
+        await firstGate;
+        return { rev: 1 };
+      })
+      .mockRejectedValueOnce(new ApiError(412, 'conflict'));
+
+    const { ctl } = setup({ push });
+    ctl.notify(mk('first'));
+    await vi.advanceTimersByTimeAsync(1100);
+
+    const savePromise = ctl.saveNow(mk('second'));
+    releaseFirst();
+    await expect(savePromise).resolves.toBe('conflict');
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it('markDirty() emits dirty without scheduling an automatic save', async () => {
+    const { ctl, saveLocal, states } = setup();
+    ctl.markDirty(mk('manual-only'));
+    expect(ctl.getState()).toBe('dirty');
+    expect(states).toContain('dirty');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(saveLocal).not.toHaveBeenCalled();
+  });
 });

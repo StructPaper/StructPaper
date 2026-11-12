@@ -473,4 +473,14 @@ describe('SectionsTab virtualization, memoization & performance (Task 3)', () =>
       )
     ).toBeTruthy();
   });
+
+  it('provides explicit virtual height estimate for equation sections', () => {
+    expect(
+      estimateSectionHeight({
+        id: 'eq-1',
+        type: 'equation',
+        content: 'E = mc^2',
+      })
+    ).toBe(220);
+  });
 });

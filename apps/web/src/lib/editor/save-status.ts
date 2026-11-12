@@ -70,3 +70,25 @@ export function resolveDocumentDisplayTitle(displayName?: string | null): string
   const normalized = displayName?.trim();
   return normalized && normalized.length > 0 ? normalized : DEFAULT_DOCUMENT_TITLE;
 }
+
+/**
+ * Formats a Unix epoch timestamp into a Vietnamese HH:MM:SS string for save tooltips.
+ */
+export function formatSavedTime(savedAt?: number | null): string | null {
+  if (!savedAt) return null;
+  return new Date(savedAt).toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+/**
+ * Formats tooltip text indicating local-only persistence awaiting server synchronization.
+ */
+export function formatLocalOnlyTooltip(savedAt?: number | null): string {
+  const savedTime = formatSavedTime(savedAt);
+  return savedTime
+    ? `Đã lưu trên máy lúc ${savedTime} (chưa đồng bộ máy chủ)`
+    : 'Đã lưu trên máy (chưa đồng bộ máy chủ)';
+}

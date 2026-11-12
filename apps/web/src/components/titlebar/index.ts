@@ -7,5 +7,6 @@ export {
   type DocumentStatusIndicatorProps,
 } from './DocumentStatusIndicator';
 export { WindowControls } from './WindowControls';
+export { TitleBarFileMenu, type TitleBarFileMenuProps } from './TitleBarFileMenu';
 export { DESKTOP_TITLEBAR_HEIGHT_PX, isEditorTitleBarRoute } from './titlebar-routes';
 export { useWindowDrag } from './useWindowDrag';

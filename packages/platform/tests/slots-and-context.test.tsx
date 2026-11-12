@@ -5,6 +5,7 @@ import { render, screen, act, renderHook, cleanup } from '@testing-library/react
 import {
   PlatformProvider,
   usePlatform,
+  useOptionalPlatform,
   useCapabilities,
   useUpdateService,
   useWindowService,
@@ -63,6 +64,18 @@ describe('packages/platform: Context & Hooks', () => {
     expect(result.current.platform.config.appVersion).toBe('2.5.0');
     expect(result.current.updates.channel).toBe('stable');
     expect(result.current.win.isSupported()).toBe(true);
+  });
+
+  it('useOptionalPlatform returns null outside PlatformProvider and services inside it', () => {
+    const { result: outside } = renderHook(() => useOptionalPlatform());
+    expect(outside.current).toBeNull();
+
+    const fakePlatform = createFakePlatform({ kind: 'web' });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PlatformProvider value={fakePlatform}>{children}</PlatformProvider>
+    );
+    const { result: inside } = renderHook(() => useOptionalPlatform(), { wrapper });
+    expect(inside.current).toBe(fakePlatform);
   });
 });
 

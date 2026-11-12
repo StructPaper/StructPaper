@@ -42,6 +42,9 @@ export function useDocumentAutosave({
         onState: (s, info) => {
           setState(s);
           if (info?.savedAt) setSavedAt(info.savedAt);
+          if ((s === 'saved' || s === 'saved-local') && info?.paper) {
+            baseline.current = info.paper;
+          }
         },
       }),
     [sync, debounceMs]
@@ -66,7 +69,10 @@ export function useDocumentAutosave({
       baseline.current = paper;
       return;
     }
-    if (enabled && paper !== baseline.current) controller.notify(paper);
+    if (paper !== baseline.current) {
+      if (enabled) controller.notify(paper);
+      else controller.markDirty(paper);
+    }
   }, [paper, documentId, controller, enabled]);
 
   // Don't lose the last edits when the tab is hidden/closed.

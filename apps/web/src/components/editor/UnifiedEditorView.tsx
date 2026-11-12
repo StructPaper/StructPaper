@@ -26,7 +26,9 @@ import { ResizableSplitLayout } from './ResizableSplitLayout';
 import { generateStandardCitation } from './sections/utils';
 import { assignEquationNumbers, renumberPaper } from '@/lib/validation/numbering';
 import { validateForExport, type ValidationReport } from '@/lib/validation/validators';
-import { DocumentMenuBar, type ExportFormat } from '@/components/documents/DocumentMenuBar';
+import { type ExportFormat } from '@/components/documents/DocumentMenuBar';
+import { EditorDocumentMenuBarSlot } from '@/components/documents/EditorDocumentMenuBarSlot';
+import { notifyManualSaveOutcome } from '@/lib/editor/save-feedback';
 import { OpenDocumentDialog, type OpenListItem } from '@/components/documents/OpenDocumentDialog';
 import { ExportGateModal } from '@/components/documents/ValidationModals';
 import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
@@ -157,12 +159,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   const { isExportingDocx, isExportingZip, isExportingPdf, isExportingXml, handleDownloadDocx, handleDownloadZip, handleDownloadPdf, handleDownloadXml } =
     useEditorExport({ formData, compiledPdfUrl, compileLatexToPdf, onExported: handleExported });
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (): Promise<boolean> => {
     onUpdatePaper(formData);
-    await saveNow(formData);
-    sileo.success({ title: 'Đã lưu tài liệu', description: 'Nội dung đã được lưu và tạo phiên bản mới' });
+    if (!notifyManualSaveOutcome(await saveNow(formData))) return false;
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
+    return true;
   }, [formData, onUpdatePaper, saveNow]);
 
   // ---- GATE 2: validate before producing the deliverable ----
@@ -257,15 +259,14 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   const documentName = ((formData as any).displayName as string | undefined) || formData.metadata.title || 'Bản thảo bài báo';
   const handleRename = useCallback((name: string) => {
     setFormData((p) => ({ ...p, displayName: name } as CompletePaper));
+    setIsDirty(true);
   }, []);
+  const exporting = { docx: isExportingDocx || pendingExport === 'docx', pdf: isExportingPdf || pendingExport === 'pdf', xml: isExportingXml || pendingExport === 'xml' };
 
   useSyncEditorSession({
-    paperId: formData.id,
-    displayName: formData.displayName,
-    autosaveStatus,
-    isDirty,
-    saveSuccess,
-    onManualSave: handleSave,
+    paperId: formData.id, displayName: formData.displayName, autosaveStatus, isDirty, saveSuccess,
+    rawSaveState: saveState, savedAt, exporting, onManualSave: async () => { await handleSave(); },
+    onRename: handleRename, onNew: () => setIsNewDialog(true), onOpen: () => setIsOpenDialog(true), onExport: requestExport, onKeepMine: resolveKeepMine,
   });
 
   // Back Navigation Guard handlers
@@ -278,7 +279,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   }, [isDirty, router]);
 
   const handleConfirmSaveAndExit = useCallback(async () => {
-    await handleSave();
+    if (!(await handleSave())) return;
     setIsExitWarningOpen(false);
     router.push('/papers');
   }, [handleSave, router]);
@@ -474,7 +475,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
-        <DocumentMenuBar
+        <EditorDocumentMenuBarSlot
           name={documentName}
           onRename={handleRename}
           saveState={saveState}
@@ -484,11 +485,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
           onSave={handleSave}
           onExport={requestExport}
           onKeepMine={resolveKeepMine}
-          exporting={{
-            docx: isExportingDocx || pendingExport === 'docx',
-            pdf: isExportingPdf || pendingExport === 'pdf',
-            xml: isExportingXml || pendingExport === 'xml',
-          }}
+          exporting={exporting}
         />
         <div className="flex sm:hidden flex-shrink-0 items-center justify-between p-1.5 mb-1.5 bg-white/70 backdrop-blur-md rounded-2xl border border-zinc-200">
           <button

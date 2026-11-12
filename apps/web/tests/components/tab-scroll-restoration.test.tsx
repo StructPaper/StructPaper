@@ -1105,4 +1105,29 @@ describe('Editor Tab Scroll & Sections View-State Restoration', () => {
     expect(triggerScrollToSection!('sec-5')).toBe(true);
     expect(hiddenScrollRef!.current!.scrollTop).toBe(0);
   });
+
+  it('jumpToSection from PageGroupOverview resets both local filter and persisted EditorTabState filterType to all', async () => {
+    const store = createEditorTabStateStore('paper-jump');
+    const sections = createMixedSections(8);
+    sections[5] = {
+      ...sections[5],
+      pageLayout: { columns: '1-column', orientation: 'landscape' },
+    };
+
+    render(
+      <EditorTabStateProvider paperId="paper-jump" store={store}>
+        <SectionsTab sections={sections} onChange={vi.fn()} />
+      </EditorTabStateProvider>
+    );
+
+    const tableChip = screen.getByRole('button', { name: /Bảng \(/i });
+    fireEvent.click(tableChip);
+    expect(store.getSectionsState().filterType).toBe('table');
+
+    const pills = screen.getAllByTestId('page-group-pill');
+    expect(pills.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(pills[1]);
+
+    expect(store.getSectionsState().filterType).toBe('all');
+  });
 });

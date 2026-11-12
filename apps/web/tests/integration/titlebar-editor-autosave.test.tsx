@@ -86,6 +86,7 @@ import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { PaperProvider } from '@/context/PaperContext';
 import { DesktopTitleBar } from '@/components/titlebar';
 import { UnifiedEditorView } from '@/components/editor/UnifiedEditorView';
+import { sileo } from '@/components/DynamicIslandToast';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { migrateV1toV2 } from '@structpaper/doc-model';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
@@ -276,5 +277,83 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
         displayName: 'Tên hiển thị mới sau Quick Edit',
       })
     );
+  });
+
+  it('hides DocumentMenuBar on Desktop via platform slot, exposes File menu & inline rename in TitleBar, and shows CloudOff on local-only save', async () => {
+    const desktopPlatform = createFakePlatform({ kind: 'desktop' });
+    const paper = createTestPaper({ id: 'paper-desktop-slot-1', displayName: 'Tên ban đầu' });
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <PaperProvider>
+            <DesktopTitleBar />
+            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+          </PaperProvider>
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    // DocumentMenuBar must be suppressed on Desktop (handled via DesktopTitleBar)
+    expect(screen.queryByTestId('save-status')).toBeNull();
+    expect(screen.getByTestId('titlebar-file-menu-trigger')).toBeTruthy();
+
+    // Open "Tệp" -> "Mở…" opens OpenDocumentDialog
+    fireEvent.click(screen.getByTestId('titlebar-file-menu-trigger'));
+    fireEvent.click(screen.getByTestId('titlebar-file-open'));
+    expect(screen.getByText(/Mở tài liệu/i)).toBeTruthy();
+
+    // Inline rename from TitleBar updates displayName, marks Unsaved, then saves with CloudOff icon (local-only offline mode in test)
+    fireEvent.click(screen.getByTestId('titlebar-paper-title'));
+    const renameInput = screen.getByTestId('titlebar-paper-title-input') as HTMLInputElement;
+    fireEvent.change(renameInput, { target: { value: 'Tên mới trên Desktop' } });
+    fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+    expect(screen.getByTestId('titlebar-paper-title').textContent).toBe('Tên mới trên Desktop');
+    expect(screen.getByTestId('titlebar-save-state').getAttribute('data-save-state')).toBe('unsaved');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('titlebar-save-state'));
+    });
+
+    expect(mockSavePaper).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: 'Tên mới trên Desktop' })
+    );
+    expect(screen.getByTestId('titlebar-save-state').getAttribute('data-save-state')).toBe('saved');
+    expect(screen.getByTestId('titlebar-local-only-icon')).toBeTruthy();
+  });
+
+  it('shows error toast and refuses Saved state when local save returns false on manual Save', async () => {
+    const errSpy = vi.spyOn(sileo, 'error');
+    const okSpy = vi.spyOn(sileo, 'success');
+    mockSavePaper.mockResolvedValueOnce(false);
+
+    const desktopPlatform = createFakePlatform({ kind: 'desktop' });
+    const paper = createTestPaper({ id: 'paper-save-fail-1', displayName: 'Bản lỗi lưu' });
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <EditorSessionProvider>
+          <PaperProvider>
+            <DesktopTitleBar />
+            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+          </PaperProvider>
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    const titleInput = screen.getAllByPlaceholderText('Nhập tựa đề bài báo tiếng Việt...')[0];
+    fireEvent.change(titleInput, { target: { value: 'Thay đổi chưa lưu' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('titlebar-save-state'));
+    });
+
+    expect(errSpy).toHaveBeenCalled();
+    expect(okSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('titlebar-save-state').getAttribute('data-save-state')).toBe('error');
+
+    errSpy.mockRestore();
+    okSpy.mockRestore();
   });
 });
