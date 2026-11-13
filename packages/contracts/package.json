@@ -1,0 +1,23 @@
+{
+  "name": "@structpaper/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./errors": "./src/errors/problem-details.ts",
+    "./auth": "./src/auth/auth.contract.ts",
+    "./access": "./src/access/access.contract.ts",
+    "./manuscripts": "./src/manuscripts/manuscript.contract.ts",
+    "./sync": "./src/sync/sync.contract.ts",
+    "./assets": "./src/assets/asset.contract.ts",
+    "./compile": "./src/compile/compile.contract.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
