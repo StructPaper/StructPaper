@@ -233,12 +233,12 @@ describe('SectionsTab virtualization, memoization & performance (Task 3)', () =>
 
     expect(container.querySelector('#section-card-sec-149')).toBeNull();
 
-    const quickAddParagraphBtn = screen.getByTitle('Thêm đoạn văn bản mới');
-    fireEvent.click(quickAddParagraphBtn);
+    const addParagraphButtons = screen.getAllByTitle('Thêm đoạn văn bản ngay bên dưới');
+    fireEvent.click(addParagraphButtons[0]);
 
     await waitFor(() => {
       expect(latestSections.length).toBe(151);
-      const addedId = latestSections[150].id;
+      const addedId = latestSections[1].id;
       expect(container.querySelector(`#section-card-${addedId}`)).toBeTruthy();
     });
 

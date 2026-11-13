@@ -68,8 +68,8 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({ sections, onChange }) 
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Top action bar: Quick add buttons */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      {/* Top action bar */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-[#78C841]" />
           <h3 className="font-extrabold text-sm text-slate-900">
@@ -78,37 +78,6 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({ sections, onChange }) 
           <span className="text-xs text-slate-500 hidden sm:inline">
             ({hCount} tiêu đề, {pCount} đoạn văn)
           </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={() => handleAddSection('h1')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#14532D] text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-          >
-            <Heading1 className="w-3.5 h-3.5" />
-            + Tiêu đề H1
-          </button>
-          <button
-            onClick={() => handleAddSection('h2')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#14532D] text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-          >
-            <Heading2 className="w-3.5 h-3.5" />
-            + Mục H2
-          </button>
-          <button
-            onClick={() => handleAddSection('h3')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#14532D] text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-          >
-            <Heading3 className="w-3.5 h-3.5" />
-            + Mục H3
-          </button>
-          <button
-            onClick={() => handleAddSection('paragraph')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors cursor-pointer"
-          >
-            <AlignLeft className="w-3.5 h-3.5" />
-            + Đoạn văn
-          </button>
         </div>
       </div>
 

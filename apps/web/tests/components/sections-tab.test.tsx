@@ -269,8 +269,8 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
         />
       );
 
-      const addParagraphBtn = screen.getByTitle('Thêm đoạn văn bản mới');
-      fireEvent.click(addParagraphBtn);
+      const addParagraphButtons = screen.getAllByTitle('Thêm đoạn văn bản ngay bên dưới');
+      fireEvent.click(addParagraphButtons[addParagraphButtons.length - 1]);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const updatedList = onChange.mock.calls[0][0] as PaperSection[];
@@ -425,8 +425,8 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
         />
       );
 
-      const addParagraphBtn = screen.getByTitle('Thêm đoạn văn bản mới');
-      fireEvent.click(addParagraphBtn);
+      const addParagraphButtons = screen.getAllByTitle('Thêm đoạn văn bản ngay bên dưới');
+      fireEvent.click(addParagraphButtons[0]);
 
       expect(dispatchSpy).toHaveBeenCalledWith(
         expect.objectContaining({

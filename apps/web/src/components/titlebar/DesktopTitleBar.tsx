@@ -79,33 +79,6 @@ export const DesktopTitleBar: React.FC = () => {
       />
 
       <div className="flex items-center gap-1.5 shrink-0 h-full pr-1">
-        {isEditorRoute && (
-          <button
-            type="button"
-            onClick={togglePdfFocusMode}
-            data-testid="titlebar-toggle-interactive-pdf"
-            data-no-drag="true"
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer select-none ${
-              pdfFocusMode
-                ? 'bg-[#78C841] text-zinc-950 shadow-2xs ring-1 ring-[#78C841]/50'
-                : 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-600'
-            }`}
-            title={
-              pdfFocusMode
-                ? 'Chế độ định vị đang bật: Nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng. Bấm để tắt.'
-                : 'Bật chế độ định vị: Cho phép nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng trong bài.'
-            }
-          >
-            <Crosshair className={`w-3.5 h-3.5 ${pdfFocusMode ? 'text-zinc-950' : 'text-zinc-500'}`} />
-            <span>Focus định vị</span>
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                pdfFocusMode ? 'bg-zinc-950' : 'bg-zinc-400'
-              }`}
-            />
-          </button>
-        )}
-
         {isLocalOnly ? (
           <span
             data-testid="titlebar-local-only-icon"
@@ -127,6 +100,28 @@ export const DesktopTitleBar: React.FC = () => {
             <Cloud className="w-3.5 h-3.5 text-zinc-500" strokeWidth={2} aria-hidden="true" />
           </span>
         ) : null}
+
+        {isEditorRoute && (
+          <button
+            type="button"
+            onClick={togglePdfFocusMode}
+            data-testid="titlebar-toggle-interactive-pdf"
+            data-no-drag="true"
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer select-none ${
+              pdfFocusMode
+                ? 'bg-[#78C841] text-zinc-950 shadow-2xs ring-1 ring-[#78C841]/50'
+                : 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-600'
+            }`}
+            title={
+              pdfFocusMode
+                ? 'Chế độ định vị đang bật: Nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng. Bấm để tắt.'
+                : 'Bật chế độ định vị: Cho phép nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng trong bài.'
+            }
+          >
+            <Crosshair className={`w-3.5 h-3.5 ${pdfFocusMode ? 'text-zinc-950' : 'text-zinc-500'}`} />
+            <span>Focus định vị</span>
+          </button>
+        )}
       </div>
 
       {isDesktop && <WindowControls />}
