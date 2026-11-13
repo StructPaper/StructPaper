@@ -72,6 +72,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
 
       return {
         id: issue.id,
+        gate: 'export' as const,
         severity: issue.severity,
         code: `preflight.${issue.category}`,
         title: issue.title,

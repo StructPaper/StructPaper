@@ -219,3 +219,24 @@ export async function seedDatabase(db: any): Promise<SeedResult> {
     activationToken,
   };
 }
+
+if (
+  (typeof require !== 'undefined' && require.main === module) ||
+  (typeof process !== 'undefined' && process.argv[1]?.replace(/\\/g, '/').endsWith('seed.ts'))
+) {
+  const { createDbClient } = require('./client');
+  const { db, client } = createDbClient();
+  seedDatabase(db)
+    .then(() => {
+      // eslint-disable-next-line no-console
+      console.log('[SEED] Completed successfully.');
+      client.end?.();
+      process.exit(0);
+    })
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[SEED] Error during seeding:', err);
+      client.end?.();
+      process.exit(1);
+    });
+}

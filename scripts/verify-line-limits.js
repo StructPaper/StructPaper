@@ -39,7 +39,8 @@ function isIgnored(relPath) {
     normalized.endsWith('.d.ts') ||
     normalized.includes('/node_modules/') ||
     normalized.includes('/.next/') ||
-    normalized.includes('/dist/')
+    normalized.includes('/dist/') ||
+    normalized.includes('/scripts/')
   ) {
     return true;
   }

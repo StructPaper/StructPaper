@@ -49,6 +49,50 @@ module.exports = {
         path: '(react|react-dom|apps/|packages/(?!doc-model|compiler-client))',
       },
     },
+    {
+      name: 'domain-layer-purity',
+      comment: 'Domain layer in apps/api must not depend on application, presentation, or infrastructure',
+      severity: 'error',
+      from: {
+        path: '^apps/api/src/domain/',
+      },
+      to: {
+        path: '^apps/api/src/(application|presentation|infrastructure)/',
+      },
+    },
+    {
+      name: 'application-layer-boundaries',
+      comment: 'Application layer in apps/api may only depend on domain; cannot import presentation or infrastructure',
+      severity: 'error',
+      from: {
+        path: '^apps/api/src/application/',
+      },
+      to: {
+        path: '^apps/api/src/(presentation|infrastructure)/',
+      },
+    },
+    {
+      name: 'presentation-layer-boundaries',
+      comment: 'Presentation layer in apps/api must not depend directly on infrastructure',
+      severity: 'error',
+      from: {
+        path: '^apps/api/src/presentation/',
+      },
+      to: {
+        path: '^apps/api/src/infrastructure/',
+      },
+    },
+    {
+      name: 'infrastructure-layer-boundaries',
+      comment: 'Infrastructure layer in apps/api must not depend on presentation',
+      severity: 'error',
+      from: {
+        path: '^apps/api/src/infrastructure/',
+      },
+      to: {
+        path: '^apps/api/src/presentation/',
+      },
+    },
   ],
   options: {
     doNotFollow: {

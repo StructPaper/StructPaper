@@ -8,7 +8,10 @@ export interface DbClientOptions extends postgres.Options<any> {
   connect_timeout?: number;
 }
 
-export function createDbClient(connectionString: string, options?: DbClientOptions) {
+export function createDbClient(
+  connectionString: string = process.env.DATABASE_URL || 'postgres://structpaper:structpaper@localhost:5432/structpaper',
+  options?: DbClientOptions,
+) {
   const client = postgres(connectionString, {
     max: options?.max ?? 10,
     idle_timeout: options?.idle_timeout ?? 20,
