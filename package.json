@@ -5,6 +5,9 @@
   "scripts": {
     "build:web": "pnpm --filter @structpaper/web build",
     "dev:web": "pnpm --filter @structpaper/web dev",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lint": "eslint .",
