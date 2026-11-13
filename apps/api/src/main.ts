@@ -1,0 +1,47 @@
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import helmet from '@fastify/helmet';
+import cors from '@fastify/cors';
+import { Logger } from '@nestjs/common';
+import { AppModule } from './app.module';
+import { Rfc9457ExceptionFilter } from './modules/platform/filters/rfc9457-exception.filter';
+
+export async function bootstrap(): Promise<NestFastifyApplication> {
+  const logger = new Logger('Bootstrap');
+  const adapter = new FastifyAdapter({
+    logger: process.env.NODE_ENV !== 'production',
+  });
+
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter);
+
+  await app.register(helmet as any, {
+    contentSecurityPolicy: process.env.NODE_ENV === 'production',
+  });
+
+  await app.register(cors as any, {
+    origin: process.env.CORS_ORIGIN || true,
+    credentials: true,
+  });
+
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health'],
+  });
+
+  app.useGlobalFilters(new Rfc9457ExceptionFilter());
+
+  const port = Number(process.env.PORT) || 4000;
+  const host = process.env.HOST || '0.0.0.0';
+
+  await app.listen(port, host);
+  logger.log(`StructPaper API server running on http://${host}:${port}`);
+  logger.log(`Health check available at http://${host}:${port}/health`);
+  return app;
+}
+
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  bootstrap().catch((err) => {
+    console.error('Fatal bootstrap failure:', err);
+    process.exit(1);
+  });
+}

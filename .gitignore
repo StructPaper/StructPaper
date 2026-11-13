@@ -33,6 +33,8 @@ struct-paper-backend/.gradle/
 struct-paper-backend/out/
 
 # --- Node & Next.js (Frontend) ---
+dist/
+**/dist/
 node_modules/
 **/node_modules/
 .next/
