@@ -5,7 +5,6 @@ import {
   NotFoundException,
   ForbiddenException,
   PreconditionFailedException,
-  BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import {
@@ -14,9 +13,13 @@ import {
   manuscriptDocs,
   eq,
   and,
+  or,
   ilike,
+  inArray,
   desc,
   asc,
+  gt,
+  lt,
   sql,
 } from '@structpaper/db';
 import type {
@@ -42,10 +45,19 @@ export class ManuscriptService {
   ) {}
 
   /**
-   * Creates a new manuscript, automatically assigns the creator as OWNER in manuscript_members,
+   * Creates a new manuscript within an atomic database transaction,
+   * automatically assigns the creator as OWNER in manuscript_members,
    * and initializes an empty manuscript_docs doc_tree at server_rev = 0.
    */
-  async createManuscript(dto: CreateManuscript, userId: string): Promise<ManuscriptResponse> {
+  async createManuscript(
+    dto: CreateManuscript,
+    userId: string,
+    userAbility?: AppAbility,
+  ): Promise<ManuscriptResponse> {
+    if (userAbility && !userAbility.can('create', 'Manuscript')) {
+      throw new ForbiddenException('You do not have permission to create manuscripts');
+    }
+
     const manuscriptId = crypto.randomUUID();
     const now = new Date();
 
@@ -77,17 +89,18 @@ export class ManuscriptService {
       updatedAt: now,
     };
 
-    if (this.db) {
-      // If mockDb in-memory container exists, record in mock state
-      if (this.db._data) {
-        this.db._data.manuscripts.push(manuscriptRecord);
-        this.db._data.manuscriptMembers.push(memberRecord);
-        this.db._data.manuscriptDocs.push(docRecord);
-      }
+    const runInserts = async (tx: any) => {
+      await tx.insert(manuscripts).values(manuscriptRecord);
+      await tx.insert(manuscriptMembers).values(memberRecord);
+      await tx.insert(manuscriptDocs).values(docRecord);
+    };
 
-      await this.db.insert(manuscripts).values(manuscriptRecord).returning?.();
-      await this.db.insert(manuscriptMembers).values(memberRecord).returning?.();
-      await this.db.insert(manuscriptDocs).values(docRecord).returning?.();
+    if (this.db) {
+      if (typeof this.db.transaction === 'function') {
+        await this.db.transaction(runInserts);
+      } else {
+        await runInserts(this.db);
+      }
     }
 
     return manuscriptRecord;
@@ -95,7 +108,7 @@ export class ManuscriptService {
 
   /**
    * Retrieves paginated manuscripts with offset (page/limit) or cursor pagination,
-   * filtered by CASL abilities and optional search criteria.
+   * with filtering, sorting, and CASL scoping pushed entirely to SQL via Drizzle.
    */
   async listManuscripts(
     query: ManuscriptQuery,
@@ -110,105 +123,169 @@ export class ManuscriptService {
   }> {
     const limit = Math.min(query.limit ?? 20, 100);
     const page = query.page ?? 1;
+    const offset = Math.max((page - 1) * limit, 0);
 
-    let allItems: any[] = [];
+    const whereConditions: any[] = [];
 
-    if (this.db?._data?.manuscripts) {
-      allItems = [...this.db._data.manuscripts];
-    } else if (this.db?.query?.manuscripts?.findMany) {
-      allItems = await this.db.query.manuscripts.findMany({
-        orderBy: query.sortOrder === 'asc' ? [asc(manuscripts.updatedAt)] : [desc(manuscripts.updatedAt)],
-      });
-    } else if (this.db?.select) {
-      allItems = await this.db.select().from(manuscripts);
-    }
-
-    // 1. Filter by CASL ability
+    // 1. CASL Ability Scoping pushed to SQL
     if (userAbility) {
-      allItems = allItems.filter((item) => {
-        try {
-          return userAbility.can('read', subject('Manuscript', item));
-        } catch {
-          return false;
+      const isSuperAdmin = userAbility.can('manage', 'all');
+      if (!isSuperAdmin) {
+        const allowedJournals: string[] = [];
+        const allowedManuscriptIds: string[] = [];
+        let canReadAll = false;
+
+        for (const rule of userAbility.rules || []) {
+          const isManuscriptSubject = rule.subject === 'Manuscript' || rule.subject === 'all';
+          const isReadOrManage =
+            rule.action === 'manage' ||
+            rule.action === 'read' ||
+            (Array.isArray(rule.action) &&
+              (rule.action.includes('read') || rule.action.includes('manage')));
+
+          if (isManuscriptSubject && isReadOrManage && !rule.inverted) {
+            const conditions = rule.conditions as Record<string, any> | undefined;
+            if (!conditions || Object.keys(conditions).length === 0) {
+              canReadAll = true;
+              break;
+            }
+            if (conditions.journalId) {
+              allowedJournals.push(String(conditions.journalId));
+            }
+            if (conditions.id) {
+              if (conditions.id.$in && Array.isArray(conditions.id.$in)) {
+                allowedManuscriptIds.push(...conditions.id.$in.map(String));
+              } else if (typeof conditions.id === 'string') {
+                allowedManuscriptIds.push(conditions.id);
+              }
+            }
+          }
         }
-      });
+
+        if (!canReadAll) {
+          if (allowedJournals.length === 0 && allowedManuscriptIds.length === 0) {
+            return {
+              items: [],
+              total: 0,
+              page: query.cursor ? undefined : page,
+              limit,
+              nextCursor: undefined,
+            };
+          }
+
+          const aclOrConditions: any[] = [];
+          if (allowedJournals.length > 0) {
+            aclOrConditions.push(inArray(manuscripts.journalId, allowedJournals));
+          }
+          if (allowedManuscriptIds.length > 0) {
+            aclOrConditions.push(inArray(manuscripts.id, allowedManuscriptIds));
+          }
+
+          if (aclOrConditions.length === 1) {
+            whereConditions.push(aclOrConditions[0]);
+          } else if (aclOrConditions.length > 1) {
+            whereConditions.push(or(...aclOrConditions));
+          }
+        }
+      }
     }
 
-    // 2. Filter by search query (title / abstract)
+    // 2. Search filter (title / abstract)
     if (query.search) {
-      const searchLower = query.search.toLowerCase();
-      allItems = allItems.filter(
-        (m) =>
-          (m.title && m.title.toLowerCase().includes(searchLower)) ||
-          (m.abstract && m.abstract.toLowerCase().includes(searchLower)),
+      const searchPattern = `%${query.search.trim()}%`;
+      whereConditions.push(
+        or(
+          ilike(manuscripts.title, searchPattern),
+          ilike(manuscripts.abstract, searchPattern),
+        ),
       );
     }
 
-    // 3. Filter by journalId
+    // 3. Journal filter
     if (query.journalId) {
-      allItems = allItems.filter((m) => m.journalId === query.journalId);
+      whereConditions.push(eq(manuscripts.journalId, query.journalId));
     }
 
-    // 4. Filter by status
+    // 4. Status filter
     if (query.status) {
-      allItems = allItems.filter((m) => m.status === query.status);
+      whereConditions.push(eq(manuscripts.status, query.status));
     }
 
-    // 5. Sort
-    allItems.sort((a, b) => {
-      const dateA = new Date(a.updatedAt || a.createdAt).getTime();
-      const dateB = new Date(b.updatedAt || b.createdAt).getTime();
-      return query.sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
-
-    const total = allItems.length;
-
-    // 6. Handle pagination: cursor vs offset
-    let paginatedItems: any[] = [];
-    let nextCursor: string | undefined;
-
+    // 5. Cursor filter
     if (query.cursor) {
       try {
         const decoded: CursorPayload = JSON.parse(
           Buffer.from(query.cursor, 'base64').toString('utf8'),
         );
-        const cursorTime = new Date(decoded.updatedAt).getTime();
-        const cursorIndex = allItems.findIndex((m) => {
-          const mTime = new Date(m.updatedAt || m.createdAt).getTime();
-          if (query.sortOrder === 'asc') {
-            return mTime > cursorTime || (mTime === cursorTime && m.id > decoded.id);
-          }
-          return mTime < cursorTime || (mTime === cursorTime && m.id < decoded.id);
-        });
-
-        if (cursorIndex >= 0) {
-          paginatedItems = allItems.slice(cursorIndex, cursorIndex + limit);
+        const cursorDate = new Date(decoded.updatedAt);
+        if (query.sortOrder === 'asc') {
+          whereConditions.push(
+            or(
+              gt(manuscripts.updatedAt, cursorDate),
+              and(eq(manuscripts.updatedAt, cursorDate), gt(manuscripts.id, decoded.id)),
+            ),
+          );
         } else {
-          paginatedItems = [];
+          whereConditions.push(
+            or(
+              lt(manuscripts.updatedAt, cursorDate),
+              and(eq(manuscripts.updatedAt, cursorDate), lt(manuscripts.id, decoded.id)),
+            ),
+          );
         }
       } catch {
-        paginatedItems = allItems.slice(0, limit);
+        // Fallback for malformed cursor
       }
-    } else {
-      const offset = (page - 1) * limit;
-      paginatedItems = allItems.slice(offset, offset + limit);
     }
 
-    // Compute nextCursor if more items exist
-    if (paginatedItems.length === limit) {
-      const lastItem = paginatedItems[paginatedItems.length - 1];
-      const lastIndex = allItems.findIndex((m) => m.id === lastItem.id);
-      if (lastIndex >= 0 && lastIndex < allItems.length - 1) {
-        const cursorPayload: CursorPayload = {
-          id: lastItem.id,
-          updatedAt: lastItem.updatedAt || lastItem.createdAt,
-        };
-        nextCursor = Buffer.from(JSON.stringify(cursorPayload)).toString('base64');
-      }
+    const combinedWhere = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    const orderDirection = query.sortOrder === 'asc' ? asc : desc;
+    const sortColumn = query.sortBy === 'title' ? manuscripts.title : manuscripts.updatedAt;
+    const orderByClauses = [orderDirection(sortColumn), orderDirection(manuscripts.id)];
+
+    if (!this.db) {
+      return {
+        items: [],
+        total: 0,
+        page: query.cursor ? undefined : page,
+        limit,
+        nextCursor: undefined,
+      };
+    }
+
+    // Execute total count query directly in SQL
+    let countQuery = this.db.select({ count: sql`count(*)` }).from(manuscripts);
+    if (combinedWhere) {
+      countQuery = countQuery.where(combinedWhere);
+    }
+    const countResult = await countQuery;
+    const total = Number(countResult?.[0]?.count ?? 0);
+
+    // Execute items query with sorting and pagination directly in SQL
+    let itemsQuery = this.db.select().from(manuscripts);
+    if (combinedWhere) {
+      itemsQuery = itemsQuery.where(combinedWhere);
+    }
+    itemsQuery = itemsQuery.orderBy(...orderByClauses).limit(limit);
+    if (!query.cursor && offset > 0) {
+      itemsQuery = itemsQuery.offset(offset);
+    }
+
+    const items = (await itemsQuery) || [];
+
+    // Compute next cursor
+    let nextCursor: string | undefined;
+    if (items.length === limit) {
+      const lastItem = items[items.length - 1];
+      const cursorPayload: CursorPayload = {
+        id: lastItem.id,
+        updatedAt: lastItem.updatedAt || lastItem.createdAt,
+      };
+      nextCursor = Buffer.from(JSON.stringify(cursorPayload)).toString('base64');
     }
 
     return {
-      items: paginatedItems,
+      items,
       total,
       page: query.cursor ? undefined : page,
       limit,
@@ -238,7 +315,7 @@ export class ManuscriptService {
   }
 
   /**
-   * Updates manuscript metadata/content with If-Match concurrency locking against the version column.
+   * Updates manuscript metadata/content with atomic optimistic concurrency locking against the version column.
    */
   async updateManuscript(
     id: string,
@@ -255,17 +332,18 @@ export class ManuscriptService {
       throw new ForbiddenException('You do not have permission to update this manuscript');
     }
 
+    const currentVersion = manuscript.version || 1;
+
     if (ifMatch !== undefined) {
       const cleanMatch = ifMatch.replace(/^W\//, '').replace(/^"|"$/g, '').trim();
-      const currentVersion = String(manuscript.version);
-      if (cleanMatch !== currentVersion) {
+      if (cleanMatch !== String(currentVersion)) {
         throw new PreconditionFailedException(
           `Manuscript version conflict: expected version ${cleanMatch}, but current version is ${currentVersion}`,
         );
       }
     }
 
-    const newVersion = (manuscript.version || 1) + 1;
+    const newVersion = currentVersion + 1;
     const now = new Date();
 
     const updates: Record<string, any> = {
@@ -278,27 +356,29 @@ export class ManuscriptService {
     if (dto.status !== undefined) updates.status = dto.status;
     if (dto.metadata !== undefined) updates.metadata = dto.metadata;
 
-    const updated = {
-      ...manuscript,
-      ...updates,
-    };
-
     if (this.db) {
-      if (this.db._data?.manuscripts) {
-        const idx = this.db._data.manuscripts.findIndex((m: any) => m.id === id);
-        if (idx >= 0) {
-          this.db._data.manuscripts[idx] = updated;
-        }
-      }
-
-      await this.db
+      const result = await this.db
         .update(manuscripts)
         .set(updates)
-        .where(eq(manuscripts.id, id))
+        .where(
+          and(
+            eq(manuscripts.id, id),
+            eq(manuscripts.version, currentVersion),
+          ),
+        )
         .returning?.();
+
+      if (result && Array.isArray(result) && result.length === 0) {
+        throw new PreconditionFailedException(
+          `Manuscript version conflict: concurrent update detected on version ${currentVersion}`,
+        );
+      }
+
+      const updatedRow = result?.[0];
+      return updatedRow || { ...manuscript, ...updates };
     }
 
-    return updated;
+    return { ...manuscript, ...updates };
   }
 
   /**
@@ -319,9 +399,6 @@ export class ManuscriptService {
     }
 
     if (this.db) {
-      if (this.db._data?.manuscripts) {
-        this.db._data.manuscripts = this.db._data.manuscripts.filter((m: any) => m.id !== id);
-      }
       await this.db.delete(manuscripts).where(eq(manuscripts.id, id));
     }
 
@@ -357,9 +434,6 @@ export class ManuscriptService {
     };
 
     if (this.db) {
-      if (this.db._data?.manuscriptMembers) {
-        this.db._data.manuscriptMembers.push(memberRecord);
-      }
       await this.db
         .insert(manuscriptMembers)
         .values(memberRecord)
@@ -391,11 +465,6 @@ export class ManuscriptService {
     }
 
     if (this.db) {
-      if (this.db._data?.manuscriptMembers) {
-        this.db._data.manuscriptMembers = this.db._data.manuscriptMembers.filter(
-          (m: any) => !(m.manuscriptId === manuscriptId && m.userId === userId),
-        );
-      }
       await this.db
         .delete(manuscriptMembers)
         .where(
@@ -428,10 +497,6 @@ export class ManuscriptService {
   private async findManuscriptById(id: string): Promise<any> {
     if (!this.db) return null;
 
-    if (this.db._data?.manuscripts) {
-      return this.db._data.manuscripts.find((m: any) => m.id === id) || null;
-    }
-
     if (this.db.query?.manuscripts?.findFirst) {
       return this.db.query.manuscripts.findFirst({
         where: eq(manuscripts.id, id),
@@ -448,10 +513,6 @@ export class ManuscriptService {
 
   private async findMembersByManuscriptId(manuscriptId: string): Promise<any[]> {
     if (!this.db) return [];
-
-    if (this.db._data?.manuscriptMembers) {
-      return this.db._data.manuscriptMembers.filter((m: any) => m.manuscriptId === manuscriptId);
-    }
 
     if (this.db.query?.manuscriptMembers?.findMany) {
       return this.db.query.manuscriptMembers.findMany({

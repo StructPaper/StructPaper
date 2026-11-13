@@ -3,7 +3,6 @@ import {
   NotFoundException,
   PreconditionFailedException,
   ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import { AbilityFactory } from '../../src/modules/access/domain/ability.factory';
 import { ManuscriptService } from '../../src/modules/manuscripts/application/manuscript.service';
@@ -13,17 +12,70 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
   let manuscriptService: ManuscriptService;
   let abilityFactory: AbilityFactory;
   let mockDb: any;
+  let dbData: {
+    manuscripts: any[];
+    manuscriptMembers: any[];
+    manuscriptDocs: any[];
+  };
 
   const mockJournalId = '11111111-1111-1111-1111-111111111111';
   const authorUserId = '22222222-2222-2222-2222-222222222222';
   const otherUserId = '33333333-3333-3333-3333-333333333333';
   const superAdminId = '99999999-9999-9999-9999-999999999999';
 
+  function matchesRow(cond: any, row: any): boolean {
+    if (!cond) return true;
+    if (!cond.toQuery) return true;
+
+    const { sql } = cond.toQuery({
+      escapeName: (n: any) => n,
+      escapeParam: (i: any, p: any) => String(p),
+      casing: { getColumnCasing: (c: any) => c.name },
+    });
+
+    // Check ID in array: manuscripts.id in (m-1, m-2)
+    const inMatch = sql.match(/manuscripts\.id in \(([^)]+)\)/);
+    if (inMatch) {
+      const ids = inMatch[1].split(',').map((s: string) => s.trim());
+      if (!ids.includes(row.id)) return false;
+    }
+
+    // Check ID eq: manuscripts.id = xxx
+    const idMatch = sql.match(/manuscripts\.id = ([^\s\)]+)/);
+    if (idMatch) {
+      if (row.id !== idMatch[1]) return false;
+    }
+
+    // Check Version eq: manuscripts.version = xxx
+    const verMatch = sql.match(/manuscripts\.version = ([0-9]+)/);
+    if (verMatch) {
+      if (row.version !== Number(verMatch[1])) return false;
+    }
+
+    // Check search term in title or abstract
+    const searchMatch = sql.match(/ilike %([^%]+)%/);
+    if (searchMatch) {
+      const term = searchMatch[1].toLowerCase();
+      const titleMatch = row.title && row.title.toLowerCase().includes(term);
+      const absMatch = row.abstract && row.abstract.toLowerCase().includes(term);
+      if (!titleMatch && !absMatch) return false;
+    }
+
+    // Check cursor: manuscripts.updated_at < or >
+    const cursorLtMatch = sql.match(/manuscripts\.updated_at < ([^\s\)]+)/);
+    if (cursorLtMatch) {
+      const cursorTime = new Date(cursorLtMatch[1]).getTime();
+      const rowTime = new Date(row.updatedAt).getTime();
+      if (rowTime >= cursorTime) return false;
+    }
+
+    return true;
+  }
+
   beforeEach(() => {
     abilityFactory = new AbilityFactory();
 
-    // In-memory mock DB structure
-    const dbData = {
+    dbData = {
       manuscripts: [
         {
           id: 'm-1',
@@ -79,41 +131,99 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
     };
 
     mockDb = {
-      _data: dbData,
+      transaction: vi.fn().mockImplementation(async (callback: any) => {
+        return callback(mockDb);
+      }),
       insert: vi.fn().mockImplementation((table: any) => ({
-        values: vi.fn().mockImplementation((val: any) => ({
-          returning: vi.fn().mockImplementation(async () => {
-            const row = {
-              ...val,
-              id: val.id || `m-gen-${Date.now()}`,
-              createdAt: val.createdAt || new Date(),
-              updatedAt: val.updatedAt || new Date(),
-            };
-            return [row];
+        values: vi.fn().mockImplementation((val: any) => {
+          const row = {
+            ...val,
+            id: val.id || `m-gen-${Date.now()}`,
+            createdAt: val.createdAt || new Date(),
+            updatedAt: val.updatedAt || new Date(),
+          };
+          if (val.currentServerRev !== undefined) {
+            dbData.manuscripts.push(row);
+          } else if (val.role !== undefined) {
+            dbData.manuscriptMembers.push(row);
+          } else if (val.docTree !== undefined) {
+            dbData.manuscriptDocs.push(row);
+          }
+          return {
+            returning: vi.fn().mockResolvedValue([row]),
+            onConflictDoNothing: vi.fn().mockResolvedValue([row]),
+          };
+        }),
+      })),
+      select: vi.fn().mockImplementation((fields?: any) => {
+        let whereCond: any = null;
+        let limitVal: number | undefined;
+        let offsetVal: number | undefined;
+
+        const builder: any = {
+          from: vi.fn().mockImplementation(() => builder),
+          where: vi.fn().mockImplementation((cond: any) => {
+            whereCond = cond;
+            return builder;
           }),
-        })),
-      })),
-      select: vi.fn().mockImplementation(() => ({
-        from: vi.fn().mockImplementation(() => ({
-          where: vi.fn().mockImplementation(() => ({
-            limit: vi.fn().mockResolvedValue(dbData.manuscripts),
+          orderBy: vi.fn().mockImplementation(() => builder),
+          limit: vi.fn().mockImplementation((n: number) => {
+            limitVal = n;
+            return builder;
+          }),
+          offset: vi.fn().mockImplementation((n: number) => {
+            offsetVal = n;
+            return builder;
+          }),
+          then: (resolve: any, reject?: any) => {
+            try {
+              let rows = [...dbData.manuscripts];
+              if (whereCond) {
+                rows = rows.filter((r) => matchesRow(whereCond, r));
+              }
+              if (fields && fields.count) {
+                return resolve([{ count: rows.length }]);
+              }
+              rows.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+              if (offsetVal) {
+                rows = rows.slice(offsetVal);
+              }
+              if (limitVal !== undefined) {
+                rows = rows.slice(0, limitVal);
+              }
+              return resolve(rows);
+            } catch (err) {
+              if (reject) return reject(err);
+              throw err;
+            }
+          },
+        };
+        return builder;
+      }),
+      update: vi.fn().mockImplementation((table: any) => ({
+        set: vi.fn().mockImplementation((updates: any) => ({
+          where: vi.fn().mockImplementation((cond: any) => ({
+            returning: vi.fn().mockImplementation(async () => {
+              const matched = dbData.manuscripts.filter((r) => matchesRow(cond, r));
+              if (matched.length === 0) {
+                return [];
+              }
+              matched.forEach((r) => Object.assign(r, updates));
+              return matched;
+            }),
           })),
         })),
       })),
-      update: vi.fn().mockImplementation(() => ({
-        set: vi.fn().mockImplementation(() => ({
-          where: vi.fn().mockImplementation(() => ({
-            returning: vi.fn().mockResolvedValue([]),
-          })),
-        })),
-      })),
-      delete: vi.fn().mockImplementation(() => ({
-        where: vi.fn().mockResolvedValue([]),
+      delete: vi.fn().mockImplementation((table: any) => ({
+        where: vi.fn().mockImplementation(async (cond: any) => {
+          dbData.manuscripts = dbData.manuscripts.filter((r) => !matchesRow(cond, r));
+          return [];
+        }),
       })),
       query: {
         manuscripts: {
           findFirst: vi.fn().mockImplementation(async ({ where }: any) => {
-            return dbData.manuscripts[0];
+            return dbData.manuscripts.find((r) => matchesRow(where, r)) || null;
           }),
           findMany: vi.fn().mockImplementation(async () => dbData.manuscripts),
         },
@@ -127,7 +237,11 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
   });
 
   describe('createManuscript', () => {
-    it('creates manuscript, automatically assigns OWNER member, and initializes doc_tree with server_rev = 0', async () => {
+    it('creates manuscript within a transaction, assigns OWNER member, and initializes doc_tree', async () => {
+      const authorAbility = await abilityFactory.createForUser(authorUserId, {
+        roles: [{ name: 'Author' }],
+      });
+
       const dto: CreateManuscript = {
         journalId: mockJournalId,
         title: 'New Breakthrough Paper',
@@ -135,7 +249,7 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
         metadata: { field: 'Physics' },
       };
 
-      const result = await manuscriptService.createManuscript(dto, authorUserId);
+      const result = await manuscriptService.createManuscript(dto, authorUserId, authorAbility);
 
       expect(result).toBeDefined();
       expect(result.title).toBe(dto.title);
@@ -145,12 +259,29 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
       expect(result.version).toBe(1);
       expect(result.status).toBe('DRAFT');
 
-      // Verify db.insert was called for manuscript, members, and manuscript_docs
+      // Verify db.transaction was called to wrap all 3 inserts
+      expect(mockDb.transaction).toHaveBeenCalled();
       expect(mockDb.insert).toHaveBeenCalledTimes(3);
+    });
+
+    it('rejects with 403 ForbiddenException when CASL ability denies manuscript creation', async () => {
+      // Reviewer cannot create manuscripts
+      const reviewerAbility = await abilityFactory.createForUser('reviewer-1', {
+        roles: [{ name: 'Reviewer' }],
+      });
+
+      const dto: CreateManuscript = {
+        journalId: mockJournalId,
+        title: 'Unauthorized Paper',
+      };
+
+      await expect(
+        manuscriptService.createManuscript(dto, 'reviewer-1', reviewerAbility),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
-  describe('listManuscripts (Pagination & CASL Ability Scoping)', () => {
+  describe('listManuscripts (Pagination & CASL Ability Scoping in SQL)', () => {
     it('filters manuscripts according to Author CASL ability (only owned/coauthored)', async () => {
       // Author only has m-1 (OWNER) and m-2 (COAUTHOR)
       const authorAbility = await abilityFactory.createForUser(authorUserId, {
@@ -271,7 +402,6 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
     });
 
     it('throws ForbiddenException when user lacks CASL ability to read', async () => {
-      // User with no memberships
       const unauthorizedAbility = await abilityFactory.createForUser(otherUserId, {
         roles: [{ name: 'Author' }],
         manuscriptMemberships: [],
@@ -293,7 +423,7 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
     });
   });
 
-  describe('updateManuscript & Concurrency Control (If-Match)', () => {
+  describe('updateManuscript & Atomic Concurrency Control (If-Match)', () => {
     it('updates manuscript and increments version when If-Match matches current version', async () => {
       const authorAbility = await abilityFactory.createForUser(authorUserId, {
         roles: [{ name: 'Author' }],
@@ -325,6 +455,31 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
           'm-1',
           { title: 'Conflicting update' },
           '"99"',
+          authorAbility,
+        ),
+      ).rejects.toThrow(PreconditionFailedException);
+    });
+
+    it('rejects with 412 PreconditionFailedException when atomic SQL update detects version conflict (0 rows)', async () => {
+      const authorAbility = await abilityFactory.createForUser(authorUserId, {
+        roles: [{ name: 'Author' }],
+        manuscriptMemberships: [{ manuscriptId: 'm-1', role: 'OWNER' }],
+      });
+
+      // Mock update returning empty array (as if concurrent write bumped version between read and write)
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+
+      await expect(
+        manuscriptService.updateManuscript(
+          'm-1',
+          { title: 'Race condition update' },
+          undefined,
           authorAbility,
         ),
       ).rejects.toThrow(PreconditionFailedException);

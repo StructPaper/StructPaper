@@ -46,7 +46,8 @@ export class ManuscriptController {
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(CreateManuscriptSchema))
   async create(@Body() body: CreateManuscript, @Req() req: any) {
-    return this.manuscriptService.createManuscript(body, req.user?.id);
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.createManuscript(body, req.user?.id, ability);
   }
 
   @Get()
