@@ -79,19 +79,28 @@ export const setMockMode = (enabled: boolean) => {
 };
 
 // ======= Token Refresh Queue Logic =======
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+interface RefreshSubscriber {
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb);
+let isRefreshing = false;
+let refreshSubscribers: RefreshSubscriber[] = [];
+
+const subscribeTokenRefresh = (
+  resolve: (token: string) => void,
+  reject: (error: any) => void,
+) => {
+  refreshSubscribers.push({ resolve, reject });
 };
 
 const onRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers.forEach((sub) => sub.resolve(token));
   refreshSubscribers = [];
 };
 
 const onRefreshFailed = (error: any) => {
+  refreshSubscribers.forEach((sub) => sub.reject(error));
   refreshSubscribers = [];
   setAccessToken(null);
   isRefreshing = false;
@@ -192,12 +201,17 @@ http.interceptors.response.use(
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          subscribeTokenRefresh((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            resolve(http(originalRequest));
-          });
+          subscribeTokenRefresh(
+            (token) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              resolve(http(originalRequest));
+            },
+            (refreshErr) => {
+              reject(refreshErr);
+            },
+          );
         });
       }
 
