@@ -94,4 +94,6 @@ export interface LivePreviewPaneProps {
   onSectionsChange?: (sections: PaperSection[]) => void;
   /** What a document does when a section has no page-layout marker. */
   layoutDefaults?: { oneColumn: boolean; landscape: boolean };
+  /** Optional override for interactive/focus mode (defaults to EditorSessionContext.pdfFocusMode). */
+  interactiveMode?: boolean;
 }

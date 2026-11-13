@@ -31,6 +31,9 @@ export interface EditorSessionContextValue {
   toggleAutoSave: () => void;
   documentSession: EditorDocumentSession | null;
   setDocumentSession: (session: EditorDocumentSession | null) => void;
+  pdfFocusMode: boolean;
+  setPdfFocusMode: (enabled: boolean) => void;
+  togglePdfFocusMode: () => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -39,6 +42,9 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   toggleAutoSave: () => {},
   documentSession: null,
   setDocumentSession: () => {},
+  pdfFocusMode: false,
+  setPdfFocusMode: () => {},
+  togglePdfFocusMode: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -52,6 +58,13 @@ export function EditorSessionProvider({
     readAutoSavePreference()
   );
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
+  const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('structpaper_pdf_interactive_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     setAutoSaveEnabledState(readAutoSavePreference());
@@ -73,6 +86,27 @@ export function EditorSessionProvider({
     });
   }, []);
 
+  const setPdfFocusMode = useCallback((enabled: boolean) => {
+    setPdfFocusModeState(enabled);
+    try {
+      localStorage.setItem('structpaper_pdf_interactive_mode', String(enabled));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const togglePdfFocusMode = useCallback(() => {
+    setPdfFocusModeState((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('structpaper_pdf_interactive_mode', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   const value = useMemo<EditorSessionContextValue>(
     () => ({
       autoSaveEnabled,
@@ -80,8 +114,11 @@ export function EditorSessionProvider({
       toggleAutoSave,
       documentSession,
       setDocumentSession,
+      pdfFocusMode,
+      setPdfFocusMode,
+      togglePdfFocusMode,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode]
   );
 
   return (

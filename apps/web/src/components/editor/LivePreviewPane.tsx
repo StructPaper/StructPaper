@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LivePreviewPaneProps } from './types';
 import { CompileErrorModal } from '../preview/CompileErrorModal';
 import { exportToLatex } from '@/lib/exporters';
-import { RefreshCw, AlertTriangle, Check, Loader2, Crosshair, ExternalLink } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Check, Loader2 } from 'lucide-react';
+import { useEditorSession } from '@/context/EditorSessionContext';
 import type { PaperSection, SectionPageLayout } from '@/types/paper';
 import { PdfInteractiveViewer, type PdfFillIssue, type PdfPickContext, type PdfRotateContext } from '../preview/PdfInteractiveViewer';
 import { rotatePageAt } from '@/lib/editor/page-turn';
@@ -28,32 +29,11 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
   onFocusTab,
   onSectionsChange,
   layoutDefaults = { oneColumn: false, landscape: false },
+  interactiveMode: customInteractiveMode,
 }) => {
   const [viewerFailed, setViewerFailed] = useState(false);
-  const [interactiveMode, setInteractiveMode] = useState<boolean>(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('structpaper_pdf_interactive_mode');
-      if (saved !== null) {
-        setInteractiveMode(saved === 'true');
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const toggleInteractiveMode = useCallback(() => {
-    setInteractiveMode((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('structpaper_pdf_interactive_mode', String(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
+  const session = useEditorSession();
+  const interactiveMode = customInteractiveMode ?? session?.pdfFocusMode ?? false;
 
   /** Markers as they were before the last turn or fill, so it can be taken back without touching the text. */
   const [snapshot, setSnapshot] = useState<Map<string, SectionPageLayout | undefined> | null>(null);
@@ -230,60 +210,7 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
           </div>
         </div>
 
-        {/* Top Control Bar when PDF is available */}
-        {compiledPdfUrl && (
-          <div className="flex items-center justify-between px-1.5 pb-2 flex-shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block flex-shrink-0" />
-              <span className="text-xs font-bold text-zinc-700 truncate">Bản xem trước PDF</span>
-              {compileStats && (
-                <span className="text-[11px] text-zinc-400 hidden xl:inline">
-                  • {compileStats.sizeKb} KB
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {/* Focus/Interactive mode toggle */}
-              <button
-                type="button"
-                onClick={toggleInteractiveMode}
-                data-testid="toggle-interactive-pdf"
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer select-none ${
-                  interactiveMode
-                    ? 'bg-[#78C841] text-zinc-950 font-bold shadow-2xs ring-1 ring-[#78C841]/50'
-                    : 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-600'
-                }`}
-                title={
-                  interactiveMode
-                    ? 'Chế độ định vị đang bật: Nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng. Bấm để tắt và xem PDF chuẩn.'
-                    : 'Bật chế độ định vị: Cho phép nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng trong bài.'
-                }
-              >
-                <Crosshair className={`w-3.5 h-3.5 ${interactiveMode ? 'text-zinc-950' : 'text-zinc-500'}`} />
-                <span>Focus định vị</span>
-                <span
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                    interactiveMode ? 'bg-zinc-950' : 'bg-zinc-400'
-                  }`}
-                />
-              </button>
-
-              {/* Open in new tab */}
-              <a
-                href={compiledPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg hover:bg-zinc-100 transition-colors"
-                title="Mở PDF trong tab mới của trình duyệt"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* The PDF Viewport Wrapper */}
+        {/* The PDF Viewport Wrapper - 100% full height */}
         <div className="w-full flex-1 min-h-0 h-full rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200">
           {compiledPdfUrl && interactiveMode && !viewerFailed ? (
             <PdfInteractiveViewer

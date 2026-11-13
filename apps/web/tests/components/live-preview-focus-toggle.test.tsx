@@ -3,14 +3,24 @@ import React from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { LivePreviewPane } from '@/components/editor/LivePreviewPane';
+import { DesktopTitleBar } from '@/components/titlebar/DesktopTitleBar';
+import { EditorSessionProvider } from '@/context/EditorSessionContext';
+import { PlatformProvider, createFakePlatform } from '@structpaper/platform';
 import type { CompletePaper } from '@/types/paper';
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/editor',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 // Mock PdfInteractiveViewer
 vi.mock('@/components/preview/PdfInteractiveViewer', () => ({
   PdfInteractiveViewer: () => <div data-testid="pdf-interactive-viewer">PdfInteractiveViewer Loaded</div>,
 }));
 
-describe('LivePreviewPane Focus Toggle', () => {
+describe('DesktopTitleBar & LivePreviewPane Focus Toggle Integration', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -47,39 +57,75 @@ describe('LivePreviewPane Focus Toggle', () => {
     references: [],
   };
 
-  it('renders standard iframe by default when compiledPdfUrl is present', () => {
+  it('renders Focus toggle button on TitleBar next to the cloud icon', () => {
+    const platform = createFakePlatform({ kind: 'web' });
     render(
-      <LivePreviewPane
-        paper={dummyPaper}
-        compiledPdfUrl="blob:http://localhost/test.pdf"
-        isCompilingPdf={false}
-      />
+      <PlatformProvider value={platform}>
+        <EditorSessionProvider>
+          <DesktopTitleBar />
+        </EditorSessionProvider>
+      </PlatformProvider>
     );
 
-    // Toggle button should be present
-    const toggleBtn = screen.getByTestId('toggle-interactive-pdf');
+    const toggleBtn = screen.getByTestId('titlebar-toggle-interactive-pdf');
     expect(toggleBtn).toBeDefined();
     expect(toggleBtn.textContent).toContain('Focus định vị');
 
-    // By default (interactiveMode = false), standard iframe is rendered
+    // Cloud icon is present on the TitleBar next to it
+    const cloudIcon = screen.getByTestId('titlebar-cloud-icon');
+    expect(cloudIcon).toBeDefined();
+  });
+
+  it('renders standard iframe by default without any top bar header in preview pane', () => {
+    const platform = createFakePlatform({ kind: 'web' });
+    render(
+      <PlatformProvider value={platform}>
+        <EditorSessionProvider>
+          <LivePreviewPane
+            paper={dummyPaper}
+            compiledPdfUrl="blob:http://localhost/test.pdf"
+            isCompilingPdf={false}
+            compileStats={null}
+            compileErrorInfo={null}
+            onRecompile={vi.fn()}
+            onClearError={vi.fn()}
+          />
+        </EditorSessionProvider>
+      </PlatformProvider>
+    );
+
+    // Standard native iframe is rendered taking full space
     const iframe = screen.getByTitle('XeLaTeX Compiled PDF Live Preview');
     expect(iframe).toBeDefined();
     expect(iframe.getAttribute('src')).toBe('blob:http://localhost/test.pdf#toolbar=1&navpanes=0');
 
     // PdfInteractiveViewer is not rendered
     expect(screen.queryByTestId('pdf-interactive-viewer')).toBeNull();
+
+    // Top control bar inside preview card is removed
+    expect(screen.queryByText('Bản xem trước PDF')).toBeNull();
   });
 
-  it('switches to PdfInteractiveViewer when toggle button is clicked, and back to iframe on second click', () => {
+  it('switches preview to PdfInteractiveViewer when TitleBar focus toggle is clicked, and back on second click', () => {
+    const platform = createFakePlatform({ kind: 'web' });
     render(
-      <LivePreviewPane
-        paper={dummyPaper}
-        compiledPdfUrl="blob:http://localhost/test.pdf"
-        isCompilingPdf={false}
-      />
+      <PlatformProvider value={platform}>
+        <EditorSessionProvider>
+          <DesktopTitleBar />
+          <LivePreviewPane
+            paper={dummyPaper}
+            compiledPdfUrl="blob:http://localhost/test.pdf"
+            isCompilingPdf={false}
+            compileStats={null}
+            compileErrorInfo={null}
+            onRecompile={vi.fn()}
+            onClearError={vi.fn()}
+          />
+        </EditorSessionProvider>
+      </PlatformProvider>
     );
 
-    const toggleBtn = screen.getByTestId('toggle-interactive-pdf');
+    const toggleBtn = screen.getByTestId('titlebar-toggle-interactive-pdf');
 
     // Click to enable Focus mode
     fireEvent.click(toggleBtn);
@@ -99,15 +145,23 @@ describe('LivePreviewPane Focus Toggle', () => {
   });
 
   it('renders empty state when compiledPdfUrl is null', () => {
+    const platform = createFakePlatform({ kind: 'web' });
     render(
-      <LivePreviewPane
-        paper={dummyPaper}
-        compiledPdfUrl={null}
-        isCompilingPdf={false}
-      />
+      <PlatformProvider value={platform}>
+        <EditorSessionProvider>
+          <LivePreviewPane
+            paper={dummyPaper}
+            compiledPdfUrl={null}
+            isCompilingPdf={false}
+            compileStats={null}
+            compileErrorInfo={null}
+            onRecompile={vi.fn()}
+            onClearError={vi.fn()}
+          />
+        </EditorSessionProvider>
+      </PlatformProvider>
     );
 
     expect(screen.getByText('Chưa có bản xem trước PDF')).toBeDefined();
-    expect(screen.queryByTestId('toggle-interactive-pdf')).toBeNull();
   });
 });
