@@ -1,0 +1,107 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  Req,
+  Res,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  UsePipes,
+  Optional,
+} from '@nestjs/common';
+import { SubmitOpsSchema, type SubmitOps } from '@structpaper/contracts';
+import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
+import { AbilityFactory, type AppAbility } from '../../access/domain/ability.factory';
+import { AbilityCacheService } from '../../access/domain/ability-cache.service';
+import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
+import { SyncService } from '../application/sync.service';
+
+@Controller('manuscripts')
+@UseGuards(JwtAuthGuard)
+export class SyncController {
+  constructor(
+    private readonly syncService: SyncService,
+    private readonly abilityFactory: AbilityFactory,
+    @Optional()
+    private readonly abilityCache?: AbilityCacheService,
+  ) {}
+
+  @Post(':id/sync/patches')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(SubmitOpsSchema))
+  async submitPatches(
+    @Param('id') id: string,
+    @Body() body: SubmitOps,
+    @Req() req: any,
+  ) {
+    const ability = await this.getAbility(req);
+    return this.syncService.submitOps(id, body, req.user?.id, ability);
+  }
+
+  @Get(':id/sync/stream')
+  async streamEvents(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() reply: any,
+  ) {
+    const ability = await this.getAbility(req);
+    await this.syncService.subscribeStream(id, reply, req, ability);
+  }
+
+  @Get(':id/sync/missing-ops')
+  async getMissingOps(
+    @Param('id') id: string,
+    @Query('sinceRev') sinceRev: string | undefined,
+    @Req() req: any,
+  ) {
+    const ability = await this.getAbility(req);
+    const parsedRev = sinceRev !== undefined ? parseInt(sinceRev, 10) : 0;
+    return this.syncService.getMissingOps(id, Number.isNaN(parsedRev) ? 0 : parsedRev, ability);
+  }
+
+  @Get(':id/doc')
+  async getDoc(@Param('id') id: string, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.syncService.getDoc(id, ability);
+  }
+
+  @Post(':id/revisions')
+  @HttpCode(HttpStatus.CREATED)
+  async createRevision(
+    @Param('id') id: string,
+    @Body() body: { tagName: string },
+    @Req() req: any,
+  ) {
+    const ability = await this.getAbility(req);
+    return this.syncService.createRevision(id, body?.tagName || 'checkpoint', req.user?.id, ability);
+  }
+
+  @Get(':id/revisions')
+  async listRevisions(@Param('id') id: string, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.syncService.listRevisions(id, ability);
+  }
+
+  private async getAbility(req: any): Promise<AppAbility | undefined> {
+    const user = req.user;
+    if (!user) return undefined;
+
+    const userId = user.id;
+    const pv = user.permissionsVersion;
+
+    if (this.abilityCache && userId && pv !== undefined) {
+      const cached = this.abilityCache.get(userId, pv);
+      if (cached) return cached;
+    }
+
+    const ability = await this.abilityFactory.createForUser(userId ?? user);
+    if (this.abilityCache && userId && pv !== undefined) {
+      this.abilityCache.set(userId, pv, ability);
+    }
+    return ability;
+  }
+}
