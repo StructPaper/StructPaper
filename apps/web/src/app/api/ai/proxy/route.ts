@@ -120,7 +120,24 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. Forward to Spring Boot Backend if configured or available
-  const springBaseUrl = process.env.SPRING_API_URL || (process.env.NODE_ENV === 'test' ? undefined : 'http://localhost:8080');
+  const configuredSpringBase = process.env.SPRING_API_URL;
+  let springBaseUrl = configuredSpringBase;
+
+  if (!springBaseUrl && process.env.NODE_ENV !== 'test') {
+    // Quick 800ms ping to 127.0.0.1 to avoid hanging on non-responsive ports/wslrelay
+    try {
+      const probe = await fetch('http://127.0.0.1:8080/api/v1/system/status', {
+        method: 'GET',
+        signal: AbortSignal.timeout(800),
+      });
+      if (probe.ok) {
+        springBaseUrl = 'http://127.0.0.1:8080';
+      }
+    } catch {
+      // Backend not running; continue to local OpenAI handler
+    }
+  }
+
   if (springBaseUrl) {
     try {
       const springAction = body.action === 'metadata' ? 'extractFrontMatter' : body.action;
@@ -140,6 +157,7 @@ export async function POST(req: NextRequest) {
           payload,
           options: body.options,
         }),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (springRes.ok) {

@@ -147,15 +147,51 @@ export class RemoteCompiler implements CompilerPort {
 
       this.notifyProgress({ phase: 'compiling', percent: 30, message: 'Transmitting payload to compiler server' });
 
-      const response = await doFetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/pdf, application/json',
-        },
-        body: JSON.stringify(payload),
-        signal,
-      });
+      const timeoutMs = this.timeoutMs ?? 90000;
+      const abortCtrl = new AbortController();
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        abortCtrl.abort();
+      }, timeoutMs);
+
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          clearTimeout(timer);
+          abortCtrl.abort();
+        });
+      }
+
+      let response: Response;
+      try {
+        response = await doFetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/pdf, application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: abortCtrl.signal,
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(timer);
+        if (timedOut) {
+          return {
+            status: 'error',
+            error: `Máy chủ biên dịch không phản hồi sau ${Math.round(timeoutMs / 1000)}s (Timeout)`,
+            details: `Thời gian yêu cầu biên dịch vượt quá giới hạn ${Math.round(timeoutMs / 1000)} giây.`,
+            logs: [`Remote compilation request timed out after ${timeoutMs}ms`],
+            durationMs: Date.now() - startTime,
+            producedBy: {
+              kind: 'server-native',
+              environmentId: activeEnvironmentId,
+            },
+          };
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timer);
+      }
 
       const clientDuration = Date.now() - startTime;
 

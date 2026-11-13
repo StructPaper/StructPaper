@@ -65,28 +65,57 @@ export async function POST(req: NextRequest) {
     }
 
     // --- 1. PROXY TO JAVA SPRING BOOT BACKEND FIRST ---
-    try {
-      const springRes = await fetch('http://localhost:8080/api/v1/compile/latex', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texContent: tex, jobName: 'article', autoFontFallback: true, images: images || {} }),
-      });
-      if (springRes.ok) {
-        const pdfBuffer = await springRes.arrayBuffer();
-        const engine = springRes.headers.get('x-compiler-engine') || 'XeLaTeX';
-        const duration = springRes.headers.get('x-compilation-time-ms') || '0';
-        return new NextResponse(pdfBuffer, {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'inline; filename="article.pdf"',
-            'X-Compiler-Engine': `Java Spring Boot (${engine})`,
-            'X-Compilation-Time-Ms': duration,
-          },
+    // Only proxy if explicitly configured via SPRING_API_URL, or if local port 8080 confirms it is StructPaper backend.
+    const configuredSpringUrl = process.env.SPRING_API_URL;
+    let springCompileUrl: string | null = configuredSpringUrl
+      ? `${configuredSpringUrl.replace(/\/+$/, '')}/api/v1/compile/latex`
+      : null;
+
+    if (!springCompileUrl) {
+      // Fast probe to 127.0.0.1:8080 (IPv4 only to avoid ::1 wslrelay hangs)
+      // to check if StructPaper backend is actively running locally on port 8080
+      try {
+        const probeRes = await fetch('http://127.0.0.1:8080/api/v1/system/status', {
+          method: 'GET',
+          signal: AbortSignal.timeout(800),
         });
+        if (probeRes.ok) {
+          const statusJson = (await probeRes.json().catch(() => ({}))) as Record<string, any>;
+          if (statusJson.engine || statusJson.status || statusJson.operatingSystem) {
+            springCompileUrl = 'http://127.0.0.1:8080/api/v1/compile/latex';
+          }
+        }
+      } catch {
+        // Not running or timed out; continue to local CLI engine
       }
-    } catch {
-      // Spring Boot backend offline, continue to local CLI fallback below
+    }
+
+    if (springCompileUrl) {
+      try {
+        const springRes = await fetch(springCompileUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texContent: tex, jobName: 'article', autoFontFallback: true, images: images || {} }),
+          signal: AbortSignal.timeout(60000),
+        });
+        if (springRes.ok) {
+          const pdfBuffer = await springRes.arrayBuffer();
+          const engine = springRes.headers.get('x-compiler-engine') || 'XeLaTeX';
+          const duration = springRes.headers.get('x-compilation-time-ms') || '0';
+          return new NextResponse(pdfBuffer, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': 'inline; filename="article.pdf"',
+              'X-Compiler-Engine': `Java Spring Boot (${engine})`,
+              'X-Compilation-Time-Ms': duration,
+            },
+          });
+        }
+      } catch (springErr) {
+        console.warn('[compile-latex] Spring Boot proxy failed or timed out:', springErr);
+        // Continue to local CLI fallback below
+      }
     }
 
     // 2. Create a secure, isolated job workspace in OS temp directory
