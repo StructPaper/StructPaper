@@ -5,6 +5,8 @@ import { Rfc9457ExceptionFilter } from './filters/rfc9457-exception.filter';
 import { ZodValidationPipe } from './pipes/zod-validation.pipe';
 import { createDbClient } from '@structpaper/db';
 
+export const DRIZZLE = 'DRIZZLE';
+
 const dbProvider = {
   provide: 'DB_CLIENT',
   useFactory: () => {
@@ -15,6 +17,22 @@ const dbProvider = {
     try {
       const { client } = createDbClient(url);
       return client;
+    } catch {
+      return null;
+    }
+  },
+};
+
+const drizzleProvider = {
+  provide: DRIZZLE,
+  useFactory: () => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      return null;
+    }
+    try {
+      const { db } = createDbClient(url);
+      return db;
     } catch {
       return null;
     }
@@ -32,7 +50,8 @@ const dbProvider = {
     Rfc9457ExceptionFilter,
     ZodValidationPipe,
     dbProvider,
+    drizzleProvider,
   ],
-  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, 'DB_CLIENT'],
+  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, 'DB_CLIENT', DRIZZLE],
 })
 export class PlatformModule {}
