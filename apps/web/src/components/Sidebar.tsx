@@ -15,6 +15,7 @@ import {
   BookOpen,
   Menu,
   X,
+  ShieldCheck,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -35,6 +36,12 @@ const NAV_ITEMS = [
     label: 'Quản lý Mẫu & Tạp chí',
     description: '7 Tạp chí ĐHQG & Quy định',
     icon: BookOpen,
+  },
+  {
+    path: '/permissions',
+    label: 'Phân quyền & Vai trò',
+    description: 'Quản lý vai trò & thành viên',
+    icon: ShieldCheck,
   },
   {
     path: '/settings',
