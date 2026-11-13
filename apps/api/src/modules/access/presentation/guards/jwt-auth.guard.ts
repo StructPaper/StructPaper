@@ -16,7 +16,7 @@ export class JwtAuthGuard implements CanActivate {
       request.headers?.authorization ||
       request.headers?.Authorization;
 
-    if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || typeof authHeader !== 'string' || !/^Bearer\s+/i.test(authHeader)) {
       throw new UnauthorizedException('Missing or invalid Authorization header');
     }
 

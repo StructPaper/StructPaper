@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import {
   users,
   userRoles,

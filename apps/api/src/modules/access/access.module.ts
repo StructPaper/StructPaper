@@ -16,7 +16,7 @@ import { PoliciesGuard } from './presentation/guards/policies.guard';
     InMemoryAbilityCacheService,
     {
       provide: AbilityCacheService,
-      useClass: InMemoryAbilityCacheService,
+      useExisting: InMemoryAbilityCacheService,
     },
     AccessService,
     JwtAuthGuard,
