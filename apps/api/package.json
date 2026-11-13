@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/src/main.js",
+    "start": "node dist/apps/api/src/main.js",
     "test": "vitest run",
     "openapi:generate": "tsx src/scripts/generate-openapi.ts",
     "depcruise": "depcruise --config .dependency-cruiser.js src"

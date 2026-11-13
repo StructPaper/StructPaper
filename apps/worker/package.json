@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/src/main.js",
+    "start": "node dist/apps/worker/src/main.js",
     "test": "vitest run"
   },
   "dependencies": {

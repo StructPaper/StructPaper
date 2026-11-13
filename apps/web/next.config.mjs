@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const isExport = process.env.NEXT_EXPORT === 'true';
+const isStandalone = process.env.NEXT_STANDALONE === 'true';
 
 const nextConfig = {
-  output: isExport ? 'export' : undefined,
+  output: isExport ? 'export' : (isStandalone ? 'standalone' : undefined),
   images: {
     unoptimized: isExport ? true : undefined,
   },
