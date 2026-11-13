@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "build": "pnpm -r --filter=!apps/api-deprecated run build",
+    "build": "pnpm -r run build",
     "build:web": "pnpm --filter @structpaper/web build",
     "dev:web": "pnpm --filter @structpaper/web dev",
     "dev:api": "pnpm --filter @structpaper/api dev",
