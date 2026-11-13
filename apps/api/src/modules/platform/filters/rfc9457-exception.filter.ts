@@ -24,6 +24,7 @@ export class Rfc9457ExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let title = 'Internal Server Error';
     let detail = 'An unexpected error occurred';
+    let type = 'about:blank';
     let code: string | undefined;
     let invalidParams: InvalidParam[] | undefined;
     let extensions: Record<string, unknown> = {};
@@ -47,6 +48,9 @@ export class Rfc9457ExceptionFilter implements ExceptionFilter {
       } else if (typeof res === 'object' && res !== null) {
         const resObj = res as Record<string, any>;
         title = resObj.title || (typeof resObj.error === 'string' ? resObj.error : this.getDefaultTitleForStatus(status));
+        if (typeof resObj.type === 'string') {
+          type = resObj.type;
+        }
 
         if (resObj.detail && typeof resObj.detail === 'string') {
           detail = resObj.detail;
@@ -100,7 +104,7 @@ export class Rfc9457ExceptionFilter implements ExceptionFilter {
     }
 
     const problemDetails: ProblemDetails = createProblemDetails({
-      type: 'about:blank',
+      type,
       title,
       status,
       detail,

@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^20.17.10",
     "dependency-cruiser": "^18.7.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
   }

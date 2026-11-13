@@ -28,8 +28,6 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     exclude: ['health'],
   });
 
-  app.useGlobalFilters(new Rfc9457ExceptionFilter());
-
   const port = Number(process.env.PORT) || 4000;
   const host = process.env.HOST || '0.0.0.0';
 

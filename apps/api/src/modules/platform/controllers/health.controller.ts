@@ -34,7 +34,10 @@ export class HealthController {
         dbStatus = 'down';
         dbError = err instanceof Error ? err.message : String(err);
       }
-    } else if (!process.env.DATABASE_URL) {
+    } else if (process.env.DATABASE_URL) {
+      dbStatus = 'down';
+      dbError = 'Database client not initialized';
+    } else {
       dbStatus = 'unconfigured';
     }
 
