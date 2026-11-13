@@ -1,0 +1,25 @@
+{
+  "name": "@structpaper/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "drizzle-kit": "drizzle-kit"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./client": "./src/client.ts",
+    "./seed": "./src/seed.ts"
+  },
+  "dependencies": {
+    "@structpaper/contracts": "workspace:*",
+    "drizzle-orm": "^0.45.0",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0"
+  }
+}
