@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import {
@@ -75,7 +76,14 @@ export class SyncService {
 
     const currentServerRev = manuscript.currentServerRev ?? 0;
 
-    // 2. 409 Conflict Check: if baseServerRev < currentServerRev, client must rebase
+    // 2. Future rev check
+    if (dto.baseServerRev > currentServerRev) {
+      throw new BadRequestException(
+        `Client baseServerRev (${dto.baseServerRev}) cannot be greater than current serverRev (${currentServerRev})`,
+      );
+    }
+
+    // 3. 409 Conflict Check: if baseServerRev < currentServerRev, client must rebase
     if (dto.baseServerRev < currentServerRev) {
       const missingOps = await this.findMissingOps(manuscriptId, dto.baseServerRev);
       throw new ConflictException({

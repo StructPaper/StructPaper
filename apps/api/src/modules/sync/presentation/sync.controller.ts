@@ -60,7 +60,13 @@ export class SyncController {
   ) {
     const ability = await this.getAbility(req);
     const parsedRev = sinceRev !== undefined ? parseInt(sinceRev, 10) : 0;
-    return this.syncService.getMissingOps(id, Number.isNaN(parsedRev) ? 0 : parsedRev, ability);
+    const ops = await this.syncService.getMissingOps(id, Number.isNaN(parsedRev) ? 0 : parsedRev, ability);
+    const doc = await this.syncService.getDoc(id, ability);
+    return {
+      serverRev: doc?.serverRev ?? 0,
+      ops,
+      missingOps: ops,
+    };
   }
 
   @Get(':id/doc')
