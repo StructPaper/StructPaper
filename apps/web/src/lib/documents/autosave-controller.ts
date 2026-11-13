@@ -28,6 +28,7 @@ export class AutosaveController {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private latest: CompletePaper | null = null;
   private running: Promise<void> | null = null;
+  private syncChain: Promise<void> = Promise.resolve();
   private rerun = false;
   private pendingSnapshot = false;
   private disposed = false;
@@ -67,8 +68,12 @@ export class AutosaveController {
     }, this.opts.debounceMs ?? 1200);
   }
 
-  /** Save right now (explicit "Lưu"): also asks the server to keep a versioned snapshot. */
-  async saveNow(paper?: CompletePaper): Promise<SaveState> {
+  /**
+   * Save right now (explicit "Lưu"): persists to local storage immediately,
+   * emits 'saved-local', and pushes a snapshot to the server in the background.
+   * If awaitSync is true, waits for the background server sync to settle.
+   */
+  async saveNow(paper?: CompletePaper, opts?: { awaitSync?: boolean }): Promise<SaveState> {
     if (paper) this.latest = paper;
     this.pendingSnapshot = true;
     if (this.timer) {
@@ -76,6 +81,9 @@ export class AutosaveController {
       this.timer = null;
     }
     await this.run();
+    if (opts?.awaitSync) {
+      await this.syncChain;
+    }
     return this.state;
   }
 
@@ -88,6 +96,7 @@ export class AutosaveController {
     } else if (this.running) {
       await this.running;
     }
+    await this.syncChain;
   }
 
   /** User chose "keep my version" after a conflict. */
@@ -153,18 +162,39 @@ export class AutosaveController {
       return;
     }
 
+    // Step 1 (Local-first): Data is safely saved locally. Notify immediately.
+    this.emit('saved-local', { savedAt: Date.now(), paper });
+
+    // Step 2 (Server sync): Run best-effort synchronization in the background.
     const sync = this.opts.sync;
-    if (!sync) {
-      this.emit('saved-local', { savedAt: Date.now(), paper });
-      return;
-    }
-    try {
-      await sync.push(paper, { snapshot });
-      // If the user kept typing while we saved, stay "dirty" until the re-run completes.
-      this.emit(this.latest !== paper ? 'dirty' : 'saved', { savedAt: Date.now(), paper });
-    } catch (e) {
-      if (e instanceof ApiError && e.isConflict) this.emit('conflict', { error: e });
-      else this.emit('saved-local', { error: e, savedAt: Date.now(), paper });
-    }
+    if (!sync) return;
+
+    this.triggerBackgroundSync(paper, snapshot);
+  }
+
+  private triggerBackgroundSync(paper: CompletePaper, snapshot: boolean): Promise<void> {
+    const sync = this.opts.sync;
+    if (!sync) return Promise.resolve();
+
+    const task = async () => {
+      if (this.disposed) return;
+      try {
+        await sync.push(paper, { snapshot });
+        // Only upgrade to fully saved if no newer edits occurred while syncing
+        if (!this.disposed && this.latest === paper) {
+          this.emit('saved', { savedAt: Date.now(), paper });
+        }
+      } catch (e) {
+        if (this.disposed) return;
+        if (e instanceof ApiError && e.isConflict) {
+          this.emit('conflict', { error: e });
+        } else {
+          this.emit('saved-local', { error: e, savedAt: Date.now(), paper });
+        }
+      }
+    };
+
+    this.syncChain = this.syncChain.catch(() => {}).then(task);
+    return this.syncChain;
   }
 }

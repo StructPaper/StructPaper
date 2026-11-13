@@ -133,7 +133,27 @@ describe('AutosaveController', () => {
     expect(saveLocal).toHaveBeenCalledTimes(1);
   });
 
-  it('saveNow() returns the settled SaveState outcome (saved, saved-local, conflict, error)', async () => {
+  it('saveNow() returns immediately with saved-local optimistically without waiting for slow server sync', async () => {
+    let releasePush!: () => void;
+    const gate = new Promise<void>((r) => (releasePush = r));
+    const push = vi.fn<(...a: any[]) => Promise<any>>().mockImplementationOnce(async () => {
+      await gate;
+      return { rev: 1 };
+    });
+
+    const { ctl } = setup({ push });
+    const savePromise = ctl.saveNow(mk('fast-local'));
+    // Local save resolves immediately to 'saved-local' without blocking for slow remote sync
+    await expect(savePromise).resolves.toBe('saved-local');
+    expect(ctl.getState()).toBe('saved-local');
+
+    // Once remote sync finishes in background, state upgrades to 'saved'
+    releasePush();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(ctl.getState()).toBe('saved');
+  });
+
+  it('saveNow() with awaitSync returns the settled SaveState outcome (saved, saved-local, conflict, error)', async () => {
     const push = vi.fn<(...a: any[]) => Promise<any>>()
       .mockResolvedValueOnce({ rev: 1 })
       .mockRejectedValueOnce(new ApiError(0, 'offline'))
@@ -147,13 +167,13 @@ describe('AutosaveController', () => {
 
     const { ctl } = setup({ push }, localFailOnce);
 
-    expect(await ctl.saveNow(mk('v1'))).toBe('saved');
-    expect(await ctl.saveNow(mk('v2'))).toBe('saved-local');
-    expect(await ctl.saveNow(mk('v3'))).toBe('conflict');
-    expect(await ctl.saveNow(mk('v4'))).toBe('error');
+    expect(await ctl.saveNow(mk('v1'), { awaitSync: true })).toBe('saved');
+    expect(await ctl.saveNow(mk('v2'), { awaitSync: true })).toBe('saved-local');
+    expect(await ctl.saveNow(mk('v3'), { awaitSync: true })).toBe('conflict');
+    expect(await ctl.saveNow(mk('v4'), { awaitSync: true })).toBe('error');
   });
 
-  it('saveNow() waits through an in-flight rerun before returning the latest SaveState', async () => {
+  it('saveNow() with awaitSync waits through an in-flight rerun before returning the latest SaveState', async () => {
     let releaseFirst!: () => void;
     const firstGate = new Promise<void>((r) => (releaseFirst = r));
     const push = vi.fn<(...a: any[]) => Promise<any>>()
@@ -167,7 +187,7 @@ describe('AutosaveController', () => {
     ctl.notify(mk('first'));
     await vi.advanceTimersByTimeAsync(1100);
 
-    const savePromise = ctl.saveNow(mk('second'));
+    const savePromise = ctl.saveNow(mk('second'), { awaitSync: true });
     releaseFirst();
     await expect(savePromise).resolves.toBe('conflict');
     expect(push).toHaveBeenCalledTimes(2);

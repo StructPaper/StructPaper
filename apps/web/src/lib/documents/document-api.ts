@@ -65,7 +65,7 @@ export class DocumentApi {
   constructor(
     private baseUrl: string = defaultApiBase(),
     private fetchImpl: FetchLike = (i, init) => fetch(i, init),
-    private timeoutMs = 10_000
+    private timeoutMs = 5_000
   ) {}
 
   get base(): string {

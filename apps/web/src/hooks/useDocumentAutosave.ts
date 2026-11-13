@@ -92,7 +92,10 @@ export function useDocumentAutosave({
     };
   }, [controller]);
 
-  const saveNow = useCallback((p?: CompletePaper) => controller.saveNow(p ?? paper), [controller, paper]);
+  const saveNow = useCallback(
+    (p?: CompletePaper, opts?: { awaitSync?: boolean }) => controller.saveNow(p ?? paper, opts),
+    [controller, paper]
+  );
   const flush = useCallback(() => controller.flush(), [controller]);
   const resolveKeepMine = useCallback(() => controller.resolveKeepMine(), [controller]);
 
