@@ -1,0 +1,50 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Req,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
+import {
+  UploadIntentSchema,
+  UploadCompleteSchema,
+  type UploadIntent,
+  type UploadComplete,
+} from '@structpaper/contracts';
+import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
+import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
+import { AssetService } from '../application/asset.service';
+
+@Controller('assets')
+export class AssetController {
+  constructor(private readonly assetService: AssetService) {}
+
+  @Post('upload-intent')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ZodValidationPipe(UploadIntentSchema))
+  async createUploadIntent(@Body() body: UploadIntent, @Req() req: any) {
+    const userId = req.user?.id;
+    return this.assetService.createUploadIntent(body, userId);
+  }
+
+  @Post('upload-complete')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ZodValidationPipe(UploadCompleteSchema))
+  async completeUpload(@Body() body: UploadComplete, @Req() req: any) {
+    const userId = req.user?.id;
+    return this.assetService.completeUpload(body, userId);
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async getById(@Param('id') id: string) {
+    return this.assetService.getAssetById(id);
+  }
+}
