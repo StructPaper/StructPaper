@@ -8,3 +8,6 @@ export * from './PaperDeleteConfirmModal';
 export * from './EmptyPapersState';
 export * from './PaperCardShimmer';
 export * from './PaperTableShimmer';
+export * from './PaginationControls';
+export * from './ManuscriptTable';
+export * from './ServerManuscriptsView';

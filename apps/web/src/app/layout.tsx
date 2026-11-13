@@ -16,6 +16,7 @@ import { PlatformProvider } from '@/platform/provider';
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { DesktopChromeShell } from '@/components/titlebar';
 import { UpdateToastNotifier } from '@/components/platform/UpdateToastNotifier';
+import { QueryProvider } from '@/lib/query-client';
 
 export default function RootLayout({
   children,
@@ -36,19 +37,21 @@ export default function RootLayout({
             `,
           }}
         />
-        <PlatformProvider>
-          <EditorSessionProvider>
-            <PaperProvider>
-              <DesktopChromeShell>
-                <Toaster />
-                <UpdateToastNotifier />
-                <AppShell>
-                  {children}
-                </AppShell>
-              </DesktopChromeShell>
-            </PaperProvider>
-          </EditorSessionProvider>
-        </PlatformProvider>
+        <QueryProvider>
+          <PlatformProvider>
+            <EditorSessionProvider>
+              <PaperProvider>
+                <DesktopChromeShell>
+                  <Toaster />
+                  <UpdateToastNotifier />
+                  <AppShell>
+                    {children}
+                  </AppShell>
+                </DesktopChromeShell>
+              </PaperProvider>
+            </EditorSessionProvider>
+          </PlatformProvider>
+        </QueryProvider>
       </body>
     </html>
   );

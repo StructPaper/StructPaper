@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, HardDrive, Cloud } from 'lucide-react';
 import { usePapersHub } from '@/hooks';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import {
@@ -16,6 +16,7 @@ import {
   PaperQuickEditModal,
   PaperDeleteConfirmModal,
   EmptyPapersState,
+  ServerManuscriptsView,
 } from '@/components/papers';
 import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
@@ -24,6 +25,7 @@ export const PaperHubView: React.FC = () => {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deletingPaper, setDeletingPaper] = useState<ManuscriptRecord | null>(null);
+  const [storageSource, setStorageSource] = useState<'local' | 'server'>('local');
 
   const {
     records,
@@ -63,151 +65,187 @@ export const PaperHubView: React.FC = () => {
   return (
     <LayoutGroup id="paper-hub-layout-group">
       <div className="w-full max-w-7xl mx-auto space-y-7 pb-16 pt-4 px-4 sm:px-6">
-      {/* 1. Top Horizontal Recent Papers Row */}
-      <RecentPapersRow
-        papers={records}
-        onOpenPaper={handleOpenEditor}
-        onCreateNew={() => setIsCreateModalOpen(true)}
-        isCreateOpen={isCreateModalOpen}
-        isLoading={isLoading}
-      />
-
-      {/* 2. Sticky Filter Toolbar */}
-      <StickyHubToolbar data-testid="paper-hub-sticky-toolbar">
-        <PaperFiltersBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          journalFilter={journalFilter}
-          onJournalFilterChange={setJournalFilter}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          countsByStatus={countsByStatus}
-          onCreateFromTemplate={() => setIsCreateModalOpen(true)}
-        />
-      </StickyHubToolbar>
-
-      {/* 3. Papers List (Loading Shimmer vs Grid vs Table vs Empty) */}
-      {isLoading ? (
-        viewMode === 'grid' ? (
-          <div
-            data-testid="papers-shimmer-grid"
-            className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+        {/* 0. Storage Source Switcher: Local IndexedDB vs Cloud Backend */}
+        <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+          <button
+            type="button"
+            data-testid="tab-source-local"
+            onClick={() => setStorageSource('local')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              storageSource === 'local'
+                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
           >
-            <PaperCardShimmer cardCount={8} />
-          </div>
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>Bản thảo cục bộ (Offline)</span>
+          </button>
+          <button
+            type="button"
+            data-testid="tab-source-server"
+            onClick={() => setStorageSource('server')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              storageSource === 'server'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Bản thảo máy chủ (Cloud API)</span>
+          </button>
+        </div>
+
+        {storageSource === 'server' ? (
+          <ServerManuscriptsView onOpenManuscript={handleOpenEditor} />
         ) : (
-          <div data-testid="papers-shimmer-table">
-            <PaperTableShimmer rowCount={8} />
-          </div>
-        )
-      ) : filteredPapers.length === 0 ? (
-        <EmptyPapersState
-          isFiltered={Boolean(searchQuery || statusFilter !== 'all' || journalFilter !== 'all')}
-          onResetFilters={() => {
-            setSearchQuery('');
-            setStatusFilter('all');
-            setJournalFilter('all');
-          }}
-          onCreateFromTemplate={() => setIsCreateModalOpen(true)}
-        />
-      ) : viewMode === 'grid' ? (
-        <div
-          data-testid="papers-grid"
-          className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        >
-          {filteredPapers.map((paper) => (
-            <PaperCard
-              key={paper.info.id}
-              paper={paper}
-              isMenuOpen={activeMenuId === paper.info.id}
-              onToggleMenu={(e) => {
-                e.stopPropagation();
-                setActiveMenuId(activeMenuId === paper.info.id ? null : paper.info.id);
-              }}
-              onCloseMenu={() => setActiveMenuId(null)}
-              onOpenEditor={handleOpenEditor}
-              onQuickEdit={(p) => setEditingPaper(p)}
-              onTogglePin={handleTogglePin}
-              onDuplicate={handleDuplicate}
-              onExportBackup={handleExportBackup}
-              onDelete={(id) => {
-                const target = records.find((r) => r.info.id === id);
-                if (target) {
-                  setDeletingPaper(target);
-                } else {
-                  handleDelete(id);
-                }
-              }}
+          <>
+            {/* 1. Top Horizontal Recent Papers Row */}
+            <RecentPapersRow
+              papers={records}
+              onOpenPaper={handleOpenEditor}
+              onCreateNew={() => setIsCreateModalOpen(true)}
+              isCreateOpen={isCreateModalOpen}
+              isLoading={isLoading}
             />
-          ))}
-        </div>
-      ) : (
-        <PaperTable
-          papers={filteredPapers}
-          activeMenuId={activeMenuId}
-          onToggleMenu={(id, e) => {
-            e.stopPropagation();
-            setActiveMenuId(activeMenuId === id ? null : id);
-          }}
-          onCloseMenu={() => setActiveMenuId(null)}
-          onOpenEditor={handleOpenEditor}
-          onQuickEdit={(p) => setEditingPaper(p)}
-          onTogglePin={handleTogglePin}
-          onDuplicate={handleDuplicate}
-          onExportBackup={handleExportBackup}
-          onDelete={(id) => {
-            const target = records.find((r) => r.info.id === id);
-            if (target) {
-              setDeletingPaper(target);
-            } else {
-              handleDelete(id);
-            }
-          }}
+
+            {/* 2. Sticky Filter Toolbar */}
+            <StickyHubToolbar data-testid="paper-hub-sticky-toolbar">
+              <PaperFiltersBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                journalFilter={journalFilter}
+                onJournalFilterChange={setJournalFilter}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                countsByStatus={countsByStatus}
+                onCreateFromTemplate={() => setIsCreateModalOpen(true)}
+              />
+            </StickyHubToolbar>
+
+            {/* 3. Papers List (Loading Shimmer vs Grid vs Table vs Empty) */}
+            {isLoading ? (
+              viewMode === 'grid' ? (
+                <div
+                  data-testid="papers-shimmer-grid"
+                  className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                >
+                  <PaperCardShimmer cardCount={8} />
+                </div>
+              ) : (
+                <div data-testid="papers-shimmer-table">
+                  <PaperTableShimmer rowCount={8} />
+                </div>
+              )
+            ) : filteredPapers.length === 0 ? (
+              <EmptyPapersState
+                isFiltered={Boolean(searchQuery || statusFilter !== 'all' || journalFilter !== 'all')}
+                onResetFilters={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setJournalFilter('all');
+                }}
+                onCreateFromTemplate={() => setIsCreateModalOpen(true)}
+              />
+            ) : viewMode === 'grid' ? (
+              <div
+                data-testid="papers-grid"
+                className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              >
+                {filteredPapers.map((paper) => (
+                  <PaperCard
+                    key={paper.info.id}
+                    paper={paper}
+                    isMenuOpen={activeMenuId === paper.info.id}
+                    onToggleMenu={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuId(activeMenuId === paper.info.id ? null : paper.info.id);
+                    }}
+                    onCloseMenu={() => setActiveMenuId(null)}
+                    onOpenEditor={handleOpenEditor}
+                    onQuickEdit={(p) => setEditingPaper(p)}
+                    onTogglePin={handleTogglePin}
+                    onDuplicate={handleDuplicate}
+                    onExportBackup={handleExportBackup}
+                    onDelete={(id) => {
+                      const target = records.find((r) => r.info.id === id);
+                      if (target) {
+                        setDeletingPaper(target);
+                      } else {
+                        handleDelete(id);
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <PaperTable
+                papers={filteredPapers}
+                activeMenuId={activeMenuId}
+                onToggleMenu={(id, e) => {
+                  e.stopPropagation();
+                  setActiveMenuId(activeMenuId === id ? null : id);
+                }}
+                onCloseMenu={() => setActiveMenuId(null)}
+                onOpenEditor={handleOpenEditor}
+                onQuickEdit={(p) => setEditingPaper(p)}
+                onTogglePin={handleTogglePin}
+                onDuplicate={handleDuplicate}
+                onExportBackup={handleExportBackup}
+                onDelete={(id) => {
+                  const target = records.find((r) => r.info.id === id);
+                  if (target) {
+                    setDeletingPaper(target);
+                  } else {
+                    handleDelete(id);
+                  }
+                }}
+              />
+            )}
+
+            {/* 4. End of list indicator */}
+            {!isLoading && filteredPapers.length > 0 && (
+              <div className="py-10 flex items-center justify-center gap-4 opacity-50 select-none">
+                <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-zinc-500" />
+                  <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Bạn đã xem hết danh sách bài báo
+                  </span>
+                </div>
+                <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 5. Quick Edit Modal */}
+        <PaperQuickEditModal
+          paper={editingPaper}
+          isOpen={Boolean(editingPaper)}
+          onClose={() => setEditingPaper(null)}
+          onSave={handleSaveQuickEdit}
         />
-      )}
 
-      {/* 4. End of list indicator */}
-      {!isLoading && filteredPapers.length > 0 && (
-        <div className="py-10 flex items-center justify-center gap-4 opacity-50 select-none">
-          <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
-          <div className="flex flex-col items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-zinc-500" />
-            <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">
-              Bạn đã xem hết danh sách bài báo
-            </span>
-          </div>
-          <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
-        </div>
-      )}
+        {/* 6. Delete Confirmation Modal (matching Image 2) */}
+        <PaperDeleteConfirmModal
+          paper={deletingPaper}
+          isOpen={Boolean(deletingPaper)}
+          onClose={() => setDeletingPaper(null)}
+          onConfirm={handleDelete}
+        />
 
-      {/* 5. Quick Edit Modal */}
-      <PaperQuickEditModal
-        paper={editingPaper}
-        isOpen={Boolean(editingPaper)}
-        onClose={() => setEditingPaper(null)}
-        onSave={handleSaveQuickEdit}
-      />
-
-      {/* 6. Delete Confirmation Modal (matching Image 2) */}
-      <PaperDeleteConfirmModal
-        paper={deletingPaper}
-        isOpen={Boolean(deletingPaper)}
-        onClose={() => setDeletingPaper(null)}
-        onConfirm={handleDelete}
-      />
-
-      {/* 7. 2-Step Create Paper Modal (Upload DOCX / Blank -> Select Template -> Editor) */}
-      <CreatePaperModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onPaperCreated={() => loadRecords()}
-        onBatchFinished={() => loadRecords()}
-      />
-    </div>
+        {/* 7. 2-Step Create Paper Modal (Upload DOCX / Blank -> Select Template -> Editor) */}
+        <CreatePaperModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onPaperCreated={() => loadRecords()}
+          onBatchFinished={() => loadRecords()}
+        />
+      </div>
     </LayoutGroup>
   );
 };

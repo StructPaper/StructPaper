@@ -120,6 +120,9 @@ importers:
       '@fortune-sheet/react':
         specifier: ^1.0.4
         version: 1.0.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@structpaper/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@structpaper/compiler-client':
         specifier: workspace:*
         version: link:../../packages/compiler-client
@@ -147,6 +150,9 @@ importers:
       '@structpaper/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@tanstack/react-query':
+        specifier: ^5.66.0
+        version: 5.107.1(@types/react@18.3.31)(react@18.3.1)
       '@tanstack/react-virtual':
         specifier: ^3.14.26
         version: 3.14.26(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@fortune-sheet/react": "^1.0.4",
+    "@structpaper/api-client": "workspace:*",
     "@structpaper/compiler-client": "workspace:*",
     "@structpaper/doc-model": "workspace:*",
     "@structpaper/editor-core": "workspace:*",
@@ -25,6 +26,7 @@
     "@structpaper/platform-web": "workspace:*",
     "@structpaper/qc-engine": "workspace:*",
     "@structpaper/storage": "workspace:*",
+    "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-virtual": "^3.14.26",
     "@tiptap/core": "^3.32.2",
     "@tiptap/extension-subscript": "^3.32.2",

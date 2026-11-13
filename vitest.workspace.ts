@@ -28,6 +28,7 @@ export default defineWorkspace([
         'packages/**/*.{test,spec}.{ts,tsx}',
         'apps/**/*.{test,spec}.{ts,tsx}',
         'tests/**/*.{test,spec}.{ts,tsx}',
+        'test/**/*.{test,spec}.{ts,tsx}',
         'contracts/**/*.{test,spec}.{ts,tsx}',
       ],
       exclude: [
