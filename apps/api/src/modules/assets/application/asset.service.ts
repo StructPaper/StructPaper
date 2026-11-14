@@ -39,6 +39,7 @@ export class AssetService {
     @Optional()
     @Inject('DRIZZLE')
     private readonly db: any,
+    @Inject(StorageService)
     private readonly storageService: StorageService,
   ) {}
 

@@ -38,8 +38,10 @@ export class UserService {
     @Optional()
     @Inject('DRIZZLE')
     private readonly db: any,
+    @Inject(TokenService)
     private readonly tokenService: TokenService,
     @Optional()
+    @Inject(MailService)
     private readonly mailService?: MailService,
   ) {}
 

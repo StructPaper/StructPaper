@@ -23,6 +23,7 @@ import { PoliciesGuard } from './presentation/guards/policies.guard';
     PoliciesGuard,
   ],
   exports: [
+    IdentityModule,
     AbilityFactory,
     AbilityCacheService,
     InMemoryAbilityCacheService,

@@ -9,6 +9,8 @@ export {
   customInstance,
   setAccessToken,
   getAccessToken,
+  setRefreshTokenGetter,
+  setOnTokenRefreshed,
   isMockModeEnabled,
   setMockMode,
   ProblemDetailsError,

@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   UsePipes,
+  Inject,
 } from '@nestjs/common';
 import { AssignRoleSchema, type AssignRole } from '@structpaper/contracts';
 import { AccessService } from '../application/access.service';
@@ -13,7 +14,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 
 @Controller()
 export class AccessController {
-  constructor(private readonly accessService: AccessService) {}
+  constructor(@Inject(AccessService) private readonly accessService: AccessService) {}
 
   @Get('roles')
   async getRoles() {

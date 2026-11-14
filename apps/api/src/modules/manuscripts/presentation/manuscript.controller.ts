@@ -15,6 +15,7 @@ import {
   UseGuards,
   UsePipes,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import {
   CreateManuscriptSchema,
@@ -36,9 +37,12 @@ import { ManuscriptService } from '../application/manuscript.service';
 @UseGuards(JwtAuthGuard)
 export class ManuscriptController {
   constructor(
+    @Inject(ManuscriptService)
     private readonly manuscriptService: ManuscriptService,
+    @Inject(AbilityFactory)
     private readonly abilityFactory: AbilityFactory,
     @Optional()
+    @Inject(AbilityCacheService)
     private readonly abilityCache?: AbilityCacheService,
   ) {}
 

@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseGuards,
   UsePipes,
+  Inject,
 } from '@nestjs/common';
 import {
   UploadIntentSchema,
@@ -22,7 +23,7 @@ import { AssetService } from '../application/asset.service';
 
 @Controller('assets')
 export class AssetController {
-  constructor(private readonly assetService: AssetService) {}
+  constructor(@Inject(AssetService) private readonly assetService: AssetService) {}
 
   @Post('upload-intent')
   @HttpCode(HttpStatus.OK)

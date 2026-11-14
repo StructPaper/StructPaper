@@ -42,14 +42,24 @@ export class ProblemDetailsError extends Error {
   }
 }
 
-// ======= Memory Storage for Access Token =======
+// ======= Memory Storage for Access Token & Refresh Handler =======
 let accessToken: string | null = null;
+let refreshTokenGetter: (() => string | null) | null = null;
+let onTokenRefreshedCallback: ((newAccessToken: string) => void) | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
 
 export const getAccessToken = () => accessToken;
+
+export const setRefreshTokenGetter = (fn: (() => string | null) | null) => {
+  refreshTokenGetter = fn;
+};
+
+export const setOnTokenRefreshed = (fn: ((newAccessToken: string) => void) | null) => {
+  onTokenRefreshedCallback = fn;
+};
 
 // ======= Mock Mode Controller =======
 let memoryMockMode: boolean | null = null;
@@ -108,13 +118,17 @@ const onRefreshFailed = (error: any) => {
   // Route out of authenticated flow to /login (matching eatzy_frontend pattern)
   if (!isMockModeEnabled() && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
     window.localStorage.setItem('auth_expired', 'true');
-    window.location.href = '/login';
+    const redirectParam = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?redirect=${redirectParam}`;
   }
 };
 
 // ======= Axios Client Instance =======
 export const http = axios.create({
-  baseURL: typeof process !== 'undefined' && process.env?.API_BASE_URL ? process.env.API_BASE_URL : '',
+  baseURL:
+    typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL
+      : (typeof process !== 'undefined' && process.env?.API_BASE_URL ? process.env.API_BASE_URL : ''),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -225,12 +239,18 @@ http.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const res: any = await http.post('/api/v1/auth/refresh', {});
+        const currentRefreshToken = refreshTokenGetter ? refreshTokenGetter() : null;
+        const res: any = await http.post('/api/v1/auth/refresh', {
+          refreshToken: currentRefreshToken,
+        });
         const newAccessToken =
           res?.accessToken || res?.access_token || res?.data?.accessToken || res?.data?.access_token;
 
         if (newAccessToken) {
           setAccessToken(newAccessToken);
+          if (onTokenRefreshedCallback) {
+            onTokenRefreshedCallback(newAccessToken);
+          }
           isRefreshing = false;
           onRefreshed(newAccessToken);
 

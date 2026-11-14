@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { BottomNav } from '@/components/BottomNav';
+import { useAuthStore } from '@/lib/auth-store';
+import { isMockModeEnabled } from '@structpaper/api-client';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -11,6 +13,7 @@ interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
+  const router = useRouter();
 
   // The editor, authoring editor, template builder, and journal template editor are secondary/focused steps, so the main sidebar is hidden
   const isEditorPage =
@@ -21,6 +24,27 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const isBuilderPage = pathname === '/templates/builder' || pathname.startsWith('/templates/builder/');
   const isJournalEditorPage = pathname.startsWith('/templates/journal/');
   const isLoginPage = pathname === '/login' || pathname.startsWith('/login');
+
+  // Route protection guard: redirect unauthenticated users to /login
+  useEffect(() => {
+    if (isLoginPage) return;
+
+    const checkAuth = () => {
+      const { isAuthenticated, token } = useAuthStore.getState();
+      if (!isAuthenticated && !token && !isMockModeEnabled()) {
+        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      }
+    };
+
+    if (useAuthStore.persist?.hasHydrated?.()) {
+      checkAuth();
+    } else {
+      const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
+        checkAuth();
+      });
+      return () => unsub?.();
+    }
+  }, [pathname, isLoginPage, router]);
 
   if (isEditorPage || isBuilderPage || isJournalEditorPage || isLoginPage) {
     return (

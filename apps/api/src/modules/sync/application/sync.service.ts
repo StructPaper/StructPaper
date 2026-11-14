@@ -37,6 +37,7 @@ export class SyncService {
     @Optional()
     @Inject('DRIZZLE')
     private readonly db: any,
+    @Inject(SseManagerService)
     private readonly sseManager: SseManagerService,
   ) {}
 

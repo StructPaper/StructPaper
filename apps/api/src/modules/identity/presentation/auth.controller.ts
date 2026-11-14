@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UnauthorizedException,
   UsePipes,
+  Inject,
 } from '@nestjs/common';
 import {
   LoginRequestSchema,
@@ -21,7 +22,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

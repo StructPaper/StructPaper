@@ -155,8 +155,10 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
+      INTERNAL_API_URL: http://api:3001
       NEXT_PUBLIC_API_URL: http://localhost:3001
     volumes:
+      - ./apps/web/next.config.mjs:/app/apps/web/next.config.mjs
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
       - ./packages/contracts/src:/app/packages/contracts/src

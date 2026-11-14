@@ -69,7 +69,7 @@ describe('useLoadPaper Custom Hook (Task 2)', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.paper).toBeDefined();
+      expect(result.current.paper).not.toBeNull();
     });
 
     expect(result.current.paper?.metadata.title).toBe('Cached Local Paper');
@@ -106,7 +106,7 @@ describe('useLoadPaper Custom Hook (Task 2)', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.paper).toBeDefined();
+      expect(result.current.paper).not.toBeNull();
     });
 
     expect(result.current.paper?.id).toBe('server-ms-1');
@@ -136,7 +136,7 @@ describe('useLoadPaper Custom Hook (Task 2)', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.paper).toBeDefined();
+      expect(result.current.paper).not.toBeNull();
     });
 
     expect(result.current.paper?.metadata.title).toBe('Offline Preserved Paper');

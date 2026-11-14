@@ -46,6 +46,18 @@ export default function LoginPage() {
     return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    const { isAuthenticated, token } = useAuthStore.getState();
+    if (isAuthenticated && token) {
+      if (router.replace) {
+        router.replace(redirectUrl);
+      } else {
+        router.push(redirectUrl);
+      }
+    }
+  }, [redirectUrl, router]);
+
   // Handle session expiration message from Interceptor (matching eatzy_frontend/apps/customer)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -98,6 +110,7 @@ export default function LoginPage() {
       });
 
       const token = res?.accessToken || res?.access_token || res?.data?.accessToken;
+      const refreshToken = res?.refreshToken || res?.refresh_token || res?.data?.refreshToken;
       const user = res?.user || res?.data?.user;
 
       if (!token || !user) {
@@ -105,7 +118,7 @@ export default function LoginPage() {
       }
 
       // Store in memory and auth state
-      setLogin(token, user);
+      setLogin(token, user, refreshToken);
 
       // Clean session expired warning
       if (typeof window !== 'undefined') {

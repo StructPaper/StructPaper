@@ -6,9 +6,11 @@ import LoginPage from '@/app/login/page';
 import { http } from '@structpaper/api-client';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
+    replace: mockReplace,
   }),
   useSearchParams: () => ({
     get: vi.fn().mockReturnValue('/papers'),

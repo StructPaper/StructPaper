@@ -21,6 +21,19 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async rewrites() {
+    const backendUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.API_SERVER_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3001';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+    ];
+  },
   webpack: (config) => {
     config.resolve.alias.canvas = false;
     config.resolve.alias.encoding = false;

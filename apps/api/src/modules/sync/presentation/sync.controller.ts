@@ -12,6 +12,7 @@ import {
   UseGuards,
   UsePipes,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import { SubmitOpsSchema, type SubmitOps } from '@structpaper/contracts';
 import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
@@ -24,9 +25,12 @@ import { SyncService } from '../application/sync.service';
 @UseGuards(JwtAuthGuard)
 export class SyncController {
   constructor(
+    @Inject(SyncService)
     private readonly syncService: SyncService,
+    @Inject(AbilityFactory)
     private readonly abilityFactory: AbilityFactory,
     @Optional()
+    @Inject(AbilityCacheService)
     private readonly abilityCache?: AbilityCacheService,
   ) {}
 

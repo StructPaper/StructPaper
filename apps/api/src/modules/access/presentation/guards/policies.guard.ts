@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AbilityFactory, type AppAbility } from '../../domain/ability.factory';
@@ -13,9 +14,12 @@ import { CHECK_POLICIES_KEY, type PolicyHandler } from '../decorators/check-poli
 @Injectable()
 export class PoliciesGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
+    @Inject(AbilityFactory)
     private readonly abilityFactory: AbilityFactory,
     @Optional()
+    @Inject(AbilityCacheService)
     private readonly abilityCache?: AbilityCacheService,
   ) {}
 

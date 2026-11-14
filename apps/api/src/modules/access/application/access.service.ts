@@ -15,6 +15,7 @@ import { AbilityCacheService } from '../domain/ability-cache.service';
 export class AccessService {
   constructor(
     @Optional()
+    @Inject(AbilityCacheService)
     private readonly abilityCache?: AbilityCacheService,
     @Optional()
     @Inject('DRIZZLE')

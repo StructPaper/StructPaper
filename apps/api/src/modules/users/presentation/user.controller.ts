@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   UsePipes,
+  Inject,
 } from '@nestjs/common';
 import { InviteUserSchema, type InviteUser } from '@structpaper/contracts';
 import { UserService, type UpdateUserDto } from '../application/user.service';
@@ -18,7 +19,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(@Inject(UserService) private readonly userService: UserService) {}
 
   @Get()
   async list(

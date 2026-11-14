@@ -15,12 +15,15 @@ import { MailService } from '../domain/mail.service';
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(PasswordService)
     private readonly passwordService: PasswordService,
+    @Inject(TokenService)
     private readonly tokenService: TokenService,
     @Optional()
     @Inject('DRIZZLE')
     private readonly db?: any,
     @Optional()
+    @Inject(MailService)
     private readonly mailService?: MailService,
   ) {}
 
