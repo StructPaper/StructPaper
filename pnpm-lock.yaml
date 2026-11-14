@@ -83,6 +83,9 @@ importers:
       '@structpaper/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@structpaper/journal-profiles':
+        specifier: workspace:*
+        version: link:../../packages/journal-profiles
       fastify:
         specifier: ^4.28.1
         version: 4.29.1

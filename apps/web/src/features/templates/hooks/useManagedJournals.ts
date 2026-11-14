@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { http } from '@structpaper/api-client';
+import { resolveProfile } from '@structpaper/journal-profiles';
 import {
   ManagedJournalProfile,
   JournalStatus,
@@ -26,17 +28,56 @@ export function useManagedJournals() {
   const [isLoading, setIsLoading] = useState(!isTestEnv);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadJournals = useCallback(() => {
+  const loadJournals = useCallback(async () => {
+    // 1. Initial immediate fallback from local presets / storage for fast instant render
+    const localDefaults = getManagedJournals();
+    setJournals(localDefaults);
+
+    // 2. Asynchronously sync with Backend NestJS /api/v1/journals
     try {
-      const data = getManagedJournals();
-      setJournals(data);
+      const res: any = await http.get('/api/v1/journals');
+      if (Array.isArray(res) && res.length > 0) {
+        const merged = res.map((bj: any) => {
+          const shortKey = (bj.shortName || bj.slug.replace('vnuhcm-', '')).toLowerCase();
+          const localMatch = localDefaults.find(
+            (ld) => ld.id.toLowerCase() === shortKey || ld.id.toLowerCase() === bj.slug.toLowerCase(),
+          );
+          if (localMatch) {
+            return {
+              ...localMatch,
+              status: (bj.status as JournalStatus) || localMatch.status,
+            };
+          }
+          let resolvedProf: any = null;
+          try {
+            resolvedProf = resolveProfile(shortKey);
+          } catch {
+            resolvedProf = {
+              id: bj.slug,
+              names: { vi: bj.name, en: bj.name, short: bj.code },
+              color: bj.color,
+            };
+          }
+          return {
+            id: shortKey,
+            status: (bj.status as JournalStatus) || 'published',
+            isCustom: false,
+            profile: resolvedProf,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+        setJournals(merged);
+      }
       setError(null);
     } catch (err: any) {
-      setError(err instanceof Error ? err : new Error(String(err)));
+      // In case backend is offline, preserve local presets seamlessly
+      if (isTestEnv) {
+        setError(err instanceof Error ? err : new Error(String(err)));
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isTestEnv]);
 
   useEffect(() => {
     loadJournals();

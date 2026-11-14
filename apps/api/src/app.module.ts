@@ -6,6 +6,7 @@ import { AccessModule } from './modules/access/access.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { ManuscriptsModule } from './modules/manuscripts/manuscripts.module';
 import { SyncModule } from './modules/sync/sync.module';
+import { JournalsModule } from './modules/journals/journals.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SyncModule } from './modules/sync/sync.module';
     AssetsModule,
     ManuscriptsModule,
     SyncModule,
+    JournalsModule,
   ],
 })
 export class AppModule {}

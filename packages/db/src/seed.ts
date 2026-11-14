@@ -45,30 +45,140 @@ function hashPassword(password: string): string {
   return `scrypt:${salt}:${derivedKey}`;
 }
 
-export async function seedDatabase(db: any): Promise<SeedResult> {
-  // 1. Default Journal: vnu-jst
-  const defaultSlug = 'vnu-jst';
-  let defaultJournal = await db.query.journals?.findFirst({
-    where: eq(journals.slug, defaultSlug),
-  });
+export const VNUHCM_DEFAULT_JOURNALS = [
+  {
+    slug: 'vnuhcm-std',
+    code: 'VNUHCM-STD',
+    name: 'Tạp chí Phát triển Khoa học và Công nghệ',
+    shortName: 'STD',
+    issn: '1859-0128',
+    color: '#000099',
+    latexCls: 'structpaper-std.cls',
+    articleTypes: ['research', 'review', 'commentary'],
+  },
+  {
+    slug: 'vnuhcm-hs',
+    code: 'VNUHCM-HS',
+    name: 'Tạp chí Phát triển KH&CN - Khoa học Sức khỏe',
+    shortName: 'HS',
+    issn: '2734-9330',
+    color: '#2B74B7',
+    latexCls: 'structpaper-hs.cls',
+    articleTypes: ['research', 'review', 'case-report'],
+  },
+  {
+    slug: 'vnuhcm-ssh',
+    code: 'VNUHCM-SSH',
+    name: 'Tạp chí Phát triển KH&CN - Khoa học Xã hội và Nhân văn',
+    shortName: 'SSH',
+    issn: '2734-9349',
+    color: '#0000FF',
+    latexCls: 'structpaper-ssh.cls',
+    articleTypes: ['research', 'review', 'editorial'],
+  },
+  {
+    slug: 'vnuhcm-ebl',
+    code: 'VNUHCM-EBL',
+    name: 'Tạp chí Phát triển KH&CN - Kinh tế, Luật và Quản lý',
+    shortName: 'EBL',
+    issn: '2734-9357',
+    color: '#8F0B97',
+    latexCls: 'structpaper-ebl.cls',
+    articleTypes: ['research', 'review', 'commentary'],
+  },
+  {
+    slug: 'vnuhcm-et',
+    code: 'VNUHCM-ET',
+    name: 'Tạp chí Phát triển KH&CN - Kỹ thuật và Công nghệ',
+    shortName: 'ET',
+    issn: '2734-9365',
+    color: '#0F4761',
+    latexCls: 'structpaper-et.cls',
+    articleTypes: ['research', 'review', 'methodology'],
+  },
+  {
+    slug: 'vnuhcm-ees',
+    code: 'VNUHCM-EES',
+    name: 'Tạp chí Phát triển KH&CN - Môi trường & Khoa học Trái đất',
+    shortName: 'EES',
+    issn: '2734-9373',
+    color: '#0C712F',
+    latexCls: 'structpaper-ees.cls',
+    articleTypes: ['research', 'review', 'special_topic'],
+  },
+  {
+    slug: 'vnuhcm-arns',
+    code: 'VNUHCM-ARNS',
+    name: 'Tạp chí Phát triển KH&CN - Khoa học Tự nhiên',
+    shortName: 'ARNS',
+    issn: '2734-9381',
+    color: '#FF0000',
+    latexCls: 'structpaper-arns.cls',
+    articleTypes: ['research', 'review', 'letter'],
+  },
+];
 
-  if (!defaultJournal) {
-    const inserted = await db
+export async function seedDatabase(db: any): Promise<SeedResult> {
+  // 1. Seed 7 Canonical VNUHCM Journals
+  let defaultJournal: any = null;
+  for (const jDef of VNUHCM_DEFAULT_JOURNALS) {
+    let existing = await db.query.journals?.findFirst({
+      where: eq(journals.slug, jDef.slug),
+    });
+
+    if (!existing) {
+      const inserted = await db
+        .insert(journals)
+        .values({
+          slug: jDef.slug,
+          name: jDef.name,
+          issn: jDef.issn,
+          settings: {
+            code: jDef.code,
+            shortName: jDef.shortName,
+            color: jDef.color,
+            language: 'vi',
+            openAccess: true,
+            publisher: 'Đại học Quốc gia TP.HCM',
+            latexCls: jDef.latexCls,
+            articleTypes: jDef.articleTypes,
+          },
+          version: 1,
+        })
+        .returning();
+      existing = inserted[0];
+    }
+
+    if (!defaultJournal || jDef.slug === 'vnuhcm-std') {
+      defaultJournal = existing;
+    }
+  }
+
+  // Also maintain legacy slug vnu-jst pointing to std if requested
+  const legacySlug = 'vnu-jst';
+  const legacyJournal = await db.query.journals?.findFirst({
+    where: eq(journals.slug, legacySlug),
+  });
+  if (!legacyJournal) {
+    await db
       .insert(journals)
       .values({
-        slug: defaultSlug,
+        slug: legacySlug,
         name: 'Tạp chí Phát triển Khoa học và Công nghệ ĐHQG-HCM',
         issn: '1859-0128',
         settings: {
           code: 'VNUHCM-JST',
+          shortName: 'STD',
+          color: '#000099',
           language: 'vi',
           openAccess: true,
           publisher: 'Đại học Quốc gia TP.HCM',
+          latexCls: 'structpaper-std.cls',
+          articleTypes: ['research', 'review', 'commentary'],
         },
         version: 1,
       })
       .returning();
-    defaultJournal = inserted[0];
   }
 
   // 2. System Roles
