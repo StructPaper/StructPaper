@@ -80,6 +80,8 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-jwt-access-secret-32-chars-minimum!}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-jwt-refresh-secret-32-chars-minimum!}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@structpaper.org}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-AdminPassword123!}
     volumes:
       - .:/app
       - /app/node_modules

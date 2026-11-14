@@ -156,7 +156,7 @@ export async function seedDatabase(db: any): Promise<SeedResult> {
         .returning();
       adminUser = insertedUser[0];
       // eslint-disable-next-line no-console
-      console.log(`[SEED] Initial SuperAdmin active: ${adminEmail}`);
+      console.log(`[SEED] Initial SuperAdmin active: ${adminEmail} (password: ${initialPassword})`);
     } else {
       // Create in INVITED status with activation token
       const rawToken = crypto.randomBytes(32).toString('hex');
