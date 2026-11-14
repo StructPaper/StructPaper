@@ -56,7 +56,7 @@ export class ApiError extends Error {
 }
 
 export function defaultApiBase(): string {
-  return (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || 'http://localhost:8080';
+  return (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || 'http://localhost:3000';
 }
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -81,7 +81,7 @@ export class DocumentApi {
         let msg = `HTTP ${res.status}`;
         try {
           const body = await res.json();
-          msg = body?.message || body?.error || msg;
+          msg = body?.detail || body?.message || body?.error || msg;
         } catch {
           /* non-JSON error body */
         }
@@ -101,25 +101,82 @@ export class DocumentApi {
   }
 
   async list(): Promise<DocumentSummary[]> {
-    return (await this.request('/api/v1/documents')).json();
+    const res = await this.request('/api/v1/manuscripts');
+    const items = await res.json();
+    return (Array.isArray(items) ? items : []).map((m: any) => ({
+      id: m.id,
+      name: m.title,
+      journalId: m.journalId,
+      status: m.status,
+      rev: m.version ?? 1,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    }));
   }
 
   async get(id: string): Promise<DocumentDetail> {
-    return (await this.request(`/api/v1/documents/${encodeURIComponent(id)}`)).json();
+    const res = await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`);
+    const m = await res.json();
+    return {
+      id: m.id,
+      name: m.title,
+      journalId: m.journalId,
+      status: m.status,
+      rev: m.version ?? 1,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+      doc: m.metadata?.doc || m.metadata || {},
+    };
   }
 
   async create(name: string, journalId?: string, doc?: unknown): Promise<DocumentDetail> {
-    return (await this.request('/api/v1/documents', { method: 'POST', ...this.json({ name, journalId, doc }) })).json();
+    const res = await this.request('/api/v1/manuscripts', {
+      method: 'POST',
+      ...this.json({
+        title: name,
+        journalId,
+        metadata: { doc },
+      }),
+    });
+    const m = await res.json();
+    return {
+      id: m.id,
+      name: m.title,
+      journalId: m.journalId,
+      status: m.status,
+      rev: m.version ?? 1,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+      doc: m.metadata?.doc || m.metadata || {},
+    };
   }
 
   async save(id: string, body: SaveBody): Promise<SaveResult> {
-    return (
-      await this.request(`/api/v1/documents/${encodeURIComponent(id)}`, { method: 'PUT', ...this.json(body) })
-    ).json();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (body.baseRev !== undefined) {
+      headers['If-Match'] = `"${body.baseRev}"`;
+    }
+    const res = await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        title: body.name,
+        status: body.status,
+        metadata: { doc: body.doc },
+      }),
+    });
+    const m = await res.json();
+    return {
+      id: m.id,
+      name: m.title,
+      rev: m.version ?? 1,
+      updatedAt: m.updatedAt,
+      snapshotted: Boolean(body.snapshot),
+    };
   }
 
   async remove(id: string): Promise<void> {
-    await this.request(`/api/v1/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   async uploadExport(id: string, blob: Blob, format: 'docx' | 'pdf' | 'xml', fileName: string): Promise<ExportItem> {
