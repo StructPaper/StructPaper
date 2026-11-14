@@ -1,7 +1,10 @@
 /**
  * REST client for the StructPaper backend /api/v1/manuscripts (+ /assets).
- * Fetch is injectable so the sync layer is unit-testable without a server.
+ * Uses Axios http from @structpaper/api-client with unified interceptors,
+ * with fallback to injectable fetch for unit tests.
  */
+
+import { http, ProblemDetailsError } from '@structpaper/api-client';
 
 export interface DocumentSummary {
   id: string;
@@ -59,17 +62,49 @@ export function defaultApiBase(): string {
   return (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || 'http://localhost:3000';
 }
 
-type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+
+export function toApiError(e: unknown): ApiError {
+  if (e instanceof ApiError) return e;
+  if (e instanceof ProblemDetailsError) {
+    return new ApiError(e.status, e.detail || e.title || e.message);
+  }
+  const anyErr = e as any;
+  if (anyErr?.code === 'ERR_NETWORK' || anyErr?.message === 'Network Error' || anyErr?.isNetwork) {
+    return new ApiError(0, anyErr?.message || 'Network error');
+  }
+  const status = anyErr?.response?.status ?? anyErr?.status ?? anyErr?.statusCode ?? 0;
+  const message =
+    anyErr?.response?.data?.detail ||
+    anyErr?.response?.data?.message ||
+    anyErr?.response?.data?.error ||
+    anyErr?.detail ||
+    anyErr?.message ||
+    (status ? `HTTP ${status}` : 'Network error');
+
+  return new ApiError(status, typeof message === 'string' ? message : JSON.stringify(message));
+}
 
 export class DocumentApi {
   private resourcePath: string;
+  private httpClient: typeof http;
+  private fetchImpl?: FetchLike;
 
   constructor(
     private baseUrl: string = defaultApiBase(),
-    private fetchImpl: FetchLike = (i, init) => fetch(i, init),
+    fetchOrClient?: FetchLike | typeof http,
     private timeoutMs = 5_000,
     customResourcePath?: string
   ) {
+    if (typeof fetchOrClient === 'function' && !('interceptors' in fetchOrClient)) {
+      this.fetchImpl = fetchOrClient as FetchLike;
+      this.httpClient = http;
+    } else if (fetchOrClient && ('interceptors' in (fetchOrClient as any) || 'get' in (fetchOrClient as any))) {
+      this.httpClient = fetchOrClient as typeof http;
+    } else {
+      this.httpClient = http;
+    }
+
     this.resourcePath =
       customResourcePath || (baseUrl === 'http://x' ? '/api/v1/documents' : '/api/v1/manuscripts');
   }
@@ -82,7 +117,7 @@ export class DocumentApi {
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), this.timeoutMs) : null;
     try {
-      const res = await this.fetchImpl(`${this.base}${path}`, { ...init, signal: ctrl?.signal });
+      const res = await (this.fetchImpl || fetch)(`${this.base}${path}`, { ...init, signal: ctrl?.signal });
       if (!res.ok) {
         let msg = `HTTP ${res.status}`;
         try {
@@ -107,59 +142,121 @@ export class DocumentApi {
   }
 
   async list(): Promise<DocumentSummary[]> {
-    const res = await this.request(this.resourcePath);
-    const items = await res.json();
-    if (this.resourcePath === '/api/v1/documents') {
-      return items;
+    if (this.fetchImpl) {
+      const res = await this.request(this.resourcePath);
+      const items = await res.json();
+      if (this.resourcePath === '/api/v1/documents') {
+        return items;
+      }
+      return (Array.isArray(items) ? items : []).map((m: any) => ({
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      }));
     }
-    return (Array.isArray(items) ? items : []).map((m: any) => ({
-      id: m.id,
-      name: m.title || m.name,
-      journalId: m.journalId,
-      status: m.status,
-      rev: m.version ?? m.rev ?? 1,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-    }));
+
+    try {
+      const res = await this.httpClient.get<any>(this.resourcePath);
+      const items = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      if (this.resourcePath === '/api/v1/documents') {
+        return items;
+      }
+      return items.map((m: any) => ({
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      }));
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async get(id: string): Promise<DocumentDetail> {
-    const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`);
-    const m = await res.json();
-    if (this.resourcePath === '/api/v1/documents') {
-      return m;
+    if (this.fetchImpl) {
+      const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`);
+      const m = await res.json();
+      if (this.resourcePath === '/api/v1/documents') {
+        return m;
+      }
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        doc: m.metadata?.doc || m.metadata || {},
+      };
     }
-    return {
-      id: m.id,
-      name: m.title || m.name,
-      journalId: m.journalId,
-      status: m.status,
-      rev: m.version ?? m.rev ?? 1,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-      doc: m.metadata?.doc || m.metadata || {},
-    };
+
+    try {
+      const m = await this.httpClient.get<any>(`${this.resourcePath}/${encodeURIComponent(id)}`);
+      if (this.resourcePath === '/api/v1/documents') {
+        return m;
+      }
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        doc: m.metadata?.doc || m.metadata || {},
+      };
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async create(name: string, journalId?: string, doc?: unknown): Promise<DocumentDetail> {
     const isLegacy = this.resourcePath === '/api/v1/documents';
     const payload = isLegacy ? { name, journalId, doc } : { title: name, journalId, metadata: { doc } };
-    const res = await this.request(this.resourcePath, {
-      method: 'POST',
-      ...this.json(payload),
-    });
-    const m = await res.json();
-    if (isLegacy) return m;
-    return {
-      id: m.id,
-      name: m.title || m.name,
-      journalId: m.journalId,
-      status: m.status,
-      rev: m.version ?? m.rev ?? 1,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-      doc: m.metadata?.doc || m.metadata || {},
-    };
+
+    if (this.fetchImpl) {
+      const res = await this.request(this.resourcePath, {
+        method: 'POST',
+        ...this.json(payload),
+      });
+      const m = await res.json();
+      if (isLegacy) return m;
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        doc: m.metadata?.doc || m.metadata || {},
+      };
+    }
+
+    try {
+      const m = await this.httpClient.post<any>(this.resourcePath, payload);
+      if (isLegacy) return m;
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        journalId: m.journalId,
+        status: m.status,
+        rev: m.version ?? m.rev ?? 1,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        doc: m.metadata?.doc || m.metadata || {},
+      };
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async save(id: string, body: SaveBody): Promise<SaveResult> {
@@ -176,23 +273,50 @@ export class DocumentApi {
           status: body.status,
           metadata: { doc: body.doc },
         };
-    const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, {
-      method,
-      headers,
-      body: JSON.stringify(payload),
-    });
-    const m = await res.json();
-    return {
-      id: m.id,
-      name: m.title || m.name,
-      rev: m.version ?? m.rev ?? 1,
-      updatedAt: m.updatedAt,
-      snapshotted: Boolean(body.snapshot),
-    };
+
+    if (this.fetchImpl) {
+      const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, {
+        method,
+        headers,
+        body: JSON.stringify(payload),
+      });
+      const m = await res.json();
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        rev: m.version ?? m.rev ?? 1,
+        updatedAt: m.updatedAt,
+        snapshotted: Boolean(body.snapshot),
+      };
+    }
+
+    try {
+      const m = isLegacy
+        ? await this.httpClient.put<any>(`${this.resourcePath}/${encodeURIComponent(id)}`, payload, { headers })
+        : await this.httpClient.patch<any>(`${this.resourcePath}/${encodeURIComponent(id)}`, payload, { headers });
+      return {
+        id: m.id,
+        name: m.title || m.name,
+        rev: m.version ?? m.rev ?? 1,
+        updatedAt: m.updatedAt,
+        snapshotted: Boolean(body.snapshot),
+      };
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async remove(id: string): Promise<void> {
-    await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (this.fetchImpl) {
+      await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return;
+    }
+
+    try {
+      await this.httpClient.delete(`${this.resourcePath}/${encodeURIComponent(id)}`);
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async uploadExport(id: string, blob: Blob, format: 'docx' | 'pdf' | 'xml', fileName: string): Promise<ExportItem> {
@@ -200,32 +324,94 @@ export class DocumentApi {
     form.append('format', format);
     form.append('fileName', fileName);
     form.append('file', blob, fileName);
-    return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`, { method: 'POST', body: form })).json();
+
+    if (this.fetchImpl) {
+      return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`, { method: 'POST', body: form })).json();
+    }
+
+    try {
+      const res = await this.httpClient.post<ExportItem>(
+        `${this.resourcePath}/${encodeURIComponent(id)}/exports`,
+        form,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return res as unknown as ExportItem;
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async listExports(id: string): Promise<ExportItem[]> {
-    return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`)).json();
+    if (this.fetchImpl) {
+      return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`)).json();
+    }
+
+    try {
+      const res = await this.httpClient.get<ExportItem[]>(
+        `${this.resourcePath}/${encodeURIComponent(id)}/exports`
+      );
+      return (Array.isArray(res) ? res : []) as ExportItem[];
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async putAsset(sha256: string, blob: Blob): Promise<void> {
-    await this.request(`/api/v1/assets/${sha256}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': blob.type || 'application/octet-stream' },
-      body: blob,
-    });
+    if (this.fetchImpl) {
+      await this.request(`/api/v1/assets/${sha256}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+        body: blob,
+      });
+      return;
+    }
+
+    try {
+      await this.httpClient.put(`/api/v1/assets/${sha256}`, blob, {
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+      });
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 
   async hasAsset(sha256: string): Promise<boolean> {
+    if (this.fetchImpl) {
+      try {
+        await this.request(`/api/v1/assets/${sha256}`, { method: 'HEAD' });
+        return true;
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return false;
+        throw e;
+      }
+    }
+
     try {
-      await this.request(`/api/v1/assets/${sha256}`, { method: 'HEAD' });
+      await this.httpClient.head(`/api/v1/assets/${sha256}`);
       return true;
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) return false;
-      throw e;
+    } catch (err) {
+      const apiError = toApiError(err);
+      if (apiError.status === 404) return false;
+      throw apiError;
     }
   }
 
   async getAssetBlob(sha256: string): Promise<Blob> {
-    return (await this.request(`/api/v1/assets/${sha256}`)).blob();
+    if (this.fetchImpl) {
+      return (await this.request(`/api/v1/assets/${sha256}`)).blob();
+    }
+
+    try {
+      const res = await this.httpClient.get<Blob>(`/api/v1/assets/${sha256}`, {
+        responseType: 'blob',
+      });
+      return res as unknown as Blob;
+    } catch (err) {
+      throw toApiError(err);
+    }
   }
 }

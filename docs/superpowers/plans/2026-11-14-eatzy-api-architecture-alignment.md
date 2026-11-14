@@ -89,20 +89,20 @@
 - Modify: `apps/web/src/components/layout/AppShell.tsx`
 - Test: `apps/web/test/auth/use-auth.spec.tsx`
 
-- [ ] **Step 1: Write unit tests for `useAuth` in `apps/web/test/auth/use-auth.spec.tsx`**
+- [x] **Step 1: Write unit tests for `useAuth` in `apps/web/test/auth/use-auth.spec.tsx`**
   - Test session check calling `authApi.getAccount()`.
   - Test automatic synchronization into `useAuthStore` and `setAccessToken`.
   - Test unauthenticated fallback handling.
-- [ ] **Step 2: Implement `apps/web/src/hooks/useAuth.ts`**
+- [x] **Step 2: Implement `apps/web/src/hooks/useAuth.ts`**
   - Mirroring `eatzy_frontend/apps/restaurant/src/features/auth/hooks/useAuth.ts`:
   - Use `useQuery({ queryKey: ['auth', 'me'], queryFn: () => authApi.getAccount() })`.
   - On data: `setUser(user)` and `setAccessToken(token)`.
   - On 401 error: `clearAuth()` and redirect to `/login` when appropriate.
-- [ ] **Step 3: Wire `useAuth` in `AppShell.tsx`**
+- [x] **Step 3: Wire `useAuth` in `AppShell.tsx`**
   - Ensure every page render has access to active session and token in Axios memory.
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
   - Run `pnpm --filter @structpaper/web test` on auth tests.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `feat(web): add useAuth hook and session hydration mirroring eatzy`.
 
 ---
@@ -113,16 +113,16 @@
 - Modify: `apps/web/src/lib/documents/document-api.ts`
 - Test: `apps/web/test/documents/document-api-axios.spec.ts`
 
-- [ ] **Step 1: Write unit tests in `apps/web/test/documents/document-api-axios.spec.ts`**
+- [x] **Step 1: Write unit tests in `apps/web/test/documents/document-api-axios.spec.ts`**
   - Test `DocumentApi.list()`, `DocumentApi.get(id)`, `DocumentApi.create(...)`, `DocumentApi.save(...)`, `DocumentApi.putAsset(...)`.
   - Verify that requests go through `http` and include Bearer authentication.
-- [ ] **Step 2: Refactor `DocumentApi` in `apps/web/src/lib/documents/document-api.ts`**
+- [x] **Step 2: Refactor `DocumentApi` in `apps/web/src/lib/documents/document-api.ts`**
   - Remove raw `fetch` and `fetchImpl`.
   - Delegate all requests to `http` or `manuscriptApi` / `assetApi`.
   - Map Axios response and errors to `ApiError` for complete backward compatibility with `AutosaveController` and `DocumentSync`.
-- [ ] **Step 3: Run unit tests**
+- [x] **Step 3: Run unit tests**
   - Run `pnpm --filter @structpaper/web test` on document api tests.
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Commit as `refactor(web): migrate DocumentApi from raw fetch to unified axios http client`.
 
 ---
