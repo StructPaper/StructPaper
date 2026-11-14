@@ -18,6 +18,7 @@ import {
   getManuscriptAuthors,
   getWorkflowStatusConfig,
   formatRelativeTime,
+  getSyncBadgeConfig,
 } from './types';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -196,6 +197,7 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
             const journalColor = getJournalColor(paper.doc.journalId);
             const journalShort = getJournalShortName(paper.doc.journalId);
             const statusConfig = getWorkflowStatusConfig(paper.info.workflowStatus);
+            const syncBadgeConfig = getSyncBadgeConfig(paper);
             const relativeTime = formatRelativeTime(
               paper.info.lastOpenedAt || paper.info.updatedAt
             );
@@ -223,6 +225,12 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
                     {paper.info.pinned && (
                       <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
                     )}
+                    <span
+                      data-testid={`sync-badge-${paper.info.id}`}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
+                    >
+                      {syncBadgeConfig.label}
+                    </span>
                     <span
                       className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${statusConfig.chipBg} ${statusConfig.chipText}`}
                     >

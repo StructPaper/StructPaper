@@ -138,3 +138,60 @@ export function formatRelativeTime(dateInput?: string | number | Date): string {
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
+
+export type PaperSyncStatus = 'synced' | 'local' | 'syncing';
+
+export interface SyncBadgeConfig {
+  status: PaperSyncStatus;
+  label: string;
+  icon: string;
+  classes: string;
+}
+
+export function isUuid(id?: string): boolean {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+export function getPaperSyncStatus(record: ManuscriptRecord): PaperSyncStatus {
+  const syncState =
+    (record as any).syncState ||
+    (record as any).syncStatus ||
+    (record.info as any)?.syncState ||
+    (record.doc as any)?.syncState;
+
+  if (syncState === 'syncing') return 'syncing';
+  if (syncState === 'synced') return 'synced';
+  if (syncState === 'local') return 'local';
+
+  return isUuid(record.info?.id) ? 'synced' : 'local';
+}
+
+export const SYNC_STATUS_CONFIG: Record<PaperSyncStatus, SyncBadgeConfig> = {
+  synced: {
+    status: 'synced',
+    label: '☁️ Đã đồng bộ',
+    icon: '☁️',
+    classes:
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+  },
+  local: {
+    status: 'local',
+    label: '💻 Chỉ trên máy',
+    icon: '💻',
+    classes:
+      'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
+  },
+  syncing: {
+    status: 'syncing',
+    label: '⏳ Đang đồng bộ...',
+    icon: '⏳',
+    classes:
+      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 animate-pulse',
+  },
+};
+
+export function getSyncBadgeConfig(record: ManuscriptRecord): SyncBadgeConfig {
+  const status = getPaperSyncStatus(record);
+  return SYNC_STATUS_CONFIG[status];
+}

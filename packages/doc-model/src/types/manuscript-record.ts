@@ -65,4 +65,5 @@ export interface ManuscriptRecord {
   info: ManuscriptInfo;
   doc: Manuscript;
   revision?: number;
+  syncState?: 'synced' | 'local' | 'syncing';
 }

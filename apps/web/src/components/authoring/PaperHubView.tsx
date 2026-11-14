@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
-import { CheckCircle2, HardDrive, Cloud } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { usePapersHub } from '@/hooks';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import {
@@ -16,7 +16,6 @@ import {
   PaperQuickEditModal,
   PaperDeleteConfirmModal,
   EmptyPapersState,
-  ServerManuscriptsView,
 } from '@/components/papers';
 import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
@@ -25,7 +24,6 @@ export const PaperHubView: React.FC = () => {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deletingPaper, setDeletingPaper] = useState<ManuscriptRecord | null>(null);
-  const [storageSource, setStorageSource] = useState<'local' | 'server'>('local');
 
   const {
     records,
@@ -65,48 +63,14 @@ export const PaperHubView: React.FC = () => {
   return (
     <LayoutGroup id="paper-hub-layout-group">
       <div className="w-full max-w-7xl mx-auto space-y-7 pb-16 pt-4 px-4 sm:px-6">
-        {/* 0. Storage Source Switcher: Local IndexedDB vs Cloud Backend */}
-        <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
-          <button
-            type="button"
-            data-testid="tab-source-local"
-            onClick={() => setStorageSource('local')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              storageSource === 'local'
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>Bản thảo cục bộ (Offline)</span>
-          </button>
-          <button
-            type="button"
-            data-testid="tab-source-server"
-            onClick={() => setStorageSource('server')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              storageSource === 'server'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5" />
-            <span>Bản thảo máy chủ (Cloud API)</span>
-          </button>
-        </div>
-
-        {storageSource === 'server' ? (
-          <ServerManuscriptsView onOpenManuscript={handleOpenEditor} />
-        ) : (
-          <>
-            {/* 1. Top Horizontal Recent Papers Row */}
-            <RecentPapersRow
-              papers={records}
-              onOpenPaper={handleOpenEditor}
-              onCreateNew={() => setIsCreateModalOpen(true)}
-              isCreateOpen={isCreateModalOpen}
-              isLoading={isLoading}
-            />
+        {/* 1. Top Horizontal Recent Papers Row */}
+        <RecentPapersRow
+          papers={records}
+          onOpenPaper={handleOpenEditor}
+          onCreateNew={() => setIsCreateModalOpen(true)}
+          isCreateOpen={isCreateModalOpen}
+          isLoading={isLoading}
+        />
 
             {/* 2. Sticky Filter Toolbar */}
             <StickyHubToolbar data-testid="paper-hub-sticky-toolbar">
@@ -219,8 +183,6 @@ export const PaperHubView: React.FC = () => {
                 <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
               </div>
             )}
-          </>
-        )}
 
         {/* 5. Quick Edit Modal */}
         <PaperQuickEditModal

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   defaultDatabase,
@@ -13,6 +13,9 @@ import type {
 } from '@structpaper/doc-model';
 import { adaptV2toV1 } from '@structpaper/doc-model';
 import { normalizeJournalId } from '@structpaper/journal-profiles';
+import { manuscriptApi, getAccessToken } from '@structpaper/api-client';
+import { useAuthStore } from '@/lib/auth-store';
+import { manuscriptToCompletePaper } from '@/hooks/useLoadPaper';
 import { ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { getAuthoringPapers } from '@/lib/authoring/paper-storage';
@@ -26,7 +29,52 @@ import {
   ViewMode,
   getManuscriptTitle,
   getManuscriptAuthors,
+  isUuid,
 } from '@/components/papers';
+
+function remoteManuscriptToRecord(item: any): ManuscriptRecord {
+  const rawStatus = (item.status || 'draft').toLowerCase().replace('_', '-');
+  const validStatuses: WorkflowStatus[] = ['draft', 'in-review', 'proofing', 'ready', 'published'];
+  const workflowStatus: WorkflowStatus = validStatuses.includes(rawStatus as WorkflowStatus)
+    ? (rawStatus as WorkflowStatus)
+    : rawStatus === 'under-review' || rawStatus === 'submitted'
+    ? 'in-review'
+    : 'draft';
+
+  const authors = Array.isArray(item.metadata?.authors)
+    ? item.metadata.authors
+    : typeof item.metadata?.authors === 'string'
+    ? [{ name: item.metadata.authors }]
+    : [];
+
+  return {
+    info: {
+      id: item.id,
+      displayName: item.title || 'Bản thảo máy chủ',
+      workflowStatus,
+      pinned: false,
+      archived: item.status === 'ARCHIVED',
+      tags: item.metadata?.tags || [item.journalId || 'VNUHCM'],
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+      submissionId: item.metadata?.submissionId,
+    },
+    doc: {
+      id: item.id,
+      journalId: item.journalId || 'VNUHCM-STD',
+      meta: {
+        title: [{ t: 'text', v: item.title || 'Bản thảo máy chủ' }],
+        authors,
+        abstract: item.abstract || item.metadata?.abstract || '',
+      },
+      sections: item.metadata?.sections || [],
+      schemaVersion: 2,
+    } as any,
+    revision: item.version || item.currentServerRev || 1,
+    syncState: 'synced',
+    remoteData: item,
+  } as any;
+}
 
 export function usePapersHub() {
   const router = useRouter();
@@ -82,12 +130,160 @@ export function usePapersHub() {
     triggerFilterLoading();
   }, [triggerFilterLoading]);
 
-  // Load records from IndexedDb without seeding
+  // Load records from IndexedDb and remote server
+  const syncingIdsRef = useRef<Set<string>>(new Set());
+
+  const reconcileLocalDrafts = useCallback(
+    async (currentRecords: ManuscriptRecord[]) => {
+      const token = getAccessToken() || useAuthStore.getState()?.token;
+      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+      const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+      if (!isAuth || !isOnline) return;
+
+      const localDrafts = currentRecords.filter(
+        (r) => !isUuid(r.info.id) || (r as any).syncState === 'local'
+      );
+
+      if (localDrafts.length === 0) return;
+
+      for (const draft of localDrafts) {
+        if (syncingIdsRef.current.has(draft.info.id)) continue;
+        syncingIdsRef.current.add(draft.info.id);
+
+        // Update state to show 'syncing'
+        setRecords((prev) =>
+          prev.map((p) =>
+            p.info.id === draft.info.id ? { ...p, syncState: 'syncing' } : p
+          )
+        );
+
+        try {
+          const title = getManuscriptTitle(draft);
+          const journalId = draft.doc.journalId || 'VNUHCM-STD';
+          const metadata = {
+            displayName: draft.info.displayName,
+            tags: draft.info.tags,
+            workflowStatus: draft.info.workflowStatus,
+            submissionId: draft.info.submissionId,
+            note: draft.info.note,
+            authors: (draft.doc.meta as any)?.authors || [],
+            sections: (draft.doc as any)?.sections,
+          };
+
+          const created = await manuscriptApi.create({
+            title,
+            journalId,
+            metadata,
+            abstract: (draft.doc.meta as any)?.abstract || null,
+          });
+
+          if (created?.id && isUuid(created.id)) {
+            const oldId = draft.info.id;
+            const newId = created.id;
+
+            // 1. Remove old local record from IndexedDB
+            try {
+              await repo.delete(oldId);
+            } catch (delErr) {
+              console.warn('[usePapersHub] repo.delete oldId failed:', delErr);
+            }
+
+            // 2. Prepare new document and info
+            const updatedDoc = {
+              ...draft.doc,
+              id: newId,
+              syncState: 'synced',
+            };
+            const updatedInfo: Partial<ManuscriptInfo> = {
+              ...draft.info,
+              id: newId,
+              updatedAt: (created as any).updatedAt || new Date().toISOString(),
+            };
+
+            // 3. Save new record into IndexedDB
+            await repo.save(updatedDoc as any, updatedInfo);
+            try {
+              await (defaultDatabase.manuscripts as any).update(newId, { syncState: 'synced' });
+            } catch {
+              // ignore
+            }
+
+            // 4. Update state records
+            setRecords((prev) =>
+              prev.map((p) => {
+                if (p.info.id === oldId) {
+                  return {
+                    ...p,
+                    info: { ...p.info, id: newId },
+                    doc: updatedDoc as any,
+                    syncState: 'synced',
+                  };
+                }
+                return p;
+              })
+            );
+          } else {
+            setRecords((prev) =>
+              prev.map((p) =>
+                p.info.id === draft.info.id ? { ...p, syncState: 'local' } : p
+              )
+            );
+          }
+        } catch (err) {
+          console.warn('[usePapersHub] Auto-sync failed for draft:', draft.info.id, err);
+          setRecords((prev) =>
+            prev.map((p) =>
+              p.info.id === draft.info.id ? { ...p, syncState: 'local' } : p
+            )
+          );
+        } finally {
+          syncingIdsRef.current.delete(draft.info.id);
+        }
+      }
+    },
+    [repo]
+  );
+
   const loadRecords = useCallback(async () => {
     try {
       const loaded = await repo.listRecords();
-      setRecords(loaded);
+
+      const token = getAccessToken() || useAuthStore.getState()?.token;
+      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+      const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+
+      let remoteRecords: ManuscriptRecord[] = [];
+      if (isAuth && isOnline) {
+        try {
+          const remoteRes = await manuscriptApi.list();
+          const remoteItems: any[] = Array.isArray(remoteRes)
+            ? remoteRes
+            : (remoteRes as any)?.items || (remoteRes as any)?.data || [];
+
+          const localIdSet = new Set(loaded.map((r) => r.info.id));
+          for (const item of remoteItems) {
+            if (item?.id && !localIdSet.has(item.id)) {
+              remoteRecords.push(remoteManuscriptToRecord(item));
+            }
+          }
+        } catch (remoteErr) {
+          console.warn('[usePapersHub] Remote manuscript fetch failed:', remoteErr);
+        }
+      }
+
+      const annotatedLocal: ManuscriptRecord[] = loaded.map((r) => ({
+        ...r,
+        syncState: (r as any).syncState || (isUuid(r.info.id) ? 'synced' : 'local'),
+      }));
+
+      const allRecords = [...annotatedLocal, ...remoteRecords];
+      setRecords(allRecords);
       setError(null);
+
+      // Trigger background reconciliation for local-only drafts
+      if (isAuth && isOnline) {
+        reconcileLocalDrafts(annotatedLocal);
+      }
     } catch (err: any) {
       console.error('Failed to load manuscript records:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -98,10 +294,27 @@ export function usePapersHub() {
       }
       setIsLoading(false);
     }
-  }, [repo, isTestEnv]);
+  }, [repo, isTestEnv, reconcileLocalDrafts]);
 
   useEffect(() => {
     loadRecords();
+  }, [loadRecords]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      loadRecords();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [loadRecords]);
+
+  useEffect(() => {
+    const unsub = useAuthStore.subscribe((state, prevState) => {
+      if (state.token && !prevState.token) {
+        loadRecords();
+      }
+    });
+    return () => unsub();
   }, [loadRecords]);
 
   // Handlers
@@ -112,6 +325,23 @@ export function usePapersHub() {
     );
 
     if (record) {
+      if ((record as any).remoteData) {
+        try {
+          const complete = manuscriptToCompletePaper((record as any).remoteData);
+          setPaper(complete);
+          if (record.doc.journalId) {
+            const norm = record.doc.journalId.toUpperCase().startsWith('VNUHCM-')
+              ? record.doc.journalId
+              : `VNUHCM-${record.doc.journalId.toUpperCase()}`;
+            setCurrentJournal(norm);
+          }
+          toast.success('Đã tải bài báo', 'Đang chuyển sang bộ soạn thảo StructPaper...');
+          router.push('/editor');
+          return;
+        } catch (err) {
+          console.warn('[usePapersHub] manuscriptToCompletePaper failed:', err);
+        }
+      }
       try {
         const v1 = adaptV2toV1(record.doc as any) as CompletePaper;
         if (!v1.id) v1.id = record.info.id;
@@ -244,11 +474,23 @@ export function usePapersHub() {
   const handleDelete = useCallback(async (id: string) => {
     try {
       await repo.delete(id);
-      toast.info('Đã xóa bài báo', 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.');
-      await loadRecords();
-    } catch (err: any) {
-      toast.error('Lỗi xóa bài báo', err?.message);
+    } catch {
+      // ignore
     }
+
+    const token = getAccessToken() || useAuthStore.getState()?.token;
+    const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+    const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+    if (isUuid(id) && isAuth && isOnline) {
+      try {
+        await manuscriptApi.delete(id);
+      } catch (apiErr) {
+        console.warn('[usePapersHub] Remote delete failed:', apiErr);
+      }
+    }
+
+    toast.info('Đã xóa bài báo', 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.');
+    await loadRecords();
   }, [repo, loadRecords]);
 
   // Status Counts
@@ -348,6 +590,7 @@ export function usePapersHub() {
     setActiveMenuId,
     setEditingPaper,
     loadRecords,
+    reconcileLocalDrafts,
     handleOpenEditor,
     handleTogglePin,
     handleSaveQuickEdit,

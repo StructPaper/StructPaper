@@ -23,6 +23,7 @@ import {
   getManuscriptAuthors,
   getWorkflowStatusConfig,
   formatRelativeTime,
+  getSyncBadgeConfig,
 } from './types';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -156,6 +157,7 @@ export const PaperTable: React.FC<PaperTableProps> = ({
               const journalColor = getJournalColor(doc.journalId);
               const journalShort = getJournalShortName(doc.journalId);
               const statusConfig = getWorkflowStatusConfig(info.workflowStatus);
+              const syncBadgeConfig = getSyncBadgeConfig(paper);
               const relativeTime = formatRelativeTime(
                 info.lastOpenedAt || info.updatedAt
               );
@@ -218,14 +220,22 @@ export const PaperTable: React.FC<PaperTableProps> = ({
 
                   {/* Workflow Status */}
                   <td className="py-3 px-4">
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border inline-flex items-center gap-1 ${statusConfig.chipBg} ${statusConfig.chipText} ${statusConfig.border}`}
-                    >
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotBg}`}
-                      />
-                      {statusConfig.label}
-                    </span>
+                        className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border inline-flex items-center gap-1 ${statusConfig.chipBg} ${statusConfig.chipText} ${statusConfig.border}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotBg}`}
+                        />
+                        {statusConfig.label}
+                      </span>
+                      <span
+                        data-testid={`sync-badge-${info.id}`}
+                        className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
+                      >
+                        {syncBadgeConfig.label}
+                      </span>
+                    </div>
                   </td>
 
                   {/* Authors */}

@@ -22,6 +22,7 @@ import {
   getManuscriptAuthors,
   getWorkflowStatusConfig,
   formatRelativeTime,
+  getSyncBadgeConfig,
 } from './types';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -57,6 +58,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const journalColor = getJournalColor(doc.journalId);
   const journalShort = getJournalShortName(doc.journalId);
   const statusConfig = getWorkflowStatusConfig(info.workflowStatus);
+  const syncBadgeConfig = getSyncBadgeConfig(paper);
   const relativeTime = formatRelativeTime(info.lastOpenedAt || info.updatedAt);
 
   useEffect(() => {
@@ -104,6 +106,14 @@ export const PaperCard: React.FC<PaperCardProps> = ({
                 <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               </span>
             )}
+
+            {/* Sync Status Badge */}
+            <span
+              data-testid={`sync-badge-${info.id}`}
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
+            >
+              {syncBadgeConfig.label}
+            </span>
 
             <span
               className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${statusConfig.chipBg} ${statusConfig.chipText}`}
