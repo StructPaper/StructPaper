@@ -12,4 +12,3 @@ export * from './usePaperDuplicateWarning';
 export * from './useEditorQuickEdit';
 export * from './useJournalEditorSave';
 export * from './useCustomTemplateSave';
-export * from './useAuth';
