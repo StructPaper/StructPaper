@@ -8,7 +8,7 @@ import { CompletePaper, PaperSection, LayoutSettings, DEFAULT_LAYOUT_SETTINGS } 
 import { computePreflightCheck } from '@/lib/docx-extractor';
 import { JOURNAL_TEMPLATES } from '@/lib/templates';
 import { usePaper } from '@/context/PaperContext';
-import { sileo, toast } from '@/components/DynamicIslandToast';
+import { sileo, toast } from '@/components/toast';
 import { EditorTabKey } from './types';
 import { EditorLeftDock } from './EditorLeftDock';
 import { ExtractedContentDrawer } from './ExtractedContentDrawer';

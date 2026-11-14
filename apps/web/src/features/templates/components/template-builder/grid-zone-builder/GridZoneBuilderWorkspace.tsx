@@ -12,7 +12,7 @@ import { GridZoneControls } from './GridZoneControls';
 import { GridZoneCanvas } from './GridZoneCanvas';
 import { GridZonePresetsBar } from './GridZonePresetsBar';
 import { FileText, LayoutGrid, Check, Info } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface GridZoneBuilderWorkspaceProps {
   schema: UniversalTemplateSchema;

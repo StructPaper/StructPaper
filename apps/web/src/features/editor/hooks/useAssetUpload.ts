@@ -5,7 +5,7 @@ import {
   isMockModeEnabled,
   type AssetResponse,
 } from '@structpaper/api-client';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 export interface UseAssetUploadOptions {
   showToast?: boolean;

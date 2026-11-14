@@ -109,13 +109,13 @@
 - Modify: `apps/web/src/app/preview/page.tsx`
 - Modify: permissions and preview tests
 
-- [ ] **Step 1: Move permissions components and `useManuscriptMembers.ts` into `features/permissions/`**
-- [ ] **Step 2: Move preview components into `features/preview/`**
-- [ ] **Step 3: Create index exports for `permissions` and `preview`**
-- [ ] **Step 4: Update all import paths across `app/preview/page.tsx` and consumers**
-- [ ] **Step 5: Remove old directories (`components/permissions/`, `components/preview/`)**
-- [ ] **Step 6: Run permissions & preview tests**
-- [ ] **Step 7: Commit changes as `refactor(web): migrate permissions and preview to feature modules`**
+- [x] **Step 1: Move permissions components and `useManuscriptMembers.ts` into `features/permissions/`**
+- [x] **Step 2: Move preview components into `features/preview/`**
+- [x] **Step 3: Create index exports for `permissions` and `preview`**
+- [x] **Step 4: Update all import paths across `app/preview/page.tsx` and consumers**
+- [x] **Step 5: Remove old directories (`components/permissions/`, `components/preview/`)**
+- [x] **Step 6: Run permissions & preview tests**
+- [x] **Step 7: Commit changes as `refactor(web): migrate permissions and preview to feature modules`**
 
 ---
 

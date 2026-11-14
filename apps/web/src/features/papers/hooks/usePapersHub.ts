@@ -21,7 +21,7 @@ import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { getAuthoringPapers } from '@/lib/authoring/paper-storage';
 import { usePaper } from '@/context/PaperContext';
 import type { CompletePaper } from '@/types/paper';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import {
   FilterWorkflowStatus,
   FilterJournal,

@@ -33,7 +33,7 @@ import {
   Plus,
   Layers,
 } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { getZoneAtCell } from '@/types/grid-zones';
 
 interface Step15GridZonesProps {

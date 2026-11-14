@@ -20,7 +20,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { BUILT_IN_TEMPLATES } from '@/data/templates';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { Select } from '@/components/ui/Select';
 import { NumberInput } from '@/components/ui/NumberInput';
 

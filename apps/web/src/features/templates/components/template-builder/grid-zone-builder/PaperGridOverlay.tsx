@@ -12,7 +12,7 @@ import {
 import { GridZoneCard } from './GridZoneCard';
 import { findZoneDeep } from '../nested-zones/nestedZoneUtils';
 import { Plus, Move } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 export interface PaperGridOverlayProps {
   gridConfig: TemplateGridConfig;

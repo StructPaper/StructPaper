@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { http, isMockModeEnabled, setMockMode } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 export default function LoginPage() {
   const router = useRouter();

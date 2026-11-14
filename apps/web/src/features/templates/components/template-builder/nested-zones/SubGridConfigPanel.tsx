@@ -3,7 +3,7 @@
 import React from 'react';
 import { LayoutZoneConfig, TemplateGridConfig } from '@/types/template-builder';
 import { Columns, Sparkles } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface SubGridConfigPanelProps {
   currentZone: LayoutZoneConfig;

@@ -5,8 +5,8 @@
     "apps/web/src/app/login/page.tsx",
     "apps/web/src/app/test-render-html/page.tsx",
     "apps/web/src/app/test-render-latex/page.tsx",
-    "apps/web/src/components/ExtractedContentView.tsx",
-    "apps/web/src/components/Sidebar.tsx",
+    "apps/web/src/features/papers/components/ExtractedContentView.tsx",
+    "apps/web/src/components/layout/Sidebar.tsx",
     "apps/web/src/features/permissions/components/PermissionMatrixTab.tsx",
     "apps/web/src/features/preview/components/PdfInteractiveViewer.tsx",
     "apps/web/src/features/templates/components/template-builder/TemplateBuilderView.tsx",
@@ -73,7 +73,7 @@
       "maxAllowedTotal": 922,
       "maxAllowedCode": 839
     },
-    "apps/web/src/components/ExtractedContentView.tsx": {
+    "apps/web/src/features/papers/components/ExtractedContentView.tsx": {
       "totalLines": 594,
       "codeLines": 565,
       "maxAllowedTotal": 594,
@@ -91,7 +91,7 @@
       "maxAllowedTotal": 448,
       "maxAllowedCode": 412
     },
-    "apps/web/src/components/Sidebar.tsx": {
+    "apps/web/src/components/layout/Sidebar.tsx": {
       "totalLines": 435,
       "codeLines": 410,
       "maxAllowedTotal": 435,

@@ -12,7 +12,7 @@ import {
   TauriDesktopCompiler,
   isTauriEnvironment,
 } from '@structpaper/compiler-client';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
 import { CompileStats, CompileErrorInfo } from '../components/types';
 

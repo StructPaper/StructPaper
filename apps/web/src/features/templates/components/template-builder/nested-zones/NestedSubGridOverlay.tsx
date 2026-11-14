@@ -11,7 +11,7 @@ import {
 import { SubGridZoneCard } from './SubGridZoneCard';
 import { LayoutGrid, Plus } from 'lucide-react';
 import { getDefaultSubGridConfig } from './nestedZoneUtils';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface NestedSubGridOverlayProps {
   parentZone: LayoutZoneConfig;

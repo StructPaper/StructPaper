@@ -7,7 +7,7 @@ import {
   ALL_ARTICLE_TYPES,
 } from '@structpaper/journal-profiles';
 import { Layers, Plus, Trash2, CheckCircle2, ShieldCheck, X } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface JournalArticleTypesTabProps {
   profile: JournalProfile;

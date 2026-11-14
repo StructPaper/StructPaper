@@ -5,7 +5,7 @@ import { DocumentTemplateSchema } from '@/types/template-builder';
 import { generateTypstTemplate } from '@/lib/template-builder/typst-generator';
 import { generateLatexTemplate } from '@/lib/template-builder/latex-generator';
 import { Copy, Check, Download, Code2, Terminal, Braces } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface CodePreviewTabsProps {
   schema: DocumentTemplateSchema;

@@ -19,7 +19,7 @@ import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { usePaper } from '@/context/PaperContext';
 import { usePaperStorage, ImportValidationModal } from '@/features/editor';
 import { usePaperDuplicateWarning } from '../../hooks/usePaperDuplicateWarning';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { DuplicatePaperWarningModal } from '../DuplicatePaperWarningModal';
 import { validateForImport, type ValidationReport } from '@/lib/validation/validators';
 import { renumberPaper } from '@/lib/validation/numbering';

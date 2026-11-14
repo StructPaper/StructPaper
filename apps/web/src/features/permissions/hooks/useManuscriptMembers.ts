@@ -8,7 +8,7 @@ import {
   type AddManuscriptMemberRequest,
   type ManuscriptMember,
 } from '@structpaper/api-client';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 export interface UseManuscriptMembersOptions {
   showToast?: boolean;

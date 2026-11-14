@@ -15,6 +15,8 @@ export * from './components/ManuscriptTable';
 export * from './components/ServerManuscriptsView';
 export * from './components/CreatePaperModal';
 export * from './components/DuplicatePaperWarningModal';
+export * from './components/UploadView';
+export * from './components/ExtractedContentView';
 
 // Hooks
 export * from './hooks/usePapersHub';

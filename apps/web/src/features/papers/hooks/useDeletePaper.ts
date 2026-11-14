@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDeleteManuscript, isMockModeEnabled } from '@structpaper/api-client';
 import { IndexedDbManuscriptRepo } from '@structpaper/storage';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 export interface UseDeletePaperOptions {
   onSuccess?: (id: string) => void;

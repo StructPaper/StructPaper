@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { PaperMetadata } from '@/types/paper';
 import { Bookmark, Sparkles, Copy, Check, Info, FileText } from 'lucide-react';
 import { generateStandardCitation } from './sections/utils';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import { useTabScrollRestoration } from '../hooks';
 
 interface CitationTabProps {

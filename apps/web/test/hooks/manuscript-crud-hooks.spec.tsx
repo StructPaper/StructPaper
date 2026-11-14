@@ -44,7 +44,7 @@ vi.mock('@structpaper/storage', () => ({
   },
 }));
 
-vi.mock('@/components/DynamicIslandToast', () => ({
+vi.mock('@/components/toast', () => ({
   sileo: {
     success: vi.fn(),
     error: vi.fn(),

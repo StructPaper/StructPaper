@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { useManagedJournals } from './useManagedJournals';
 import { validateJournalProfileUniqueness } from '@/lib/templates/template-naming';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 export interface UseJournalEditorSaveOptions {
   managed: ManagedJournalProfile;

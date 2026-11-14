@@ -31,7 +31,7 @@ import {
   X,
   Palette,
 } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { Select, SelectOption } from '@/components/ui/Select';
 
 export interface ElementStyleContextMenuProps {

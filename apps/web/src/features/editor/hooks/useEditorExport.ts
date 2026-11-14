@@ -5,7 +5,7 @@ import { CompletePaper } from '@/types/paper';
 import { generateLatexPackageZip, exportToJatsXml } from '@/lib/exporters';
 import { exportPaperToDocx } from '@/lib/docx-export';
 import { buildJatsPackage, jatsReadinessWarnings } from '@/lib/jats-package';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 export type ExportedFormat = 'docx' | 'pdf' | 'xml';
 

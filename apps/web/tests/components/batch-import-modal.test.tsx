@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), info: vi.fn(), error: vi.fn(), warning: vi.fn(), loading: vi.fn(), dismiss: vi.fn() }));
-vi.mock('@/components/DynamicIslandToast', () => ({ toast: toastMock }));
+vi.mock('@/components/toast', () => ({ toast: toastMock }));
 
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('framer-motion');

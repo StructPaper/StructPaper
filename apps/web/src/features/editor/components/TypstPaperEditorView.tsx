@@ -33,7 +33,7 @@ import { generateStandardCitation } from './sections/utils';
 import { ResizableSplitLayout } from './ResizableSplitLayout';
 import { TypstLivePreviewPane } from './TypstLivePreviewPane';
 import { Home, Eye, Edit3, FileEdit } from 'lucide-react';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import { PaperQuickEditModal, useEditorQuickEdit } from '@/features/papers';
 import { useEditorAutoSave, useSyncEditorSession, useHydrateDisplayName } from '../hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';

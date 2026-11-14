@@ -12,7 +12,7 @@ import {
 import { usePaper } from '@/context/PaperContext';
 import { usePaperStorage } from '@/features/editor';
 import { createEmptyPaper } from '@/types/paper';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 export function useManagedJournals() {
   const router = useRouter();

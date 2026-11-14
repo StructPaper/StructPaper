@@ -30,7 +30,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface TemplateHubViewProps {
   onOpenStudio?: (schema: UniversalTemplateSchema) => void;

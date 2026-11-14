@@ -9,7 +9,7 @@ import {
   type Manuscript,
 } from '@structpaper/api-client';
 import { savePaperToIndexedDb } from '@/lib/storage/paper-sync';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import type { CompletePaper } from '@/types/paper';
 
 export interface UseCreatePaperOptions {

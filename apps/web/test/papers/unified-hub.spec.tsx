@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock DynamicIslandToast
-vi.mock('@/components/DynamicIslandToast', () => ({
+vi.mock('@/components/toast', () => ({
   toast: {
     success: vi.fn(),
     info: vi.fn(),

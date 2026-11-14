@@ -38,7 +38,7 @@ import {
   GripVertical,
   ChevronRight,
 } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { Select } from '@/components/ui/Select';
 import { flattenAllZones } from '../nested-zones';
 import { AddElementModal, ACADEMIC_ELEMENT_METAS } from './AddElementModal';

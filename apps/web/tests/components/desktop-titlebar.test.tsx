@@ -29,7 +29,7 @@ vi.mock('next/navigation', () => ({
 import { EditorSessionProvider, useEditorSession } from '@/context/EditorSessionContext';
 import { DesktopChromeShell, DesktopTitleBar } from '@/components/titlebar';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
-import { Sidebar } from '@/components/Sidebar';
+import { Sidebar } from '@/components/layout';
 import { STRUCTPAPER_AUTOSAVE_PREF_KEY } from '@/lib/editor/autosave-preferences';
 
 function createSpyWindowService(initialMaximized = false): {

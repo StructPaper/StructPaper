@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { usePaper } from '@/context/PaperContext';
-import { ExtractedContentView } from '@/components/ExtractedContentView';
+import { ExtractedContentView } from '@/features/papers';
 
 export default function ExtractedPage() {
   const router = useRouter();

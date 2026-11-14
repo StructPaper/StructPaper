@@ -15,7 +15,7 @@ import { PreviewHeader } from './preview/PreviewHeader';
 import { PreviewFooter } from './preview/PreviewFooter';
 import { PreviewZoneContent } from './preview/PreviewZoneContent';
 import { ElementStyleContextMenu } from './preview/ElementStyleContextMenu';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { ID630_DEMO_PAGES } from '@/lib/template-builder/id630-demo-pages';
 import { findZoneDeep } from './nested-zones/nestedZoneUtils';
 import { Plus } from 'lucide-react';

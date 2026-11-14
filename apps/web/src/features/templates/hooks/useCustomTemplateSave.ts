@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { UniversalTemplateSchema } from '@/types/template-builder';
 import { templateRegistry } from '@/lib/template-engine/storage/template-registry';
 import { validateCustomTemplateUniqueness } from '@/lib/templates/template-naming';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 export interface UseCustomTemplateSaveOptions {
   schema: UniversalTemplateSchema;

@@ -2,8 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/Sidebar';
-import { BottomNav } from '@/components/BottomNav';
+import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { useAuthStore } from '@/lib/auth-store';
 import { useAuth } from '@/features/auth';
 import { isMockModeEnabled } from '@structpaper/api-client';

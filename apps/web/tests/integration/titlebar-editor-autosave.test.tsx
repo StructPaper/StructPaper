@@ -95,7 +95,7 @@ import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { PaperProvider } from '@/context/PaperContext';
 import { DesktopTitleBar } from '@/components/titlebar';
 import { UnifiedEditorView } from '@/features/editor';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { migrateV1toV2 } from '@structpaper/doc-model';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';

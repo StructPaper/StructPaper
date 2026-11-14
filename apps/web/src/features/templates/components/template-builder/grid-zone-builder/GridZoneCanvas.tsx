@@ -11,7 +11,7 @@ import {
 } from '@/types/grid-zones';
 import { GridZoneCard } from './GridZoneCard';
 import { Plus } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface GridZoneCanvasProps {
   gridConfig: TemplateGridConfig;

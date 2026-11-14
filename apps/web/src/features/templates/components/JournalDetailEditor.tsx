@@ -8,7 +8,7 @@ import {
   ManagedJournalProfile,
   JournalStatus,
 } from '@/lib/templates/journal-storage';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { useJournalEditorSave } from '../hooks/useJournalEditorSave';
 import { ActionConfirmModal } from '@/components/modals';
 import { JournalEditorDock } from './JournalEditorDock';

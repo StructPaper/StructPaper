@@ -24,7 +24,7 @@ vi.mock('@structpaper/api-client', async () => {
   };
 });
 
-vi.mock('@/components/DynamicIslandToast', () => ({
+vi.mock('@/components/toast', () => ({
   sileo: {
     success: vi.fn(),
     error: vi.fn(),

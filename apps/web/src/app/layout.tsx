@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { PaperProvider } from '@/context/PaperContext';
-import { Sidebar } from '@/components/Sidebar';
-import { BottomNav } from '@/components/BottomNav';
+
 
 export const metadata: Metadata = {
   title: 'StructPaper | Hệ Thống Trích Xuất & Dàn Trang Báo Cáo Khoa Học VNUHCM',
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 import { AppShell } from '@/components/layout/AppShell';
-import { Toaster } from '@/components/DynamicIslandToast';
+import { Toaster } from '@/components/toast';
 import { PlatformProvider } from '@/platform/provider';
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { DesktopChromeShell } from '@/components/titlebar';

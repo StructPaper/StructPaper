@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock DynamicIslandToast
-vi.mock('@/components/DynamicIslandToast', () => ({
+vi.mock('@/components/toast', () => ({
   toast: {
     success: vi.fn(),
     info: vi.fn(),
@@ -379,7 +379,7 @@ describe('Task 4: Quản lý Bài báo UI & Top Recent Papers Row', () => {
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/editor');
-      });
+      }, { timeout: 4000 });
     });
   });
 

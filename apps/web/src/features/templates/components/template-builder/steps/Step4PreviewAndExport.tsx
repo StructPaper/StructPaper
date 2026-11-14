@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface Step4PreviewAndExportProps {
   schema: UniversalTemplateSchema;

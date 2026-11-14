@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import type { ManuscriptRecord, ManuscriptInfo, WorkflowStatus } from '@structpaper/doc-model';
 import { migrateV1toV2 } from '@structpaper/doc-model';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import type { CompletePaper } from '@/types/paper';
 
 /**

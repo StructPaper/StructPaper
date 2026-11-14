@@ -19,7 +19,7 @@ import {
   addChildSubZone,
 } from './nestedZoneUtils';
 import { ArrowLeft, Layers } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface NestedZoneStudioProps {
   zones: LayoutZoneConfig[];

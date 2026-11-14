@@ -32,7 +32,7 @@ import { StepSpecialElements } from './steps/StepSpecialElements';
 import { ElementsManagerView } from './elements-manager/ElementsManagerView';
 
 import { ArrowLeft, Save } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 import { ActionConfirmModal } from '@/components/modals';
 import { useCustomTemplateSave } from '../../hooks/useCustomTemplateSave';
 import {

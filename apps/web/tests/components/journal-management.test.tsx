@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock DynamicIslandToast
-vi.mock('@/components/DynamicIslandToast', () => ({
+vi.mock('@/components/toast', () => ({
   toast: {
     success: vi.fn(),
     info: vi.fn(),
@@ -46,7 +46,7 @@ import {
   JournalDetailEditor,
 } from '@/features/templates';
 import { ActionConfirmModal } from '@/components/modals';
-import { Sidebar } from '@/components/Sidebar';
+import { Sidebar } from '@/components/layout';
 import {
   getManagedJournals,
   getManagedJournalById,

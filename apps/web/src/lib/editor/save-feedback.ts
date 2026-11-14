@@ -1,4 +1,4 @@
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 
 /**

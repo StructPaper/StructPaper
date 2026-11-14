@@ -13,7 +13,7 @@ import {
   Sparkles,
   ExternalLink,
 } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface TypstExportTabProps {
   paper: CompletePaper;

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { notifyManualSaveOutcome } from '@/lib/editor/save-feedback';
-import { sileo } from '@/components/DynamicIslandToast';
+import { sileo } from '@/components/toast';
 
 describe('notifyManualSaveOutcome', () => {
   afterEach(() => {

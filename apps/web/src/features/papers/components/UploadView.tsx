@@ -18,8 +18,8 @@ import { createEmptyPaper } from '@/types/paper';
 import { parseDocxFile } from '@/lib/docx-parser';
 import { JOURNAL_TEMPLATES } from '@/lib/templates';
 import { usePaper } from '@/context/PaperContext';
-import { Select, SelectOption } from './ui/Select';
-import { sileo } from '@/components/DynamicIslandToast';
+import { Select, SelectOption } from '@/components/ui/Select';
+import { sileo } from '@/components/toast';
 import { usePaperDuplicateWarning, DuplicatePaperWarningModal } from '@/features/papers';
 
 interface UploadViewProps {

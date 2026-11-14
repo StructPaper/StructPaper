@@ -15,7 +15,7 @@ import { DownloadDesktopCard } from '@/components/platform/DownloadDesktopCard';
 import { CheckForUpdateCard } from '@/components/platform/CheckForUpdateCard';
 import { UpdateNotificationBanner } from '@/components/platform/UpdateNotificationBanner';
 import { UpdateToastNotifier } from '@/components/platform/UpdateToastNotifier';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 describe('Settings Distribution Slot & Auto-Update Banner (Task 6)', () => {
   afterEach(() => {

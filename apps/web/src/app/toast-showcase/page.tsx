@@ -15,7 +15,7 @@ import {
   Zap,
   Layers,
 } from 'lucide-react';
-import { toast, sileo } from '@/components/DynamicIslandToast';
+import { toast, sileo } from '@/components/toast';
 
 const THEME_DEMOS = [
   {

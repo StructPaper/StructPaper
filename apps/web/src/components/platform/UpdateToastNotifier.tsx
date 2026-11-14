@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useAppUpdater } from '@structpaper/platform';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 export interface UpdateToastNotifierProps {
   /**

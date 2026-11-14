@@ -7,7 +7,7 @@ import {
   ALL_ARTICLE_TYPES,
 } from '@structpaper/journal-profiles';
 import { Copy, Check, Download, Code2, Layers } from 'lucide-react';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface JournalJsonInspectorTabProps {
   profile: JournalProfile;

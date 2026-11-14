@@ -8,7 +8,7 @@ import { WORKFLOW_STATUS_CONFIG } from './types';
 import { Select, SelectOption } from '@/components/ui/Select';
 import { ModalPortal } from '@/components/modals/ModalPortal';
 import { validateDisplayNameUniqueness } from '@/lib/storage/paper-naming';
-import { toast } from '@/components/DynamicIslandToast';
+import { toast } from '@/components/toast';
 
 interface PaperQuickEditModalProps {
   paper: ManuscriptRecord | null;
