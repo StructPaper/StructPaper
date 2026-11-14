@@ -29,6 +29,10 @@ const nextConfig = {
       'http://localhost:3001';
     return [
       {
+        source: '/api/proxy/:path*',
+        destination: `${process.env.INTERNAL_API_URL || 'http://localhost:3001'}/:path*`,
+      },
+      {
         source: '/api/v1/:path*',
         destination: `${backendUrl}/api/v1/:path*`,
       },

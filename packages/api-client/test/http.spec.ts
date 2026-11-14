@@ -5,9 +5,12 @@ import {
   customInstance,
   setAccessToken,
   getAccessToken,
+  setRefreshTokenGetter,
+  setOnTokenRefreshed,
   ProblemDetailsError,
   isMockModeEnabled,
   setMockMode,
+  handleMockRequest,
   listManuscripts,
   login,
   getRoles,
@@ -24,14 +27,28 @@ describe('HTTP Client & Interceptors', () => {
 
   beforeEach(() => {
     setAccessToken(null);
+    setRefreshTokenGetter(null);
+    setOnTokenRefreshed(null);
     setMockMode(false);
   });
 
   afterEach(() => {
     http.defaults.adapter = originalAdapter;
     setAccessToken(null);
+    setRefreshTokenGetter(null);
+    setOnTokenRefreshed(null);
     setMockMode(false);
     vi.restoreAllMocks();
+  });
+
+  describe('baseURL Configuration', () => {
+    it('configures baseURL to /api/proxy', () => {
+      expect(http.defaults.baseURL).toBe('/api/proxy');
+    });
+
+    it('enables withCredentials for cookie transmission', () => {
+      expect(http.defaults.withCredentials).toBe(true);
+    });
   });
 
   describe('Authorization Header & Token Management', () => {
@@ -39,9 +56,11 @@ describe('HTTP Client & Interceptors', () => {
       expect(getAccessToken()).toBeNull();
       setAccessToken('token-123');
       expect(getAccessToken()).toBe('token-123');
+      setAccessToken(null);
+      expect(getAccessToken()).toBeNull();
     });
 
-    it('attaches Authorization header when access token is set', async () => {
+    it('attaches Authorization: Bearer header when access token is set', async () => {
       setAccessToken('auth-jwt-xyz');
 
       let capturedHeaders: any = null;
@@ -60,13 +79,15 @@ describe('HTTP Client & Interceptors', () => {
       expect(capturedHeaders.Authorization).toBe('Bearer auth-jwt-xyz');
       expect(res).toEqual({ success: true });
     });
-  });
 
-  describe('Response Unwrapping', () => {
-    it('unwraps response.data directly', async () => {
+    it('omits Authorization header when access token is null', async () => {
+      setAccessToken(null);
+
+      let capturedHeaders: any = null;
       http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        capturedHeaders = config.headers;
         return {
-          data: { id: 'item-1', name: 'StructPaper Manuscript' },
+          data: { success: true },
           status: 200,
           statusText: 'OK',
           headers: {},
@@ -74,13 +95,45 @@ describe('HTTP Client & Interceptors', () => {
         } as AxiosResponse;
       };
 
-      const data: any = await http.get('/manuscript');
-      expect(data).toEqual({ id: 'item-1', name: 'StructPaper Manuscript' });
-      expect(data.data).toBeUndefined();
+      await http.get('/test-public');
+      expect(capturedHeaders.Authorization).toBeUndefined();
     });
   });
 
-  describe('RFC 9457 Error Normalization', () => {
+  describe('Response Unwrapping', () => {
+    it('unwraps response.data directly', async () => {
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        return {
+          data: { id: 'item-1', name: 'Test Resource' },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        } as AxiosResponse;
+      };
+
+      const data: any = await http.get('/resource');
+      expect(data).toEqual({ id: 'item-1', name: 'Test Resource' });
+      expect(data.data).toBeUndefined();
+    });
+
+    it('returns raw response if response.data is undefined', async () => {
+      const mockResponse = {
+        data: undefined,
+        status: 204,
+        statusText: 'No Content',
+        headers: {},
+        config: {} as InternalAxiosRequestConfig,
+      } as AxiosResponse;
+
+      http.defaults.adapter = async () => mockResponse;
+
+      const result: any = await http.delete('/resource/1');
+      expect(result).toBe(mockResponse);
+    });
+  });
+
+  describe('RFC 9457 Error Normalization & General Errors', () => {
     it('transforms RFC 9457 problem details response into ProblemDetailsError instance', async () => {
       const problemData = {
         type: 'https://tools.ietf.org/html/rfc9457',
@@ -89,13 +142,11 @@ describe('HTTP Client & Interceptors', () => {
         detail: 'Request body failed validation rules',
         instance: '/api/v1/manuscripts',
         code: 'VALIDATION_FAILED',
-        invalidParams: [
-          { name: 'title', reason: 'Title cannot be empty' },
-        ],
+        invalidParams: [{ name: 'title', reason: 'Title cannot be empty' }],
       };
 
       http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
-        const error = new AxiosError(
+        throw new AxiosError(
           'Request failed with status code 400',
           'ERR_BAD_REQUEST',
           config,
@@ -108,7 +159,6 @@ describe('HTTP Client & Interceptors', () => {
             config,
           } as AxiosResponse,
         );
-        throw error;
       };
 
       try {
@@ -142,10 +192,33 @@ describe('HTTP Client & Interceptors', () => {
       expect(error.extensions?.serverRev).toBe(5);
       expect(error.extensions?.requiredRev).toBe(4);
     });
+
+    it('rejects with error.response.data when not a ProblemDetails structure', async () => {
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        throw new AxiosError(
+          'Custom server error',
+          'ERR_BAD_RESPONSE',
+          config,
+          null,
+          {
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: {},
+            data: { error: 'Database connection failed', statusCode: 500 },
+            config,
+          } as AxiosResponse,
+        );
+      };
+
+      await expect(http.get('/error-test')).rejects.toEqual({
+        error: 'Database connection failed',
+        statusCode: 500,
+      });
+    });
   });
 
   describe('Token Refresh Queue & 401 Replay', () => {
-    it('queues concurrent requests on 401, refreshes token once, and replays all with new access token', async () => {
+    it('queues concurrent requests on 401, refreshes token once via /api/v1/auth/refresh, and replays all with new access token', async () => {
       setAccessToken('expired-access-token');
 
       let refreshCalls = 0;
@@ -159,7 +232,7 @@ describe('HTTP Client & Interceptors', () => {
         if (url.includes('/api/v1/auth/refresh')) {
           refreshCalls++;
           return {
-            data: { accessToken: 'new-fresh-token', expiresIn: 3600 },
+            data: { access_token: 'new-fresh-token', expiresIn: 3600 },
             status: 200,
             statusText: 'OK',
             headers: {},
@@ -176,7 +249,7 @@ describe('HTTP Client & Interceptors', () => {
               'ERR_BAD_REQUEST',
               config,
               null,
-              { status: 401, statusText: 'Unauthorized', headers: {}, data: { title: 'Unauthorized' }, config } as AxiosResponse,
+              { status: 401, statusText: 'Unauthorized', headers: {}, data: { message: 'Unauthorized' }, config } as AxiosResponse,
             );
           }
           return {
@@ -197,7 +270,7 @@ describe('HTTP Client & Interceptors', () => {
               'ERR_BAD_REQUEST',
               config,
               null,
-              { status: 401, statusText: 'Unauthorized', headers: {}, data: { title: 'Unauthorized' }, config } as AxiosResponse,
+              { status: 401, statusText: 'Unauthorized', headers: {}, data: { message: 'Unauthorized' }, config } as AxiosResponse,
             );
           }
           return {
@@ -238,6 +311,116 @@ describe('HTTP Client & Interceptors', () => {
       expect(res2.authHeader).toBe('Bearer new-fresh-token');
     });
 
+    it('supports camelCase accessToken from refresh endpoint and notifies onTokenRefreshed callback', async () => {
+      setAccessToken('old-token');
+
+      let refreshedCallbackToken = '';
+      setOnTokenRefreshed((tok) => {
+        refreshedCallbackToken = tok;
+      });
+
+      let attempt = 0;
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        const url = config.url || '';
+        if (url.includes('/api/v1/auth/refresh')) {
+          return {
+            data: { accessToken: 'camelCase-new-token' },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          } as AxiosResponse;
+        }
+
+        attempt++;
+        if (attempt === 1) {
+          throw new AxiosError(
+            'Unauthorized',
+            'ERR_BAD_REQUEST',
+            config,
+            null,
+            { status: 401, statusText: 'Unauthorized', headers: {}, data: {}, config } as AxiosResponse,
+          );
+        }
+
+        return {
+          data: { done: true, auth: config.headers?.Authorization },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        } as AxiosResponse;
+      };
+
+      const result: any = await http.get('/api/v1/user/profile');
+      expect(result.done).toBe(true);
+      expect(result.auth).toBe('Bearer camelCase-new-token');
+      expect(getAccessToken()).toBe('camelCase-new-token');
+      expect(refreshedCallbackToken).toBe('camelCase-new-token');
+    });
+
+    it('uses refreshTokenGetter when set and posts to /api/v1/auth/refresh', async () => {
+      setAccessToken('expired-token');
+      setRefreshTokenGetter(() => 'stored-refresh-token');
+
+      let refreshPayload: any = null;
+      let attempt = 0;
+
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        const url = config.url || '';
+        if (url.includes('/api/v1/auth/refresh')) {
+          refreshPayload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+          return {
+            data: { access_token: 'refreshed-via-post' },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          } as AxiosResponse;
+        }
+
+        attempt++;
+        if (attempt === 1) {
+          throw new AxiosError(
+            'Unauthorized',
+            'ERR_BAD_REQUEST',
+            config,
+            null,
+            { status: 401, statusText: 'Unauthorized', headers: {}, data: {}, config } as AxiosResponse,
+          );
+        }
+
+        return {
+          data: { success: true },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        } as AxiosResponse;
+      };
+
+      await http.get('/api/v1/dashboard');
+      expect(refreshPayload).toEqual({ refreshToken: 'stored-refresh-token' });
+      expect(getAccessToken()).toBe('refreshed-via-post');
+    });
+
+    it('prevents refresh loop when /auth/refresh itself returns 401', async () => {
+      setAccessToken('invalid-token');
+
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        throw new AxiosError(
+          'Unauthorized refresh',
+          'ERR_BAD_REQUEST',
+          config,
+          null,
+          { status: 401, statusText: 'Unauthorized', headers: {}, data: { message: 'Invalid refresh token' }, config } as AxiosResponse,
+        );
+      };
+
+      await expect(http.get('/api/v1/auth/refresh')).rejects.toThrow();
+      expect(getAccessToken()).toBeNull();
+    });
+
     it('rejects queued requests and clears state if refresh request fails', async () => {
       setAccessToken('expired-token');
 
@@ -265,20 +448,85 @@ describe('HTTP Client & Interceptors', () => {
       await expect(http.get('/api/v1/manuscripts/m-1')).rejects.toThrow();
       expect(getAccessToken()).toBeNull();
     });
+
+    it('clears token and redirects to /login on refresh failure in browser environment', async () => {
+      setAccessToken('expired-token');
+
+      const mockLocalStorage: Record<string, string> = {};
+      const fakeWindow = {
+        location: {
+          pathname: '/dashboard',
+          search: '',
+          href: '/dashboard',
+        },
+        localStorage: {
+          setItem: (k: string, v: string) => {
+            mockLocalStorage[k] = v;
+          },
+          getItem: (k: string) => mockLocalStorage[k] || null,
+        },
+      };
+
+      vi.stubGlobal('window', fakeWindow);
+
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        const url = config.url || '';
+        if (url.includes('/api/v1/auth/refresh')) {
+          throw new AxiosError(
+            'Refresh failed',
+            'ERR_BAD_REQUEST',
+            config,
+            null,
+            { status: 401, statusText: 'Unauthorized', headers: {}, data: {}, config } as AxiosResponse,
+          );
+        }
+
+        throw new AxiosError(
+          'Unauthorized',
+          'ERR_BAD_REQUEST',
+          config,
+          null,
+          { status: 401, statusText: 'Unauthorized', headers: {}, data: {}, config } as AxiosResponse,
+        );
+      };
+
+      await expect(http.get('/api/v1/user/settings')).rejects.toThrow();
+      expect(getAccessToken()).toBeNull();
+      expect(mockLocalStorage.auth_expired).toBe('true');
+      expect(fakeWindow.location.href).toBe('/login');
+
+      vi.unstubAllGlobals();
+    });
   });
 
-  describe('Mock Mode & Adapter Routing', () => {
-    it('returns mock data when mock mode is enabled', async () => {
+  describe('customInstance helper', () => {
+    it('passes options and configs to http client', async () => {
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        return {
+          data: { url: config.url, method: config.method },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        } as AxiosResponse;
+      };
+
+      const result: any = await customInstance({ url: '/custom-url', method: 'post' });
+      expect(result).toEqual({ url: '/custom-url', method: 'post' });
+    });
+  });
+
+  describe('Mock Mode Compatibility Helpers', () => {
+    it('provides isMockModeEnabled and setMockMode helpers', () => {
+      expect(isMockModeEnabled()).toBe(false);
       setMockMode(true);
-      const mockResult: any = await http.get('/health');
-      expect(mockResult).toBeDefined();
-      expect(mockResult.status).toBe('ok');
+      expect(isMockModeEnabled()).toBe(true);
+      setMockMode(false);
+      expect(isMockModeEnabled()).toBe(false);
     });
 
-    it('returns mock data when header x-mock-mode is true', async () => {
-      const mockResult: any = await http.get('/api/v1/health', {
-        headers: { 'x-mock-mode': 'true' },
-      });
+    it('handleMockRequest returns expected responses for development testing', async () => {
+      const mockResult: any = await handleMockRequest('/health', 'GET');
       expect(mockResult).toBeDefined();
       expect(mockResult.status).toBe('ok');
     });
@@ -297,16 +545,32 @@ describe('HTTP Client & Interceptors', () => {
       expect(typeof createUploadIntent).toBe('function');
     });
 
-    it('invokes generated functions through mock adapter when mock mode is enabled', async () => {
-      setMockMode(true);
+    it('invokes generated callers through http pipeline with configured adapter', async () => {
+      http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+        const url = config.url || '';
+        if (url.includes('/health')) {
+          return {
+            data: {
+              status: 'ok',
+              version: '1.0.0',
+              timestamp: '2026-11-14T00:00:00Z',
+              database: { status: 'ok', latencyMs: 2 },
+            },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          } as AxiosResponse;
+        }
 
-      const manuscripts = await listManuscripts();
-      expect(Array.isArray(manuscripts)).toBe(true);
-      expect(manuscripts[0].title).toBe('Mock Research Manuscript');
-
-      const loginRes = await login({ email: 'test@structpaper.org', password: 'password123' });
-      expect(loginRes.accessToken).toBeDefined();
-      expect(loginRes.user?.email).toBe('test@structpaper.org');
+        return {
+          data: {},
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        } as AxiosResponse;
+      };
 
       const health = await getHealth();
       expect(health.status).toBe('ok');

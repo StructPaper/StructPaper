@@ -1,6 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosRequestConfig } from 'axios';
 import type { InvalidParam, ProblemDetails } from '@structpaper/contracts';
-import { handleMockRequest } from './mock-adapter';
 
 // ======= RFC 9457 Problem Details Error =======
 export class ProblemDetailsError extends Error {
@@ -42,7 +41,7 @@ export class ProblemDetailsError extends Error {
   }
 }
 
-// ======= Memory Storage for Access Token & Refresh Handler =======
+// ======= Memory Storage for Access Token & Refresh Handlers =======
 let accessToken: string | null = null;
 let refreshTokenGetter: (() => string | null) | null = null;
 let onTokenRefreshedCallback: ((newAccessToken: string) => void) | null = null;
@@ -61,28 +60,13 @@ export const setOnTokenRefreshed = (fn: ((newAccessToken: string) => void) | nul
   onTokenRefreshedCallback = fn;
 };
 
-// ======= Mock Mode Controller =======
-let memoryMockMode: boolean | null = null;
+// ======= Mock Mode Helpers (Kept for compatibility) =======
+let mockModeEnabled = false;
 
-export const isMockModeEnabled = (): boolean => {
-  if (memoryMockMode !== null) return memoryMockMode;
-
-  if (typeof window !== 'undefined') {
-    const localSetting = window.localStorage.getItem('structpaper_mock_mode');
-    if (localSetting === 'false') return false;
-    if (localSetting === 'true') return true;
-  }
-
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.NEXT_PUBLIC_ENABLE_MOCK === 'false') return false;
-    if (process.env.ENABLE_MOCK === 'true') return true;
-  }
-
-  return false;
-};
+export const isMockModeEnabled = (): boolean => mockModeEnabled;
 
 export const setMockMode = (enabled: boolean) => {
-  memoryMockMode = enabled;
+  mockModeEnabled = enabled;
   if (typeof window !== 'undefined') {
     window.localStorage.setItem('structpaper_mock_mode', enabled ? 'true' : 'false');
   }
@@ -115,20 +99,16 @@ const onRefreshFailed = (error: any) => {
   setAccessToken(null);
   isRefreshing = false;
 
-  // Route out of authenticated flow to /login (matching eatzy_frontend pattern)
-  if (!isMockModeEnabled() && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+  // On refresh failure: clear token and redirect to /login if in browser
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
     window.localStorage.setItem('auth_expired', 'true');
-    const redirectParam = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/login?redirect=${redirectParam}`;
+    window.location.href = '/login';
   }
 };
 
 // ======= Axios Client Instance =======
 export const http = axios.create({
-  baseURL:
-    typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL
-      ? process.env.NEXT_PUBLIC_API_URL
-      : (typeof process !== 'undefined' && process.env?.API_BASE_URL ? process.env.API_BASE_URL : ''),
+  baseURL: '/api/proxy',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -146,48 +126,18 @@ export const customInstance = <T>(
   }) as unknown as Promise<T>;
 };
 
-// Request Interceptor: Attach Token & Handle Mock Adapter
+// Request Interceptor: Attach Bearer Token
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
-
-    const mockHeader = config.headers?.['x-mock-mode'] === 'true';
-    if (isMockModeEnabled() || mockHeader) {
-      config.adapter = async (cfg) => {
-        let parsedData = cfg.data;
-        if (typeof cfg.data === 'string') {
-          try {
-            parsedData = JSON.parse(cfg.data);
-          } catch {
-            parsedData = cfg.data;
-          }
-        }
-        const mockResult = await handleMockRequest(
-          cfg.url || '',
-          cfg.method || 'GET',
-          parsedData,
-          cfg.params,
-        );
-
-        const response: AxiosResponse = {
-          data: mockResult,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: cfg,
-        };
-        return response;
-      };
-    }
-
     return config;
   },
   (error) => Promise.reject(error),
 );
 
-// Response Interceptor: Handle 401 Refresh Queue, Mock Fallback & RFC 9457 Normalization
+// Response Interceptor: Unpack data, handle 401 token refresh queue & error normalization
 http.interceptors.response.use(
   (response) => {
     return (response.data !== undefined ? response.data : response) as any;
@@ -195,25 +145,9 @@ http.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    // Fallback to mock adapter if network is unreachable and mock is permitted
-    if (
-      (error.code === 'ERR_NETWORK' || !error.response || (error.response.status >= 500 && error.response.status <= 504)) &&
-      originalRequest?.url &&
-      isMockModeEnabled()
-    ) {
-      let parsedData = originalRequest.data;
-      if (typeof originalRequest.data === 'string') {
-        try {
-          parsedData = JSON.parse(originalRequest.data);
-        } catch {
-          parsedData = originalRequest.data;
-        }
-      }
-      return handleMockRequest(originalRequest.url, originalRequest.method, parsedData, originalRequest.params);
-    }
-
     // 401 Unauthorized handling & Token Refresh Queue
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Prevent infinite loops if the refresh endpoint itself returns 401
       if (originalRequest.url?.includes('/auth/refresh')) {
         onRefreshFailed(error);
         return Promise.reject(error);
@@ -240,11 +174,15 @@ http.interceptors.response.use(
 
       try {
         const currentRefreshToken = refreshTokenGetter ? refreshTokenGetter() : null;
-        const res: any = await http.post('/api/v1/auth/refresh', {
-          refreshToken: currentRefreshToken,
-        });
+        const res: any = currentRefreshToken
+          ? await http.post('/api/v1/auth/refresh', { refreshToken: currentRefreshToken })
+          : await http.get('/api/v1/auth/refresh');
+
         const newAccessToken =
-          res?.accessToken || res?.access_token || res?.data?.accessToken || res?.data?.access_token;
+          res?.access_token ||
+          res?.data?.access_token ||
+          res?.accessToken ||
+          res?.data?.accessToken;
 
         if (newAccessToken) {
           setAccessToken(newAccessToken);
@@ -268,7 +206,7 @@ http.interceptors.response.use(
       }
     }
 
-    // RFC 9457 Normalization
+    // RFC 9457 Normalization & Error Data rejection
     const resData: any = error?.response?.data;
     const contentType = error?.response?.headers?.['content-type'] || '';
     const isProblemJson =
