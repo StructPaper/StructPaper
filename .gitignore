@@ -39,6 +39,10 @@ node_modules/
 **/node_modules/
 .next/
 **/.next/
+.env
+.env.local
+.env.*.local
+!.env.example
 package-lock.json
 **/package-lock.json
 yarn.lock

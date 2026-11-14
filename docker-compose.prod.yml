@@ -60,6 +60,26 @@ services:
       exit 0
       "
 
+  db-init:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: structpaper-db-init-prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-structpaper}:${POSTGRES_PASSWORD:-structpaper}@postgres:5432/${POSTGRES_DB:-structpaper}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@structpaper.org}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-AdminPassword123!}
+    command: >
+      /bin/sh -c "
+      pnpm --filter @structpaper/db migrate &&
+      pnpm --filter @structpaper/db seed &&
+      exit 0
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -83,6 +103,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       minio-init:
         condition: service_completed_successfully
 
@@ -104,6 +126,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       minio-init:
         condition: service_completed_successfully
 
