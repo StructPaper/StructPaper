@@ -37,3 +37,11 @@ export const AssignRoleSchema = z.object({
 });
 
 export type AssignRole = z.infer<typeof AssignRoleSchema>;
+
+export const RevokeRoleSchema = z.object({
+  userId: z.string().uuid('Invalid user UUID'),
+  roleId: z.string().uuid('Invalid role UUID'),
+  journalId: z.string().uuid('Invalid journal UUID').nullable().optional(),
+});
+
+export type RevokeRole = z.infer<typeof RevokeRoleSchema>;

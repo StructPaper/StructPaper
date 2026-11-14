@@ -20,10 +20,12 @@ import {
 import {
   CreateManuscriptSchema,
   UpdateManuscriptSchema,
+  ChangeManuscriptStatusSchema,
   ManuscriptQuerySchema,
   AddManuscriptMemberSchema,
   type CreateManuscript,
   type UpdateManuscript,
+  type ChangeManuscriptStatus,
   type ManuscriptQuery,
   type AddManuscriptMember,
 } from '@structpaper/contracts';
@@ -127,6 +129,18 @@ export class ManuscriptController {
   async getMembers(@Param('id') id: string, @Req() req: any) {
     const ability = await this.getAbility(req);
     return this.manuscriptService.getMembers(id, ability);
+  }
+
+  @Post(':id/status')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(ChangeManuscriptStatusSchema))
+  async changeStatus(
+    @Param('id') id: string,
+    @Body() body: ChangeManuscriptStatus,
+    @Req() req: any,
+  ) {
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.changeStatus(id, body, req.user?.id, ability);
   }
 
   private async getAbility(req: any): Promise<AppAbility | undefined> {

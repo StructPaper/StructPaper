@@ -5,12 +5,14 @@ import {
   NotFoundException,
   ForbiddenException,
   PreconditionFailedException,
+  BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import {
   manuscripts,
   manuscriptMembers,
   manuscriptDocs,
+  outboxEvents,
   eq,
   and,
   or,
@@ -25,6 +27,8 @@ import {
 import type {
   CreateManuscript,
   UpdateManuscript,
+  ChangeManuscriptStatus,
+  ManuscriptStatus,
   ManuscriptQuery,
   AddManuscriptMember,
   ManuscriptResponse,
@@ -507,6 +511,156 @@ export class ManuscriptService {
     }
 
     return this.findMembersByManuscriptId(manuscriptId);
+  }
+
+  /**
+   * Transitions manuscript lifecycle status following a finite state machine,
+   * validates role permissions, increments manuscript version,
+   * and atomically produces a ManuscriptStatusChanged event into outbox_events.
+   */
+  async changeStatus(
+    manuscriptId: string,
+    dto: ChangeManuscriptStatus,
+    userId?: string,
+    userAbility?: AppAbility,
+  ): Promise<{
+    success: boolean;
+    manuscript: ManuscriptResponse;
+    outboxEventId: string;
+    previousStatus: ManuscriptStatus;
+    newStatus: ManuscriptStatus;
+  }> {
+    const manuscript = await this.findManuscriptById(manuscriptId);
+    if (!manuscript) {
+      throw new NotFoundException(`Manuscript with ID ${manuscriptId} not found`);
+    }
+
+    const currentStatus = manuscript.status as ManuscriptStatus;
+    const newStatus = dto.status;
+
+    // 1. Check if status is identical
+    if (currentStatus === newStatus) {
+      return {
+        success: true,
+        manuscript,
+        outboxEventId: '',
+        previousStatus: currentStatus,
+        newStatus,
+      };
+    }
+
+    // 2. Finite State Machine Validation
+    const VALID_TRANSITIONS: Record<ManuscriptStatus, ManuscriptStatus[]> = {
+      DRAFT: ['SUBMITTED'],
+      SUBMITTED: ['IN_REVIEW', 'REJECTED', 'DRAFT'],
+      IN_REVIEW: ['ACCEPTED', 'REJECTED', 'DRAFT'],
+      ACCEPTED: ['PUBLISHED', 'DRAFT'],
+      REJECTED: ['DRAFT'],
+      PUBLISHED: ['DRAFT'],
+    };
+
+    const allowedNextStatuses = VALID_TRANSITIONS[currentStatus] || [];
+    const isSuperAdmin = userAbility?.can('manage', 'all');
+
+    if (!allowedNextStatuses.includes(newStatus) && !isSuperAdmin) {
+      throw new BadRequestException(
+        `Invalid status transition from ${currentStatus} to ${newStatus}. Allowed next states: [${allowedNextStatuses.join(', ')}]`,
+      );
+    }
+
+    // 3. Permission Checks per Transition
+    if (userAbility && !isSuperAdmin) {
+      if (newStatus === 'SUBMITTED' || (currentStatus === 'SUBMITTED' && newStatus === 'DRAFT')) {
+        // Author or Editor can submit or withdraw
+        if (
+          !userAbility.can('update', subject('Manuscript', manuscript)) &&
+          !userAbility.can('manage', subject('Manuscript', manuscript))
+        ) {
+          throw new ForbiddenException(
+            `You do not have permission to transition manuscript to ${newStatus}`,
+          );
+        }
+      } else {
+        // Editorial decisions (IN_REVIEW, ACCEPTED, REJECTED, PUBLISHED) require Editor or Manager
+        const canManageManuscript =
+          userAbility.can('manage', 'Manuscript') ||
+          userAbility.can('manage', subject('Manuscript', manuscript)) ||
+          userAbility.can('update', subject('Manuscript', { journalId: manuscript.journalId }));
+
+        if (!canManageManuscript) {
+          throw new ForbiddenException(
+            `You do not have editorial permission to transition manuscript to ${newStatus}`,
+          );
+        }
+      }
+    }
+
+    const currentVersion = manuscript.version || 1;
+    const newVersion = currentVersion + 1;
+    const now = new Date();
+    const eventId = crypto.randomUUID();
+
+    const outboxRecord = {
+      id: eventId,
+      aggregateType: 'manuscript',
+      aggregateId: manuscriptId,
+      eventType: 'ManuscriptStatusChanged',
+      payload: {
+        manuscriptId,
+        previousStatus: currentStatus,
+        newStatus,
+        changedBy: userId || null,
+        reason: dto.reason || null,
+        note: dto.note || null,
+        timestamp: now.toISOString(),
+      },
+      status: 'PENDING',
+      retryCount: 0,
+      createdAt: now,
+    };
+
+    const runTransaction = async (tx: any) => {
+      // 1. Update manuscript status and version
+      await tx
+        .update(manuscripts)
+        .set({
+          status: newStatus,
+          version: newVersion,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(manuscripts.id, manuscriptId),
+            eq(manuscripts.version, currentVersion),
+          ),
+        );
+
+      // 2. Insert transactional outbox event
+      await tx.insert(outboxEvents).values(outboxRecord);
+    };
+
+    if (this.db) {
+      if (typeof this.db.transaction === 'function') {
+        await this.db.transaction(runTransaction);
+      } else {
+        await runTransaction(this.db);
+      }
+    }
+
+    const updatedManuscript: ManuscriptResponse = {
+      ...manuscript,
+      status: newStatus,
+      version: newVersion,
+      updatedAt: now,
+    };
+
+    return {
+      success: true,
+      manuscript: updatedManuscript,
+      outboxEventId: eventId,
+      previousStatus: currentStatus,
+      newStatus,
+    };
   }
 
   private async findManuscriptById(id: string): Promise<any> {

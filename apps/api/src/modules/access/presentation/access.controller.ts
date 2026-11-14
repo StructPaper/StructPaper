@@ -2,19 +2,39 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
+  Param,
+  Query,
   Body,
+  Req,
   HttpCode,
   HttpStatus,
   UsePipes,
   Inject,
+  Optional,
 } from '@nestjs/common';
-import { AssignRoleSchema, type AssignRole } from '@structpaper/contracts';
+import {
+  AssignRoleSchema,
+  RevokeRoleSchema,
+  type AssignRole,
+  type RevokeRole,
+} from '@structpaper/contracts';
 import { AccessService } from '../application/access.service';
+import { AbilityFactory, type AppAbility } from '../domain/ability.factory';
+import { AbilityCacheService } from '../domain/ability-cache.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 
 @Controller()
 export class AccessController {
-  constructor(@Inject(AccessService) private readonly accessService: AccessService) {}
+  constructor(
+    @Inject(AccessService) private readonly accessService: AccessService,
+    @Optional()
+    @Inject(AbilityFactory)
+    private readonly abilityFactory?: AbilityFactory,
+    @Optional()
+    @Inject(AbilityCacheService)
+    private readonly abilityCache?: AbilityCacheService,
+  ) {}
 
   @Get('roles')
   async getRoles() {
@@ -29,7 +49,55 @@ export class AccessController {
   @Post('roles/assign')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(AssignRoleSchema))
-  async assignRole(@Body() body: AssignRole) {
-    return this.accessService.assignRole(body);
+  async assignRole(@Body() body: AssignRole, @Req() req?: any) {
+    const ability = await this.getAbility(req);
+    return this.accessService.assignRole(body, req?.user, ability);
+  }
+
+  @Delete('roles/assign')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(RevokeRoleSchema))
+  async revokeRoleBody(@Body() body: RevokeRole, @Req() req?: any) {
+    const ability = await this.getAbility(req);
+    return this.accessService.revokeRole(body, req?.user, ability);
+  }
+
+  @Delete('admin/users/:id/roles/:roleId')
+  @HttpCode(HttpStatus.OK)
+  async revokeRole(
+    @Param('id') userId: string,
+    @Param('roleId') roleId: string,
+    @Query('journalId') journalId: string | undefined,
+    @Req() req?: any,
+  ) {
+    const ability = await this.getAbility(req);
+    return this.accessService.revokeRole(
+      {
+        userId,
+        roleId,
+        journalId: journalId || null,
+      },
+      req?.user,
+      ability,
+    );
+  }
+
+  private async getAbility(req?: any): Promise<AppAbility | undefined> {
+    const user = req?.user;
+    if (!user || !this.abilityFactory) return undefined;
+
+    const userId = user.id;
+    const pv = user.permissionsVersion;
+
+    if (this.abilityCache && userId && pv !== undefined) {
+      const cached = this.abilityCache.get(userId, pv);
+      if (cached) return cached;
+    }
+
+    const ability = await this.abilityFactory.createForUser(userId ?? user);
+    if (this.abilityCache && userId && pv !== undefined) {
+      this.abilityCache.set(userId, pv, ability);
+    }
+    return ability;
   }
 }

@@ -38,6 +38,14 @@ export const UpdateManuscriptSchema = z.object({
 
 export type UpdateManuscript = z.infer<typeof UpdateManuscriptSchema>;
 
+export const ChangeManuscriptStatusSchema = z.object({
+  status: ManuscriptStatusEnum,
+  reason: z.string().max(1000).optional(),
+  note: z.string().max(2000).optional(),
+});
+
+export type ChangeManuscriptStatus = z.infer<typeof ChangeManuscriptStatusSchema>;
+
 export const ManuscriptQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
