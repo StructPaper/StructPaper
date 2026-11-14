@@ -15,6 +15,17 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, className, style, layoutId, initial, animate, exit, transition, ...props }: any) => (
+      <div className={className} style={style} {...props}>
+        {children}
+      </div>
+    ),
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 describe('LoginPage and Session Expiration Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
