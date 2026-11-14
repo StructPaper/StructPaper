@@ -100,6 +100,37 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getAllByText(/permissions_version|pv/i).length).toBeGreaterThan(0);
   });
 
+  it('renders 4 elevated KPI metrics cards with accurate values and labels', () => {
+    renderWithClient(<PermissionsPage />);
+
+    expect(screen.getByText('Tổng thành viên')).toBeDefined();
+    expect(screen.getByText('Tài khoản đã kích hoạt')).toBeDefined();
+    expect(screen.getByText('6 Roles')).toBeDefined();
+    expect(screen.getByText('Immutable Baseline')).toBeDefined();
+    expect(screen.getByText('7 Tạp chí')).toBeDefined();
+    expect(screen.getByText('ĐHQG-HCM Scoped')).toBeDefined();
+    expect(screen.getByText('3 Chờ kích hoạt')).toBeDefined();
+    expect(screen.getByText('Pending Invites')).toBeDefined();
+  });
+
+  it('allows toggling the instant revocation information banner', () => {
+    renderWithClient(<PermissionsPage />);
+
+    const toggleBtn = screen.getByTitle(/Thu gọn thông tin/i);
+    expect(toggleBtn).toBeDefined();
+
+    // Initially expanded
+    expect(screen.getByText(/Access token và LRU ability cache cũ/i)).toBeDefined();
+
+    // Click to collapse
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByText(/Access token và LRU ability cache cũ/i)).toBeNull();
+
+    // Click to expand again
+    fireEvent.click(screen.getByTitle(/Xem chi tiết/i));
+    expect(screen.getByText(/Access token và LRU ability cache cũ/i)).toBeDefined();
+  });
+
   it('renders three tabs: User & Role Assignment, Permission Matrix, and Invitations', () => {
     renderWithClient(<PermissionsPage />);
 
