@@ -104,6 +104,12 @@ const onRefreshFailed = (error: any) => {
   refreshSubscribers = [];
   setAccessToken(null);
   isRefreshing = false;
+
+  // Route out of authenticated flow to /login (matching eatzy_frontend pattern)
+  if (!isMockModeEnabled() && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    window.localStorage.setItem('auth_expired', 'true');
+    window.location.href = '/login';
+  }
 };
 
 // ======= Axios Client Instance =======

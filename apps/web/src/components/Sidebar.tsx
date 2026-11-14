@@ -17,6 +17,7 @@ import {
   X,
   ShieldCheck,
 } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
 
 const NAV_ITEMS = [
   {
@@ -187,6 +188,17 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { user, logout } = useAuthStore();
+
+  const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'TS. Nguyễn Hoàng Nam');
+  const userEmail = user?.email || 'nam.nh@vnuhcm.edu.vn';
+  const userInitials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .slice(-2)
+      .map((w) => w[0]?.toUpperCase())
+      .join('') || 'SP';
 
   const isNavActive = (path: string) => {
     if (path === '/upload' && (pathname === '/' || pathname === '/upload')) return true;
@@ -201,7 +213,7 @@ export const Sidebar: React.FC = () => {
     if (typeof window !== 'undefined') {
       const confirmLogout = window.confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?');
       if (confirmLogout) {
-        alert('Đã đăng xuất thành công.');
+        logout();
       }
     }
   };
@@ -265,21 +277,46 @@ export const Sidebar: React.FC = () => {
           })}
         </div>
 
-        {/* BOTTOM SECTION: LOGOUT BUTTON */}
-        <div className="relative flex flex-col items-start gap-3 w-full">
-          <DockPillButton
-            onClick={handleLogout}
-            isExpanded={isExpanded}
-            icon={
-              <LogOut
-                className="w-4 h-4 text-zinc-600 group-hover:text-rose-600 transition-colors"
-                strokeWidth={2.8}
-              />
-            }
-            label="Đăng xuất"
-            description="Rời khỏi hệ thống"
-            tooltipText={isExpanded ? undefined : 'Đăng xuất tài khoản'}
-          />
+        {/* BOTTOM SECTION: USER PROFILE & LOGOUT */}
+        <div className="relative flex flex-col items-start gap-2 w-full">
+          {isExpanded ? (
+            <div className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-100/80 border border-zinc-200/70">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#78C841] to-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs flex-shrink-0">
+                  {userInitials}
+                </div>
+                <div className="min-w-0">
+                  <span className="font-bold text-xs text-zinc-900 block truncate leading-tight">
+                    {displayName}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 block truncate font-medium">
+                    {userEmail}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                title="Đăng xuất"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <DockPillButton
+              onClick={handleLogout}
+              isExpanded={isExpanded}
+              icon={
+                <LogOut
+                  className="w-4 h-4 text-zinc-600 group-hover:text-rose-600 transition-colors"
+                  strokeWidth={2.8}
+                />
+              }
+              label="Đăng xuất"
+              description="Rời khỏi hệ thống"
+              tooltipText="Đăng xuất tài khoản"
+            />
+          )}
         </div>
       </aside>
 
@@ -296,9 +333,9 @@ export const Sidebar: React.FC = () => {
 
           <div>
             <h1 className="font-extrabold text-sm text-[#1A1A1A] leading-tight">
-              TS. Nguyễn Hoàng Nam
+              {displayName}
             </h1>
-            <p className="text-[10px] text-zinc-400">ĐHQG TP.HCM</p>
+            <p className="text-[10px] text-zinc-400">{userEmail}</p>
           </div>
         </div>
 
@@ -325,14 +362,14 @@ export const Sidebar: React.FC = () => {
           >
             <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-zinc-900 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
-                  HN
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#78C841] to-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
+                  {userInitials}
                 </div>
                 <div>
                   <span className="font-extrabold text-sm text-zinc-900 block leading-tight">
-                    TS. Nguyễn Hoàng Nam
+                    {displayName}
                   </span>
-                  <span className="text-[10px] text-zinc-400">nam.nh@vnuhcm.edu.vn</span>
+                  <span className="text-[10px] text-zinc-400">{userEmail}</span>
                 </div>
               </div>
               <button

@@ -1,0 +1,100 @@
+// @vitest-environment happy-dom
+import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import LoginPage from '@/app/login/page';
+import { http } from '@structpaper/api-client';
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue('/papers'),
+  }),
+}));
+
+describe('LoginPage and Session Expiration Flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders login form elements and brand title', () => {
+    render(<LoginPage />);
+
+    expect(screen.getByText('StructPaper')).toBeDefined();
+    expect(screen.getByPlaceholderText('admin@structpaper.org')).toBeDefined();
+    expect(screen.getByPlaceholderText('••••••••••••')).toBeDefined();
+    expect(screen.getByRole('button', { name: /đăng nhập hệ thống/i })).toBeDefined();
+  });
+
+  it('quick fills SuperAdmin credentials on button click', () => {
+    render(<LoginPage />);
+
+    const quickFillBtn = screen.getByRole('button', { name: /admin \(toàn quyền\)/i });
+    fireEvent.click(quickFillBtn);
+
+    const emailInput = screen.getByPlaceholderText('admin@structpaper.org') as HTMLInputElement;
+    const passwordInput = screen.getByPlaceholderText('••••••••••••') as HTMLInputElement;
+
+    expect(emailInput.value).toBe('admin@structpaper.org');
+    expect(passwordInput.value).toBe('AdminPassword123!');
+  });
+
+  it('displays session expired alert banner when auth_expired flag is in localStorage', () => {
+    localStorage.setItem('auth_expired', 'true');
+    render(<LoginPage />);
+
+    expect(screen.getByText('Phiên làm việc đã hết hạn')).toBeDefined();
+    expect(screen.getByText(/phiên đăng nhập trước của bạn đã kết thúc/i)).toBeDefined();
+  });
+
+  it('submits login form and redirects to /papers on success', async () => {
+    const postSpy = vi.spyOn(http, 'post').mockResolvedValueOnce({
+      accessToken: 'test-access-token-jwt',
+      refreshToken: 'test-refresh-token',
+      user: {
+        id: 'user-admin-1',
+        email: 'admin@structpaper.org',
+        displayName: 'System SuperAdmin',
+        status: 'ACTIVE',
+        roles: ['SuperAdmin'],
+      },
+    } as any);
+
+    render(<LoginPage />);
+
+    // Quick fill and submit
+    fireEvent.click(screen.getByRole('button', { name: /admin \(toàn quyền\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /đăng nhập hệ thống/i }));
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/login', {
+        email: 'admin@structpaper.org',
+        password: 'AdminPassword123!',
+      });
+      expect(mockPush).toHaveBeenCalledWith('/papers');
+    });
+  });
+
+  it('displays error message when login fails', async () => {
+    vi.spyOn(http, 'post').mockRejectedValueOnce({
+      detail: 'Email hoặc mật khẩu không chính xác',
+    });
+
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /admin \(toàn quyền\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /đăng nhập hệ thống/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Email hoặc mật khẩu không chính xác')).toBeDefined();
+    });
+  });
+});

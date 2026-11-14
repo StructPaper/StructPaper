@@ -20,8 +20,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     pathname.startsWith('/papers/editor/');
   const isBuilderPage = pathname === '/templates/builder' || pathname.startsWith('/templates/builder/');
   const isJournalEditorPage = pathname.startsWith('/templates/journal/');
+  const isLoginPage = pathname === '/login' || pathname.startsWith('/login');
 
-  if (isEditorPage || isBuilderPage || isJournalEditorPage) {
+  if (isEditorPage || isBuilderPage || isJournalEditorPage || isLoginPage) {
     return (
       <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full bg-[#F8F9FA] overflow-hidden p-2 sm:p-0 flex flex-col">
         {children}

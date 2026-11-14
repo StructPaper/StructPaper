@@ -49,7 +49,8 @@
     "qrcode-generator": "^2.0.4",
     "react": "^18",
     "react-dom": "^18",
-    "sileo": "^0.1.6"
+    "sileo": "^0.1.6",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.0",
