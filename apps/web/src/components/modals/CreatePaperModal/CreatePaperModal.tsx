@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, BookOpen, FileText } from 'lucide-react';
 import { ModalPortal } from '@/components/modals/ModalPortal';
@@ -53,6 +54,14 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   const { setPaper, setCurrentJournal } = usePaper();
   const { savePaper } = usePaperStorage();
 
+  let queryClient: any;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient();
+  } catch {
+    // Safe fallback when rendered outside QueryClientProvider
+  }
+
   const [step, setStep] = useState<1 | 2>(1);
   const [parsedPaper, setParsedPaper] = useState<CompletePaper | null>(null);
   const [isBlank, setIsBlank] = useState<boolean>(false);
@@ -72,6 +81,12 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
         toast.info('Đã hủy nhập hàng loạt', 'Chưa có bài báo nào được tạo.');
       } else if (sum.total > 0) {
         toast.error('Không tạo được bài báo nào', 'Kiểm tra lại các tệp Word.');
+      }
+      if (queryClient) {
+        try {
+          queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
+          queryClient.invalidateQueries({ queryKey: ['manuscripts'] });
+        } catch {}
       }
       onBatchFinished?.();
     },
@@ -135,8 +150,18 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
 
     try {
       await savePaper(finalPaper);
+      setPaper({ ...finalPaper });
     } catch (saveErr) {
       console.warn('Background save error:', saveErr);
+    }
+
+    if (queryClient) {
+      try {
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
+        queryClient.invalidateQueries({ queryKey: ['manuscripts'] });
+      } catch (invalErr) {
+        console.warn('Query invalidation error:', invalErr);
+      }
     }
 
     toast.success(

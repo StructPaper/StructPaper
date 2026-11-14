@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { CompletePaper } from '@/types/paper';
 import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
 import {
@@ -28,6 +29,14 @@ export function usePaperStorage(): UsePaperStorageReturn {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  let queryClient: any;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient();
+  } catch {
+    // Safe fallback when executed outside QueryClientProvider
+  }
 
   const savePaper = useCallback(
     async (paper: CompletePaper): Promise<boolean> => {
@@ -66,7 +75,7 @@ export function usePaperStorage(): UsePaperStorageReturn {
                 : undefined,
             );
           } else {
-            await createManuscript({
+            const created = await createManuscript({
               title,
               journalId: (paper.metadata as any)?.journalId,
               metadata: {
@@ -77,6 +86,25 @@ export function usePaperStorage(): UsePaperStorageReturn {
                 templateId: paper.templateId,
               },
             });
+
+            if (created?.id) {
+              paper.id = created.id;
+              (paper as any).version = created.version ?? 1;
+              try {
+                await savePaperToIndexedDb(paper);
+              } catch (idbErr) {
+                console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
+              }
+            }
+          }
+
+          if (queryClient) {
+            try {
+              queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
+              queryClient.invalidateQueries({ queryKey: ['manuscripts'] });
+            } catch (invalErr) {
+              console.warn('[usePaperStorage] Query invalidation failed:', invalErr);
+            }
           }
         } catch (syncErr: any) {
           console.warn('[usePaperStorage] Cloud sync failed, local copy preserved:', syncErr);
@@ -86,7 +114,7 @@ export function usePaperStorage(): UsePaperStorageReturn {
       setIsSaving(false);
       return true;
     },
-    [],
+    [queryClient],
   );
 
   const loadPaper = useCallback(async (id: string): Promise<CompletePaper | null> => {
