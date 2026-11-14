@@ -126,15 +126,15 @@
 - Clean up: `apps/web/src/hooks/` (keep only cross-cutting generic hooks: `useSupportsCssFieldSizing.ts`)
 - Update: all remaining test files across `apps/web/tests/` to use new feature imports
 
-- [ ] **Step 1: Clean up empty or redundant directories in `components/` and `hooks/`**
-- [ ] **Step 2: Update all test files in `apps/web/test/` and `apps/web/tests/` to import directly from `@/features/...`**
-- [ ] **Step 3: Run full web test suite: `pnpm --filter @structpaper/web test`**
-- [ ] **Step 4: Commit changes as `chore(web): clean up shared component directories and update test imports`**
+- [x] **Step 1: Clean up empty or redundant directories in `components/` and `hooks/`**
+- [x] **Step 2: Update all test files in `apps/web/test/` and `apps/web/tests/` to import directly from `@/features/...`**
+- [x] **Step 3: Run full web test suite: `pnpm --filter @structpaper/web test`**
+- [x] **Step 4: Commit changes as `chore(web): clean up shared component directories and update test imports`**
 
 ---
 
 ### Task 7: Full Monorepo Verification & Type Checking
 
-- [ ] **Step 1: Run type checking: `pnpm --filter @structpaper/web build` or `tsc --noEmit`**
-- [ ] **Step 2: Run full monorepo tests across all packages: `pnpm test`**
-- [ ] **Step 3: Report completion to user**
+- [x] **Step 1: Run type checking: `pnpm --filter @structpaper/web build` or `tsc --noEmit`**
+- [x] **Step 2: Run full monorepo tests across all packages: `pnpm test`**
+- [x] **Step 3: Report completion to user**
