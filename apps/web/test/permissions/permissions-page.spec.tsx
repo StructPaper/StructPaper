@@ -167,6 +167,36 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getAllByText(/bất biến|immutable/i).length).toBeGreaterThan(0);
   });
 
+  it('PermissionMatrixTab renders subject filter chips, filters matrix rows, and shows end-of-list divider', () => {
+    renderWithClient(<PermissionMatrixTab />);
+
+    // Check subject filter pills
+    const allChip = screen.getByTestId('subject-filter-all');
+    const manuscriptChip = screen.getByTestId('subject-filter-manuscript');
+    const userChip = screen.getByTestId('subject-filter-user');
+    expect(allChip).toBeDefined();
+    expect(manuscriptChip).toBeDefined();
+    expect(userChip).toBeDefined();
+
+    // Verify all subjects visible initially
+    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
+    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
+    expect(screen.getByText(/Tạp chí \(Journal\)/i)).toBeDefined();
+
+    // Filter to only Manuscript
+    fireEvent.click(manuscriptChip);
+    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
+    expect(screen.queryByText(/Người dùng \(User\)/i)).toBeNull();
+
+    // Switch back to ALL
+    fireEvent.click(allChip);
+    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
+    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
+
+    // End-of-list divider
+    expect(screen.getByText(/Bạn đã xem hết ma trận phân quyền hệ thống/i)).toBeDefined();
+  });
+
   it('opens InviteMemberModal, fills form, submits invitation, and displays activation link with copy button', async () => {
     const handleClose = vi.fn();
     renderWithClient(<InviteMemberModal isOpen={true} onClose={handleClose} />);

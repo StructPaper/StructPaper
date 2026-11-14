@@ -1,19 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
   Check,
   X,
   Lock,
-  Info,
-  Filter,
   FileText,
   Users,
   BookOpen,
   FolderOpen,
   Server,
   Layers,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const ACTIONS = [
@@ -49,7 +48,6 @@ export const ROLES = [
 export type RoleType = typeof ROLES[number]['id'];
 
 // Permission lookup definition: Record<Subject, Record<Action, Record<Role, boolean | string>>>
-// Value can be true (allowed), false (disallowed), or string (scoped / condition notes)
 export const PERMISSION_GRID: Record<SubjectType, Record<ActionType, Record<RoleType, { allowed: boolean; note?: string }>>> = {
   Manuscript: {
     create: {
@@ -105,10 +103,8 @@ export const PERMISSION_GRID: Record<SubjectType, Record<ActionType, Record<Role
     create: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Invite to Journal' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     read: {
       SuperAdmin: { allowed: true },
@@ -121,190 +117,133 @@ export const PERMISSION_GRID: Record<SubjectType, Record<ActionType, Record<Role
     update: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Scoped Journal' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
       Author: { allowed: true, note: 'Self profile' },
       Guest: { allowed: false },
     },
     delete: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     manage: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     publish: {
-      SuperAdmin: { allowed: false },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: false }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
   },
   Journal: {
     create: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     read: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: true },
-      Editor: { allowed: true },
-      Reviewer: { allowed: true },
-      Author: { allowed: true },
-      Guest: { allowed: true },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: true },
+      Editor: { allowed: true }, Reviewer: { allowed: true },
+      Author: { allowed: true }, Guest: { allowed: true },
     },
     update: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Scoped Journal' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     delete: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     manage: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Scoped Journal' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     publish: {
-      SuperAdmin: { allowed: false },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: false }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
   },
   Asset: {
     create: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: true },
-      Editor: { allowed: true },
-      Reviewer: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: true },
+      Editor: { allowed: true }, Reviewer: { allowed: false },
       Author: { allowed: true, note: 'Owned Assets' },
       Guest: { allowed: false },
     },
     read: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: true },
-      Editor: { allowed: true },
-      Reviewer: { allowed: true },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: true },
+      Editor: { allowed: true }, Reviewer: { allowed: true },
       Author: { allowed: true },
       Guest: { allowed: true, note: 'Public Assets' },
     },
     update: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: true },
-      Editor: { allowed: true },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: true },
+      Editor: { allowed: true }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     delete: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Scoped Journal' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     manage: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: true },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: true },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     publish: {
-      SuperAdmin: { allowed: false },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: false }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
   },
   System: {
     create: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     read: {
       SuperAdmin: { allowed: true },
       JournalManager: { allowed: true, note: 'Basic info' },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     update: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     delete: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     manage: {
-      SuperAdmin: { allowed: true },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: true }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
     publish: {
-      SuperAdmin: { allowed: false },
-      JournalManager: { allowed: false },
-      Editor: { allowed: false },
-      Reviewer: { allowed: false },
-      Author: { allowed: false },
-      Guest: { allowed: false },
+      SuperAdmin: { allowed: false }, JournalManager: { allowed: false },
+      Editor: { allowed: false }, Reviewer: { allowed: false },
+      Author: { allowed: false }, Guest: { allowed: false },
     },
   },
 };
 
 export const PermissionMatrixTab: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
+  const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
   const visibleSubjects =
     selectedSubject === 'ALL'
@@ -313,64 +252,72 @@ export const PermissionMatrixTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Security Architecture & Immutable System Roles Alert */}
-      <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-3.5 shadow-sm">
-        <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0 mt-0.5">
+      {/* Immutable Baseline Banner */}
+      <div className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-5 shadow-xs backdrop-blur-sm flex items-start gap-3.5">
+        <div className="w-9 h-9 rounded-2xl bg-amber-100/90 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0 mt-0.5">
           <Lock className="w-4 h-4" />
         </div>
         <div className="text-sm">
-          <div className="font-semibold text-amber-900 flex items-center gap-2">
+          <div className="font-black text-amber-950 flex items-center gap-2 flex-wrap">
             <span>Kiến trúc Bảo mật RBAC & CASL (Immutable System Roles)</span>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-200/60 text-amber-900 border border-amber-300/60">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300/60">
               Bất biến / Immutable Baseline
             </span>
           </div>
-          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-            Các vai trò hệ thống (<strong className="font-semibold">SuperAdmin, JournalManager, Editor, Reviewer, Author, Guest</strong>) là các baseline quyền hạn bất biến theo đặc tả bảo mật StructPaper. Quản trị viên chỉ có thể gán người dùng vào vai trò hoặc mở rộng phạm vi tạp chí (<code className="font-mono text-amber-950 font-medium">scopeJournalId</code>), không thể tự ý vô hiệu hóa các quy tắc bảo mật cốt lõi.
+          <p className="text-xs text-amber-800 mt-1 leading-relaxed font-medium">
+            Các vai trò hệ thống (<strong className="font-bold">SuperAdmin, JournalManager, Editor, Reviewer, Author, Guest</strong>) là các baseline quyền hạn bất biến theo đặc tả bảo mật StructPaper. Quản trị viên chỉ có thể gán người dùng vào vai trò hoặc mở rộng phạm vi tạp chí (<code className="font-mono text-amber-950 font-bold">scopeJournalId</code>), không thể tự ý vô hiệu hóa các quy tắc bảo mật cốt lõi.
           </p>
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      {/* Subject Filter Pills Toolbar */}
+      <div className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs flex-wrap">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <Layers className="w-4 h-4 text-slate-400" />
           <span>Lọc đối tượng (Subject):</span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button
+          <motion.button
+            type="button"
+            data-testid="subject-filter-all"
             onClick={() => setSelectedSubject('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            whileHover={isTest ? undefined : { scale: 1.03 }}
+            whileTap={isTest ? undefined : { scale: 0.97 }}
+            className={
               selectedSubject === 'ALL'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+                ? 'bg-[#1A1A1A] text-white shadow-md shadow-black/10 font-extrabold rounded-full px-4 py-1.5 text-xs'
+                : 'bg-gray-200 text-zinc-600 hover:text-zinc-950 hover:bg-gray-200/70 font-bold rounded-full px-4 py-1.5 text-xs transition-all'
+            }
           >
             Tất cả đối tượng
-          </button>
+          </motion.button>
           {SUBJECTS.map((s) => (
-            <button
+            <motion.button
               key={s.id}
+              type="button"
+              data-testid={`subject-filter-${s.id.toLowerCase()}`}
               onClick={() => setSelectedSubject(s.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              whileHover={isTest ? undefined : { scale: 1.03 }}
+              whileTap={isTest ? undefined : { scale: 0.97 }}
+              className={
                 selectedSubject === s.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                  ? 'bg-[#1A1A1A] text-white shadow-md shadow-black/10 font-extrabold rounded-full px-4 py-1.5 text-xs'
+                  : 'bg-gray-200 text-zinc-600 hover:text-zinc-950 hover:bg-gray-200/70 font-bold rounded-full px-4 py-1.5 text-xs transition-all'
+              }
             >
               <span>{s.id}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
 
-      {/* Matrix Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* High-Fidelity Matrix Table */}
+      <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600 border-collapse">
             <thead className="bg-slate-50/90 border-b border-slate-200">
               <tr>
-                <th className="px-5 py-4 text-xs uppercase font-semibold text-slate-500 tracking-wider w-64 border-r border-slate-200">
+                <th className="px-6 py-4 text-xs uppercase font-extrabold text-slate-500 tracking-wider w-64 border-r border-slate-200">
                   Đối tượng & Hành động
                 </th>
                 {ROLES.map((role) => (
@@ -378,11 +325,11 @@ export const PermissionMatrixTab: React.FC = () => {
                     key={role.id}
                     className="px-4 py-4 text-center font-semibold text-xs tracking-wider border-r border-slate-200 last:border-r-0"
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${role.color}`}>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color}`}>
                         {role.label}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-normal">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                         System Baseline
                       </span>
                     </div>
@@ -395,18 +342,20 @@ export const PermissionMatrixTab: React.FC = () => {
                 const IconComponent = subj.icon;
                 return (
                   <React.Fragment key={subj.id}>
-                    {/* Subject Group Header */}
-                    <tr className="bg-slate-50/60 font-semibold text-xs text-slate-700">
+                    {/* Subject Category Header Row */}
+                    <tr className="bg-slate-50/60 font-bold text-xs text-slate-800">
                       <td
                         colSpan={ROLES.length + 1}
-                        className="px-5 py-2.5 border-t border-b border-slate-200"
+                        className="px-6 py-3 border-t border-b border-slate-200"
                       >
-                        <div className="flex items-center gap-2 text-indigo-700">
-                          <IconComponent className="w-4 h-4" />
-                          <span className="text-sm font-bold uppercase tracking-wide">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-lg bg-[#78C841]/15 text-[#78C841] flex items-center justify-center">
+                            <IconComponent className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
                             {subj.label}
                           </span>
-                          <span className="text-slate-400 font-normal text-xs ml-2">
+                          <span className="text-slate-400 font-medium text-xs ml-1.5">
                             — {subj.desc}
                           </span>
                         </div>
@@ -416,11 +365,11 @@ export const PermissionMatrixTab: React.FC = () => {
                     {/* Actions for this Subject */}
                     {ACTIONS.map((act) => (
                       <tr key={`${subj.id}-${act.id}`} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="px-5 py-3 border-r border-slate-200">
-                          <div className="font-mono text-xs font-semibold text-slate-800">
+                        <td className="px-6 py-3.5 border-r border-slate-200">
+                          <div className="font-mono text-xs font-bold text-slate-800">
                             {act.id}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-400 font-medium">
                             {act.desc}
                           </div>
                         </td>
@@ -435,14 +384,14 @@ export const PermissionMatrixTab: React.FC = () => {
                               <div className="flex flex-col items-center justify-center gap-1">
                                 {perm.allowed ? (
                                   <div
-                                    className="w-6 h-6 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center"
+                                    className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center shadow-2xs"
                                     title="Cho phép (Allowed)"
                                   >
                                     <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                                   </div>
                                 ) : (
                                   <div
-                                    className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-slate-300 flex items-center justify-center"
+                                    className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-300 flex items-center justify-center"
                                     title="Không cho phép (Disallowed)"
                                   >
                                     <X className="w-3.5 h-3.5 stroke-[2]" />
@@ -450,7 +399,7 @@ export const PermissionMatrixTab: React.FC = () => {
                                 )}
 
                                 {perm.note && (
-                                  <span className="text-[10px] text-slate-500 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                                  <span className="text-[10px] text-slate-600 font-mono font-bold bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
                                     {perm.note}
                                   </span>
                                 )}
@@ -466,6 +415,18 @@ export const PermissionMatrixTab: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Signature End-of-List Divider */}
+      <div className="py-8 flex items-center justify-center gap-4 opacity-50 select-none">
+        <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
+        <div className="flex flex-col items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4 text-zinc-500" />
+          <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">
+            Bạn đã xem hết ma trận phân quyền hệ thống
+          </span>
+        </div>
+        <div className="h-[1px] bg-gradient-to-r from-transparent via-zinc-300 to-transparent w-24" />
       </div>
     </div>
   );
