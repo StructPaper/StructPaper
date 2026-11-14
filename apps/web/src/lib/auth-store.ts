@@ -8,7 +8,8 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName?: string | null;
-  status: 'ACTIVE' | 'INVITED' | 'SUSPENDED';
+  avatarUrl?: string | null;
+  status?: 'ACTIVE' | 'INVITED' | 'SUSPENDED' | string;
   roles?: string[];
   permissionsVersion?: number;
 }
@@ -21,6 +22,7 @@ interface AuthState {
   setLogin: (token: string, user: AuthUser, refreshToken?: string | null) => void;
   setUser: (user: AuthUser | null) => void;
   setToken: (token: string | null) => void;
+  clearAuth: () => void;
   logout: () => void;
 }
 
@@ -43,12 +45,20 @@ export const useAuthStore = create<AuthState>()(
         setAccessToken(token);
         set({ token, isAuthenticated: !!token });
       },
+      clearAuth: () => {
+        setAccessToken(null);
+        set({ token: null, refreshToken: null, user: null, isAuthenticated: false });
+      },
       logout: () => {
         setAccessToken(null);
         set({ token: null, refreshToken: null, user: null, isAuthenticated: false });
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('auth_expired');
-          window.location.href = '/login';
+          try {
+            window.location.href = '/login';
+          } catch {
+            // safe navigation fallback in non-browser/test environments
+          }
         }
       },
     }),
@@ -71,7 +81,12 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Register token refresh delegate with api-client
-if (typeof window !== 'undefined') {
-  setRefreshTokenGetter(() => useAuthStore.getState().refreshToken);
-  setOnTokenRefreshed((newToken) => useAuthStore.getState().setToken(newToken));
-}
+setRefreshTokenGetter(() => useAuthStore.getState().refreshToken);
+setOnTokenRefreshed((newToken) => useAuthStore.getState().setToken(newToken));
+
+// Ensure store syncs cleanly: when token changes, update setAccessToken in api-client
+useAuthStore.subscribe((state, prevState) => {
+  if (state.token !== prevState.token) {
+    setAccessToken(state.token);
+  }
+});

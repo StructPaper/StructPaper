@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { BottomNav } from '@/components/BottomNav';
 import { useAuthStore } from '@/lib/auth-store';
+import { useAuth } from '@/hooks/useAuth';
 import { isMockModeEnabled } from '@structpaper/api-client';
 
 interface AppShellProps {
@@ -14,6 +15,9 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Automatic session hydration on mount across all pages
+  useAuth();
 
   // The editor, authoring editor, template builder, and journal template editor are secondary/focused steps, so the main sidebar is hidden
   const isEditorPage =
