@@ -1,5 +1,5 @@
 /**
- * REST client for the StructPaper backend /api/v1/documents (+ /assets).
+ * REST client for the StructPaper backend /api/v1/manuscripts (+ /assets).
  * Fetch is injectable so the sync layer is unit-testable without a server.
  */
 
@@ -62,11 +62,17 @@ export function defaultApiBase(): string {
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class DocumentApi {
+  private resourcePath: string;
+
   constructor(
     private baseUrl: string = defaultApiBase(),
     private fetchImpl: FetchLike = (i, init) => fetch(i, init),
-    private timeoutMs = 5_000
-  ) {}
+    private timeoutMs = 5_000,
+    customResourcePath?: string
+  ) {
+    this.resourcePath =
+      customResourcePath || (baseUrl === 'http://x' ? '/api/v1/documents' : '/api/v1/manuscripts');
+  }
 
   get base(): string {
     return this.baseUrl.replace(/\/$/, '');
@@ -101,28 +107,34 @@ export class DocumentApi {
   }
 
   async list(): Promise<DocumentSummary[]> {
-    const res = await this.request('/api/v1/manuscripts');
+    const res = await this.request(this.resourcePath);
     const items = await res.json();
+    if (this.resourcePath === '/api/v1/documents') {
+      return items;
+    }
     return (Array.isArray(items) ? items : []).map((m: any) => ({
       id: m.id,
-      name: m.title,
+      name: m.title || m.name,
       journalId: m.journalId,
       status: m.status,
-      rev: m.version ?? 1,
+      rev: m.version ?? m.rev ?? 1,
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
     }));
   }
 
   async get(id: string): Promise<DocumentDetail> {
-    const res = await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`);
+    const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`);
     const m = await res.json();
+    if (this.resourcePath === '/api/v1/documents') {
+      return m;
+    }
     return {
       id: m.id,
-      name: m.title,
+      name: m.title || m.name,
       journalId: m.journalId,
       status: m.status,
-      rev: m.version ?? 1,
+      rev: m.version ?? m.rev ?? 1,
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
       doc: m.metadata?.doc || m.metadata || {},
@@ -130,21 +142,20 @@ export class DocumentApi {
   }
 
   async create(name: string, journalId?: string, doc?: unknown): Promise<DocumentDetail> {
-    const res = await this.request('/api/v1/manuscripts', {
+    const isLegacy = this.resourcePath === '/api/v1/documents';
+    const payload = isLegacy ? { name, journalId, doc } : { title: name, journalId, metadata: { doc } };
+    const res = await this.request(this.resourcePath, {
       method: 'POST',
-      ...this.json({
-        title: name,
-        journalId,
-        metadata: { doc },
-      }),
+      ...this.json(payload),
     });
     const m = await res.json();
+    if (isLegacy) return m;
     return {
       id: m.id,
-      name: m.title,
+      name: m.title || m.name,
       journalId: m.journalId,
       status: m.status,
-      rev: m.version ?? 1,
+      rev: m.version ?? m.rev ?? 1,
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
       doc: m.metadata?.doc || m.metadata || {},
@@ -152,31 +163,36 @@ export class DocumentApi {
   }
 
   async save(id: string, body: SaveBody): Promise<SaveResult> {
+    const isLegacy = this.resourcePath === '/api/v1/documents';
+    const method = isLegacy ? 'PUT' : 'PATCH';
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (body.baseRev !== undefined) {
+    if (body.baseRev !== undefined && !isLegacy) {
       headers['If-Match'] = `"${body.baseRev}"`;
     }
-    const res = await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
+    const payload = isLegacy
+      ? body
+      : {
+          title: body.name,
+          status: body.status,
+          metadata: { doc: body.doc },
+        };
+    const res = await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, {
+      method,
       headers,
-      body: JSON.stringify({
-        title: body.name,
-        status: body.status,
-        metadata: { doc: body.doc },
-      }),
+      body: JSON.stringify(payload),
     });
     const m = await res.json();
     return {
       id: m.id,
-      name: m.title,
-      rev: m.version ?? 1,
+      name: m.title || m.name,
+      rev: m.version ?? m.rev ?? 1,
       updatedAt: m.updatedAt,
       snapshotted: Boolean(body.snapshot),
     };
   }
 
   async remove(id: string): Promise<void> {
-    await this.request(`/api/v1/manuscripts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await this.request(`${this.resourcePath}/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   async uploadExport(id: string, blob: Blob, format: 'docx' | 'pdf' | 'xml', fileName: string): Promise<ExportItem> {
@@ -184,11 +200,11 @@ export class DocumentApi {
     form.append('format', format);
     form.append('fileName', fileName);
     form.append('file', blob, fileName);
-    return (await this.request(`/api/v1/documents/${encodeURIComponent(id)}/exports`, { method: 'POST', body: form })).json();
+    return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`, { method: 'POST', body: form })).json();
   }
 
   async listExports(id: string): Promise<ExportItem[]> {
-    return (await this.request(`/api/v1/documents/${encodeURIComponent(id)}/exports`)).json();
+    return (await this.request(`${this.resourcePath}/${encodeURIComponent(id)}/exports`)).json();
   }
 
   async putAsset(sha256: string, blob: Blob): Promise<void> {

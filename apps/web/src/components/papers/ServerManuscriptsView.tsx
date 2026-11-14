@@ -10,6 +10,7 @@ import {
   type Manuscript,
   type ListManuscriptsStatus,
 } from '@structpaper/api-client';
+import { useDeletePaper } from '@/hooks/useDeletePaper';
 import { ManuscriptTable } from './ManuscriptTable';
 import { PaginationControls } from './PaginationControls';
 
@@ -41,6 +42,8 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [mockActive, setMockActive] = useState(() => isMockModeEnabled());
+
+  const { deletePaper, isPending: isDeleting } = useDeletePaper();
 
   // Debounce search input
   useEffect(() => {
@@ -113,6 +116,13 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
       onOpenManuscript(id);
     } else {
       router.push(`/editor?id=${id}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa bài báo này không? Thao tác này sẽ xóa trên cả máy chủ và máy bạn.')) {
+      await deletePaper(id);
+      refetch();
     }
   };
 
@@ -216,8 +226,9 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
       {/* Manuscripts Table */}
       <ManuscriptTable
         manuscripts={manuscripts}
-        isLoading={isLoading}
+        isLoading={isLoading || isDeleting}
         onOpen={handleOpen}
+        onDelete={handleDelete}
       />
 
       {/* Pagination Controls */}

@@ -1,9 +1,12 @@
 import { useState, useCallback } from 'react';
 import type { CompletePaper } from '@/types/paper';
 import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
-import { useCreatePaper } from '@/hooks/useCreatePaper';
-import { useUpdatePaper } from '@/hooks/useUpdatePaper';
-import { getManuscript, isMockModeEnabled } from '@structpaper/api-client';
+import {
+  createManuscript,
+  updateManuscript,
+  getManuscript,
+  isMockModeEnabled,
+} from '@structpaper/api-client';
 import { manuscriptToCompletePaper } from '@/hooks/useLoadPaper';
 
 export interface UsePaperStorageReturn {
@@ -19,14 +22,12 @@ export interface UsePaperStorageReturn {
  * - Local-First: Guarantees zero data loss by immediately caching to IndexedDB.
  * - Cloud-Sync: Automatically synchronizes with NestJS Backend (/api/v1/manuscripts).
  * - Conflict Detection: Uses optimistic version locking.
+ * - Framework Agnostic: Safe to use across isolated components without requiring QueryClientProvider.
  */
 export function usePaperStorage(): UsePaperStorageReturn {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-
-  const { createPaper } = useCreatePaper({ showToast: false });
-  const { updatePaper } = useUpdatePaper({ showToast: false });
 
   const savePaper = useCallback(
     async (paper: CompletePaper): Promise<boolean> => {
@@ -40,16 +41,16 @@ export function usePaperStorage(): UsePaperStorageReturn {
         console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
       }
 
-      // 2. Cloud Sync: If not mock mode, push changes to NestJS API
+      // 2. Cloud Sync: If not mock mode and id exists
       if (!isMockModeEnabled() && paper.id) {
         try {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paper.id);
           const title = paper.metadata?.title || paper.displayName || 'Bản thảo bài báo';
 
           if (isUuid) {
-            await updatePaper({
-              id: paper.id,
-              data: {
+            await updateManuscript(
+              paper.id,
+              {
                 title,
                 abstract: paper.metadata?.abstract || '',
                 metadata: {
@@ -60,23 +61,32 @@ export function usePaperStorage(): UsePaperStorageReturn {
                   templateId: paper.templateId,
                 },
               },
-              version: (paper as any).version,
-              localPaper: paper,
-            });
+              (paper as any).version !== undefined
+                ? { ifMatch: `"${(paper as any).version}"` }
+                : undefined,
+            );
           } else {
-            // Placeholder/temporary ID -> create on backend
-            await createPaper(paper);
+            await createManuscript({
+              title,
+              journalId: (paper.metadata as any)?.journalId,
+              metadata: {
+                ...paper.metadata,
+                sections: paper.sections,
+                references: paper.references,
+                layoutSettings: paper.layoutSettings,
+                templateId: paper.templateId,
+              },
+            });
           }
         } catch (syncErr: any) {
           console.warn('[usePaperStorage] Cloud sync failed, local copy preserved:', syncErr);
-          // We do not fail the save operation because data is safely in IndexedDB
         }
       }
 
       setIsSaving(false);
       return true;
     },
-    [createPaper, updatePaper],
+    [],
   );
 
   const loadPaper = useCallback(async (id: string): Promise<CompletePaper | null> => {

@@ -1,8 +1,6 @@
 // @vitest-environment happy-dom
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { usePaperStorage } from '@/hooks/usePaperStorage';
 import type { CompletePaper } from '@/types/paper';
 
@@ -13,42 +11,20 @@ vi.mock('@/lib/storage/paper-sync', () => ({
   loadPaperFromIndexedDb: (...args: any[]) => mockLoadPaperFromIndexedDb(...args),
 }));
 
-const mockUpdatePaper = vi.fn();
-const mockCreatePaper = vi.fn();
-vi.mock('@/hooks/useUpdatePaper', () => ({
-  useUpdatePaper: () => ({
-    updatePaper: mockUpdatePaper,
-    isPending: false,
-  }),
-}));
-vi.mock('@/hooks/useCreatePaper', () => ({
-  useCreatePaper: () => ({
-    createPaper: mockCreatePaper,
-    isPending: false,
-  }),
-}));
-
+const mockUpdateManuscript = vi.fn();
+const mockCreateManuscript = vi.fn();
 const mockGetManuscript = vi.fn();
+
 vi.mock('@structpaper/api-client', async () => {
   const actual = await vi.importActual<any>('@structpaper/api-client');
   return {
     ...actual,
     isMockModeEnabled: () => false,
+    updateManuscript: (...args: any[]) => mockUpdateManuscript(...args),
+    createManuscript: (...args: any[]) => mockCreateManuscript(...args),
     getManuscript: (...args: any[]) => mockGetManuscript(...args),
   };
 });
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-}
 
 describe('usePaperStorage Custom Hook (Task 2)', () => {
   beforeEach(() => {
@@ -82,16 +58,14 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
     version: 1,
   };
 
-  it('saves paper to IndexedDB and syncs to API via updatePaper', async () => {
-    mockUpdatePaper.mockResolvedValueOnce({
+  it('saves paper to IndexedDB and syncs to API via updateManuscript', async () => {
+    mockUpdateManuscript.mockResolvedValueOnce({
       id: '12345678-1234-1234-1234-123456789abc',
       title: 'Quantum Machine Learning',
       version: 2,
     });
 
-    const { result } = renderHook(() => usePaperStorage(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => usePaperStorage());
 
     let success = false;
     await act(async () => {
@@ -100,26 +74,23 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
 
     expect(success).toBe(true);
     expect(mockSavePaperToIndexedDb).toHaveBeenCalledWith(samplePaper);
-    expect(mockUpdatePaper).toHaveBeenCalledWith(
+    expect(mockUpdateManuscript).toHaveBeenCalledWith(
+      '12345678-1234-1234-1234-123456789abc',
       expect.objectContaining({
-        id: '12345678-1234-1234-1234-123456789abc',
-        data: expect.objectContaining({
-          title: 'Quantum Machine Learning',
-        }),
+        title: 'Quantum Machine Learning',
       }),
+      { ifMatch: '"1"' },
     );
   });
 
-  it('calls createPaper when paper has local non-UUID id', async () => {
+  it('calls createManuscript when paper has local non-UUID id', async () => {
     const localPaper = { ...samplePaper, id: 'temp-local-id' };
-    mockCreatePaper.mockResolvedValueOnce({
+    mockCreateManuscript.mockResolvedValueOnce({
       id: 'server-assigned-uuid',
       title: 'Quantum Machine Learning',
     });
 
-    const { result } = renderHook(() => usePaperStorage(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => usePaperStorage());
 
     let success = false;
     await act(async () => {
@@ -127,15 +98,17 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
     });
 
     expect(success).toBe(true);
-    expect(mockCreatePaper).toHaveBeenCalledWith(localPaper);
+    expect(mockCreateManuscript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Quantum Machine Learning',
+      }),
+    );
   });
 
   it('persists locally even if cloud sync fails', async () => {
-    mockUpdatePaper.mockRejectedValueOnce(new Error('Cloud sync error'));
+    mockUpdateManuscript.mockRejectedValueOnce(new Error('Cloud sync error'));
 
-    const { result } = renderHook(() => usePaperStorage(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => usePaperStorage());
 
     let success = false;
     await act(async () => {
@@ -149,16 +122,14 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
   it('loads paper from IndexedDB if available', async () => {
     mockLoadPaperFromIndexedDb.mockResolvedValueOnce(samplePaper);
 
-    const { result } = renderHook(() => usePaperStorage(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => usePaperStorage());
 
     let loaded: CompletePaper | null = null;
     await act(async () => {
-      loaded = await result.current.loadPaper('ms-1234');
+      loaded = await result.current.loadPaper('12345678-1234-1234-1234-123456789abc');
     });
 
     expect(loaded).toEqual(samplePaper);
-    expect(mockLoadPaperFromIndexedDb).toHaveBeenCalledWith('ms-1234');
+    expect(mockLoadPaperFromIndexedDb).toHaveBeenCalledWith('12345678-1234-1234-1234-123456789abc');
   });
 });
