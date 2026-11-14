@@ -380,7 +380,7 @@ describe('Clean API Modules (@structpaper/api-client)', () => {
 
       expect(lastRequest?.method).toBe('post');
       expect(lastRequest?.url).toBe('/api/v1/compile/latex');
-      expect(lastRequest?.responseType).toBe('blob');
+      expect(lastRequest?.responseType).toBe('arraybuffer');
       expect(JSON.parse(lastRequest?.data)).toEqual(payload);
       expect(res).toBe(mockPdfBlob);
     });

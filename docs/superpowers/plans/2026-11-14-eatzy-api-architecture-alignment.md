@@ -180,26 +180,26 @@
 - Modify: `apps/web/src/hooks/usePapersHub.ts`
 - Test: `apps/web/test/papers/unified-hub.spec.tsx`
 
-- [ ] **Step 1: Write tests for unified hub and auto-sync reconciler**
+- [x] **Step 1: Write tests for unified hub and auto-sync reconciler**
   - Test that local-only papers in IndexedDB are detected and uploaded to server when online.
   - Test that manuscripts list displays unified papers with sync indicators.
-- [ ] **Step 2: Implement auto-sync reconciler in `usePapersHub.ts`**
+- [x] **Step 2: Implement auto-sync reconciler in `usePapersHub.ts`**
   - When authenticated, scan IndexedDB for manuscripts with `syncState: 'local'`.
   - Upload them via `manuscriptApi.create` and update local record to `synced`.
-- [ ] **Step 3: Unify UI in `PaperHubView.tsx`**
+- [x] **Step 3: Unify UI in `PaperHubView.tsx`**
   - Remove split 2-tab switcher.
   - Render unified list with badges (☁️ Synced, 💻 Local only, ⏳ Syncing).
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
   - Run all hub tests.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `feat(papers): unify papers hub with automatic background sync reconciler`.
 
 ---
 
 ### Task 8: Verification & Sanity Checks
 
-- [ ] **Step 1: Run full test suite**
+- [x] **Step 1: Run full test suite**
   - Run Vitest across `packages/api-client`, `apps/api`, `apps/worker`, `apps/web`.
-- [ ] **Step 2: Run linter and type-checker**
+- [x] **Step 2: Run linter and type-checker**
   - Ensure zero TypeScript compiler errors and clean linting.
-- [ ] **Step 3: Final report to user**
+- [x] **Step 3: Final report to user**
