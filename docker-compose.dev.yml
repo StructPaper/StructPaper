@@ -155,13 +155,12 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
-      WATCHPACK_POLLING: 'true'
       NEXT_PUBLIC_API_URL: http://localhost:3001
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+      - ./packages/contracts/src:/app/packages/contracts/src
+      - ./packages/api-client/src:/app/packages/api-client/src
     depends_on:
       api:
         condition: service_started

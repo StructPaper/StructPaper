@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useGetManuscriptMembers,
   useAddManuscriptMember,
-  useRemoveManuscriptMember,
+  http,
   isMockModeEnabled,
   type AddManuscriptMemberRequest,
   type ManuscriptMember,
@@ -49,7 +49,7 @@ export function useManuscriptMembers(
   });
 
   const addMutation = useAddManuscriptMember();
-  const removeMutation = useRemoveManuscriptMember();
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const addMember = useCallback(
     async (data: AddManuscriptMemberRequest): Promise<ManuscriptMember | null> => {
@@ -88,11 +88,9 @@ export function useManuscriptMembers(
 
   const removeMember = useCallback(
     async (userId: string): Promise<boolean> => {
+      setIsRemoving(true);
       try {
-        await removeMutation.mutateAsync({
-          id: manuscriptId,
-          userId,
-        });
+        await http.delete(`/api/v1/manuscripts/${manuscriptId}/members/${userId}`);
 
         queryClient.invalidateQueries({ queryKey });
 
@@ -116,9 +114,11 @@ export function useManuscriptMembers(
           });
         }
         throw err;
+      } finally {
+        setIsRemoving(false);
       }
     },
-    [manuscriptId, removeMutation, queryClient, queryKey, options],
+    [manuscriptId, queryClient, queryKey, options],
   );
 
   return {
@@ -130,6 +130,6 @@ export function useManuscriptMembers(
     addMember,
     removeMember,
     isAdding: addMutation.isPending,
-    isRemoving: removeMutation.isPending,
+    isRemoving,
   };
 }

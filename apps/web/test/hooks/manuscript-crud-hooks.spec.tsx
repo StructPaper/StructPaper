@@ -41,9 +41,9 @@ vi.mock('@/lib/storage/paper-sync', () => ({
 
 const mockRepoDelete = vi.fn().mockResolvedValue(true);
 vi.mock('@structpaper/storage', () => ({
-  getManuscriptRepository: () => ({
-    delete: mockRepoDelete,
-  }),
+  IndexedDbManuscriptRepo: class {
+    delete = mockRepoDelete;
+  },
 }));
 
 vi.mock('@/components/DynamicIslandToast', () => ({

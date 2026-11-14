@@ -3,10 +3,11 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http } from '@structpaper/api-client';
 import { useManuscriptMembers } from '@/hooks/useManuscriptMembers';
 
 const mockAddMemberMutate = vi.fn();
-const mockRemoveMemberMutate = vi.fn();
+const mockDeleteSpy = vi.spyOn(http, 'delete');
 
 let mockGetMembersReturn = {
   data: [
@@ -29,10 +30,6 @@ vi.mock('@structpaper/api-client', async () => {
     useGetManuscriptMembers: () => mockGetMembersReturn,
     useAddManuscriptMember: () => ({
       mutateAsync: mockAddMemberMutate,
-      isPending: false,
-    }),
-    useRemoveManuscriptMember: () => ({
-      mutateAsync: mockRemoveMemberMutate,
       isPending: false,
     }),
   };
@@ -105,7 +102,7 @@ describe('useManuscriptMembers Custom Hook (Task 5)', () => {
   });
 
   it('removes a member', async () => {
-    mockRemoveMemberMutate.mockResolvedValueOnce({ success: true });
+    mockDeleteSpy.mockResolvedValueOnce({ success: true } as any);
 
     const { result } = renderHook(() => useManuscriptMembers('ms-123', { showToast: false }), {
       wrapper: createWrapper(),
@@ -116,10 +113,7 @@ describe('useManuscriptMembers Custom Hook (Task 5)', () => {
       success = await result.current.removeMember('user-editor');
     });
 
-    expect(mockRemoveMemberMutate).toHaveBeenCalledWith({
-      id: 'ms-123',
-      userId: 'user-editor',
-    });
+    expect(mockDeleteSpy).toHaveBeenCalledWith('/api/v1/manuscripts/ms-123/members/user-editor');
     expect(success).toBe(true);
   });
 });
