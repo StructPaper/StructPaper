@@ -9,7 +9,7 @@ import {
   JournalStatus,
 } from '@/lib/templates/journal-storage';
 import { toast } from '@/components/DynamicIslandToast';
-import { useJournalEditorSave } from '@/hooks';
+import { useJournalEditorSave } from '../hooks/useJournalEditorSave';
 import { ActionConfirmModal } from '@/components/modals';
 import { JournalEditorDock } from './JournalEditorDock';
 import { JournalEditorTopBar } from './JournalEditorTopBar';

@@ -88,13 +88,13 @@
 - Modify: `apps/web/src/app/templates/page.tsx`
 - Modify: template tests
 
-- [ ] **Step 1: Move template and journal hub components into `features/templates/components/`**
-- [ ] **Step 2: Move template hooks into `features/templates/hooks/`**
-- [ ] **Step 3: Create `src/features/templates/index.ts` exporting public components and hooks**
-- [ ] **Step 4: Update import paths across `app/templates/page.tsx` and consumers**
-- [ ] **Step 5: Remove old directories (`components/templates/`, `components/template-builder/`)**
-- [ ] **Step 6: Run template tests: `pnpm --filter @structpaper/web test`**
-- [ ] **Step 7: Commit changes as `refactor(web): migrate templates and journal hub to features/templates`**
+- [x] **Step 1: Move template and journal hub components into `features/templates/components/`**
+- [x] **Step 2: Move template hooks into `features/templates/hooks/`**
+- [x] **Step 3: Create `src/features/templates/index.ts` exporting public components and hooks**
+- [x] **Step 4: Update import paths across `app/templates/page.tsx` and consumers**
+- [x] **Step 5: Remove old directories (`components/templates/`, `components/template-builder/`)**
+- [x] **Step 6: Run template tests: `pnpm --filter @structpaper/web test`**
+- [x] **Step 7: Commit changes as `refactor(web): migrate templates and journal hub to features/templates`**
 
 ---
 

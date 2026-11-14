@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useManagedJournals } from '@/hooks';
+import { useManagedJournals } from '../hooks/useManagedJournals';
 import { JournalFiltersBar } from './JournalFiltersBar';
 import { JournalProfilesList } from './JournalProfilesList';
 import { JournalProfileCardShimmer } from './JournalProfileCardShimmer';

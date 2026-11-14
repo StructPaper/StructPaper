@@ -34,7 +34,7 @@ import { ElementsManagerView } from './elements-manager/ElementsManagerView';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from '@/components/DynamicIslandToast';
 import { ActionConfirmModal } from '@/components/modals';
-import { useCustomTemplateSave } from '@/hooks';
+import { useCustomTemplateSave } from '../../hooks/useCustomTemplateSave';
 import {
   addChildSubZone,
   updateZoneDeep,

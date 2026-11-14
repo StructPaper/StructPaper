@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import TemplateBuilderView from '@/components/template-builder/TemplateBuilderView';
+import { TemplateBuilderView } from '@/features/templates';
 import { UniversalTemplateSchema } from '@/types/template-builder';
 import {
   templateRegistry,

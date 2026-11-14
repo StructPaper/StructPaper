@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { JournalHubView } from '@/components/templates/JournalHubView';
+import { JournalHubView } from '@/features/templates';
 
 export const metadata: Metadata = {
   title: 'Quản Lý Mẫu & Tạp Chí Khoa Học | StructPaper',

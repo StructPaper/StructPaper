@@ -5,7 +5,7 @@ import {
   getManagedJournalById,
   ManagedJournalProfile,
 } from '@/lib/templates/journal-storage';
-import { JournalDetailEditor } from '@/components/templates/JournalDetailEditor';
+import { JournalDetailEditor } from '@/features/templates';
 import { resolveProfile } from '@structpaper/journal-profiles';
 import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';

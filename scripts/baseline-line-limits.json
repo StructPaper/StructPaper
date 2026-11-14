@@ -9,21 +9,21 @@
     "apps/web/src/components/Sidebar.tsx",
     "apps/web/src/components/permissions/PermissionMatrixTab.tsx",
     "apps/web/src/components/preview/PdfInteractiveViewer.tsx",
-    "apps/web/src/components/template-builder/TemplateBuilderView.tsx",
-    "apps/web/src/components/template-builder/TemplateHubView.tsx",
-    "apps/web/src/components/template-builder/TemplateLivePreview.tsx",
-    "apps/web/src/components/template-builder/UniversalLiveA4Preview.tsx",
-    "apps/web/src/components/template-builder/elements-manager/CompositeElementBuilder.tsx",
-    "apps/web/src/components/template-builder/grid-zone-builder/PaperGridOverlay.tsx",
-    "apps/web/src/components/template-builder/nested-zones/NestedSubGridOverlay.tsx",
-    "apps/web/src/components/template-builder/preview/ElementStyleContextMenu.tsx",
-    "apps/web/src/components/template-builder/preview/ID630AuthenticPageRenderer.tsx",
-    "apps/web/src/components/template-builder/steps/AddElementModal.tsx",
-    "apps/web/src/components/template-builder/steps/Step15GridZones.tsx",
-    "apps/web/src/components/template-builder/steps/Step1PageAndZones.tsx",
-    "apps/web/src/components/template-builder/steps/Step2ElementStructure.tsx",
-    "apps/web/src/components/template-builder/steps/Step4PreviewAndExport.tsx",
-    "apps/web/src/components/template-builder/steps/StepSpecialElements.tsx",
+    "apps/web/src/features/templates/components/template-builder/TemplateBuilderView.tsx",
+    "apps/web/src/features/templates/components/template-builder/TemplateHubView.tsx",
+    "apps/web/src/features/templates/components/template-builder/TemplateLivePreview.tsx",
+    "apps/web/src/features/templates/components/template-builder/UniversalLiveA4Preview.tsx",
+    "apps/web/src/features/templates/components/template-builder/elements-manager/CompositeElementBuilder.tsx",
+    "apps/web/src/features/templates/components/template-builder/grid-zone-builder/PaperGridOverlay.tsx",
+    "apps/web/src/features/templates/components/template-builder/nested-zones/NestedSubGridOverlay.tsx",
+    "apps/web/src/features/templates/components/template-builder/preview/ElementStyleContextMenu.tsx",
+    "apps/web/src/features/templates/components/template-builder/preview/ID630AuthenticPageRenderer.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/AddElementModal.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/Step15GridZones.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/Step1PageAndZones.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/Step2ElementStructure.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/Step4PreviewAndExport.tsx",
+    "apps/web/src/features/templates/components/template-builder/steps/StepSpecialElements.tsx",
     "apps/web/src/components/ui/DatePicker.tsx",
     "apps/web/src/components/ui/Select.tsx",
     "apps/web/src/features/editor/components/ExtractedContentDrawer.tsx",
@@ -97,91 +97,91 @@
       "maxAllowedTotal": 435,
       "maxAllowedCode": 410
     },
-    "apps/web/src/components/template-builder/elements-manager/CompositeElementBuilder.tsx": {
+    "apps/web/src/features/templates/components/template-builder/elements-manager/CompositeElementBuilder.tsx": {
       "totalLines": 647,
       "codeLines": 607,
       "maxAllowedTotal": 647,
       "maxAllowedCode": 607
     },
-    "apps/web/src/components/template-builder/grid-zone-builder/PaperGridOverlay.tsx": {
+    "apps/web/src/features/templates/components/template-builder/grid-zone-builder/PaperGridOverlay.tsx": {
       "totalLines": 892,
       "codeLines": 787,
       "maxAllowedTotal": 892,
       "maxAllowedCode": 787
     },
-    "apps/web/src/components/template-builder/nested-zones/NestedSubGridOverlay.tsx": {
+    "apps/web/src/features/templates/components/template-builder/nested-zones/NestedSubGridOverlay.tsx": {
       "totalLines": 583,
       "codeLines": 513,
       "maxAllowedTotal": 583,
       "maxAllowedCode": 513
     },
-    "apps/web/src/components/template-builder/preview/ElementStyleContextMenu.tsx": {
+    "apps/web/src/features/templates/components/template-builder/preview/ElementStyleContextMenu.tsx": {
       "totalLines": 508,
       "codeLines": 465,
       "maxAllowedTotal": 508,
       "maxAllowedCode": 465
     },
-    "apps/web/src/components/template-builder/preview/ID630AuthenticPageRenderer.tsx": {
+    "apps/web/src/features/templates/components/template-builder/preview/ID630AuthenticPageRenderer.tsx": {
       "totalLines": 492,
       "codeLines": 443,
       "maxAllowedTotal": 492,
       "maxAllowedCode": 443
     },
-    "apps/web/src/components/template-builder/steps/AddElementModal.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/AddElementModal.tsx": {
       "totalLines": 900,
       "codeLines": 843,
       "maxAllowedTotal": 900,
       "maxAllowedCode": 843
     },
-    "apps/web/src/components/template-builder/steps/Step15GridZones.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/Step15GridZones.tsx": {
       "totalLines": 790,
       "codeLines": 728,
       "maxAllowedTotal": 790,
       "maxAllowedCode": 728
     },
-    "apps/web/src/components/template-builder/steps/Step1PageAndZones.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/Step1PageAndZones.tsx": {
       "totalLines": 522,
       "codeLines": 492,
       "maxAllowedTotal": 522,
       "maxAllowedCode": 492
     },
-    "apps/web/src/components/template-builder/steps/Step2ElementStructure.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/Step2ElementStructure.tsx": {
       "totalLines": 901,
       "codeLines": 837,
       "maxAllowedTotal": 901,
       "maxAllowedCode": 837
     },
-    "apps/web/src/components/template-builder/steps/Step4PreviewAndExport.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/Step4PreviewAndExport.tsx": {
       "totalLines": 657,
       "codeLines": 611,
       "maxAllowedTotal": 657,
       "maxAllowedCode": 611
     },
-    "apps/web/src/components/template-builder/steps/StepSpecialElements.tsx": {
+    "apps/web/src/features/templates/components/template-builder/steps/StepSpecialElements.tsx": {
       "totalLines": 1489,
       "codeLines": 1401,
       "maxAllowedTotal": 1489,
       "maxAllowedCode": 1401
     },
-    "apps/web/src/components/template-builder/TemplateBuilderView.tsx": {
+    "apps/web/src/features/templates/components/template-builder/TemplateBuilderView.tsx": {
       "totalLines": 791,
       "codeLines": 695,
       "maxAllowedTotal": 791,
       "maxAllowedCode": 695
     },
-    "apps/web/src/components/template-builder/TemplateHubView.tsx": {
+    "apps/web/src/features/templates/components/template-builder/TemplateHubView.tsx": {
       "totalLines": 670,
       "codeLines": 606,
       "maxAllowedTotal": 670,
       "maxAllowedCode": 606
     },
-    "apps/web/src/components/template-builder/TemplateLivePreview.tsx": {
+    "apps/web/src/features/templates/components/template-builder/TemplateLivePreview.tsx": {
       "totalLines": 603,
       "codeLines": 568,
       "maxAllowedTotal": 603,
       "maxAllowedCode": 568
     },
-    "apps/web/src/components/template-builder/UniversalLiveA4Preview.tsx": {
+    "apps/web/src/features/templates/components/template-builder/UniversalLiveA4Preview.tsx": {
       "totalLines": 1316,
       "codeLines": 1191,
       "maxAllowedTotal": 1316,

@@ -38,11 +38,13 @@ if (typeof Element !== 'undefined' && Element.prototype.animate) {
   };
 }
 
-import { JournalHubView } from '@/components/templates/JournalHubView';
-import { JournalProfileCard } from '@/components/templates/JournalProfileCard';
-import { JournalFiltersBar } from '@/components/templates/JournalFiltersBar';
-import { JournalProfilesList } from '@/components/templates/JournalProfilesList';
-import { JournalDetailEditor } from '@/components/templates/JournalDetailEditor';
+import {
+  JournalHubView,
+  JournalProfileCard,
+  JournalFiltersBar,
+  JournalProfilesList,
+  JournalDetailEditor,
+} from '@/features/templates';
 import { ActionConfirmModal } from '@/components/modals';
 import { Sidebar } from '@/components/Sidebar';
 import {

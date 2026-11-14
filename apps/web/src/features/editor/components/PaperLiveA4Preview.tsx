@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { CompletePaper } from '@/types/paper';
 import { UniversalTemplateSchema } from '@/types/template-builder';
 import { mapPaperToTemplateSchema } from '@/lib/authoring/template-paper-mapper';
-import { UniversalLiveA4Preview } from '@/components/template-builder/UniversalLiveA4Preview';
+import { UniversalLiveA4Preview } from '@/features/templates';
 import {
   ZoomIn,
   ZoomOut,
