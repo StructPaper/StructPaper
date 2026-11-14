@@ -6,18 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   Mail,
-  Lock,
   Eye,
   EyeOff,
   AlertCircle,
-  Sparkles,
-  ArrowRight,
   BookOpen,
   Key,
   ChevronRight,
-  UserCheck,
 } from 'lucide-react';
-import { http, isMockModeEnabled, setMockMode } from '@structpaper/api-client';
+import { http } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
 import { sileo } from '@/components/toast';
 
@@ -36,7 +32,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
-  const [mockActive, setMockActive] = useState(false);
 
   // Viewport tracking (desktop vs mobile customer drawer layout)
   useEffect(() => {
@@ -71,27 +66,8 @@ export default function LoginPage() {
         });
         window.localStorage.removeItem('auth_expired');
       }
-      setMockActive(isMockModeEnabled());
     }
   }, []);
-
-  const handleQuickFillAdmin = () => {
-    setEmail('admin@structpaper.org');
-    setPassword('AdminPassword123!');
-    setErrorMessage(null);
-  };
-
-  const handleQuickFillAuthor = () => {
-    setEmail('author@structpaper.org');
-    setPassword('Author123!@#');
-    setErrorMessage(null);
-  };
-
-  const handleToggleMock = () => {
-    const nextVal = !mockActive;
-    setMockMode(nextVal);
-    setMockActive(nextVal);
-  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -174,35 +150,7 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Quick Fill Dev Helpers */}
-      <div className="bg-zinc-50 border border-zinc-200/70 rounded-2xl p-3.5 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            Điền tài khoản nhanh (Mẫu):
-          </span>
-          <span className="text-[10px] text-zinc-400 font-mono">Dev / Staging</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={handleQuickFillAdmin}
-            className="py-1.5 px-2.5 bg-white hover:bg-zinc-100 border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-800 flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#78C841]" />
-            <span>Admin (Toàn quyền)</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleQuickFillAuthor}
-            className="py-1.5 px-2.5 bg-white hover:bg-zinc-100 border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-800 flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Tác giả (Author)</span>
-          </button>
-        </div>
-      </div>
-
+      {/* Form starts directly without dev helpers */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Capsule Input */}
         <div className="space-y-1.5">
@@ -259,7 +207,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Remember me & offline mode indicator */}
+        {/* Remember me */}
         <div className="flex items-center justify-between pt-1 text-xs">
           <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-600 font-medium">
             <input
@@ -270,18 +218,6 @@ export default function LoginPage() {
             />
             <span>Ghi nhớ đăng nhập</span>
           </label>
-
-          <button
-            type="button"
-            onClick={handleToggleMock}
-            className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
-              mockActive
-                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}
-          >
-            {mockActive ? '🟡 Mock Offline Mode' : '🟢 Live Cloud API'}
-          </button>
         </div>
 
         {/* Submit Button - Sleek modern style matching Eatzy customer */}

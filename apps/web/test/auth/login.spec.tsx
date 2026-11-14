@@ -47,17 +47,20 @@ describe('LoginPage and Session Expiration Flow', () => {
     expect(screen.getByRole('button', { name: /đăng nhập hệ thống/i })).toBeDefined();
   });
 
-  it('quick fills SuperAdmin credentials on button click', () => {
+  it('allows user to input email, password and toggle remember me', () => {
     render(<LoginPage />);
-
-    const quickFillBtn = screen.getByRole('button', { name: /admin \(toàn quyền\)/i });
-    fireEvent.click(quickFillBtn);
 
     const emailInput = screen.getByPlaceholderText('admin@structpaper.org') as HTMLInputElement;
     const passwordInput = screen.getByPlaceholderText('••••••••••••') as HTMLInputElement;
+    const rememberMeCheckbox = screen.getByRole('checkbox', { name: /ghi nhớ đăng nhập/i }) as HTMLInputElement;
 
-    expect(emailInput.value).toBe('admin@structpaper.org');
-    expect(passwordInput.value).toBe('AdminPassword123!');
+    fireEvent.change(emailInput, { target: { value: 'custom@user.org' } });
+    fireEvent.change(passwordInput, { target: { value: 'SecretPassword123!' } });
+    fireEvent.click(rememberMeCheckbox);
+
+    expect(emailInput.value).toBe('custom@user.org');
+    expect(passwordInput.value).toBe('SecretPassword123!');
+    expect(rememberMeCheckbox.checked).toBe(false);
   });
 
   it('displays session expired alert banner when auth_expired flag is in localStorage', () => {
@@ -83,8 +86,12 @@ describe('LoginPage and Session Expiration Flow', () => {
 
     render(<LoginPage />);
 
-    // Quick fill and submit
-    fireEvent.click(screen.getByRole('button', { name: /admin \(toàn quyền\)/i }));
+    fireEvent.change(screen.getByPlaceholderText('admin@structpaper.org'), {
+      target: { value: 'admin@structpaper.org' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('••••••••••••'), {
+      target: { value: 'AdminPassword123!' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /đăng nhập hệ thống/i }));
 
     await waitFor(() => {
@@ -103,7 +110,12 @@ describe('LoginPage and Session Expiration Flow', () => {
 
     render(<LoginPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /admin \(toàn quyền\)/i }));
+    fireEvent.change(screen.getByPlaceholderText('admin@structpaper.org'), {
+      target: { value: 'wrong@structpaper.org' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('••••••••••••'), {
+      target: { value: 'WrongPassword!' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /đăng nhập hệ thống/i }));
 
     await waitFor(() => {
