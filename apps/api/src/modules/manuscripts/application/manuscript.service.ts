@@ -61,9 +61,24 @@ export class ManuscriptService {
     const manuscriptId = crypto.randomUUID();
     const now = new Date();
 
+    let journalId = dto.journalId;
+    if (!journalId && this.db?.query?.journals?.findFirst) {
+      try {
+        const defaultJournal = await this.db.query.journals.findFirst();
+        if (defaultJournal?.id) {
+          journalId = defaultJournal.id;
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+    if (!journalId) {
+      journalId = '00000000-0000-0000-0000-000000000000';
+    }
+
     const manuscriptRecord = {
       id: manuscriptId,
-      journalId: dto.journalId,
+      journalId,
       title: dto.title,
       abstract: dto.abstract || null,
       status: 'DRAFT' as const,

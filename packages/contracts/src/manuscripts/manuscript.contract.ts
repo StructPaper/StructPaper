@@ -21,7 +21,7 @@ export const ManuscriptMemberRoleEnum = z.enum([
 export type ManuscriptMemberRole = z.infer<typeof ManuscriptMemberRoleEnum>;
 
 export const CreateManuscriptSchema = z.object({
-  journalId: z.string().uuid('Invalid journal UUID'),
+  journalId: z.string().uuid('Invalid journal UUID').optional(),
   title: z.string().min(1, 'Title is required').max(500),
   abstract: z.string().nullable().optional(),
   metadata: z.record(z.any()).optional().default({}),
