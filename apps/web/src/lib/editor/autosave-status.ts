@@ -1,5 +1,5 @@
 import type { SaveState } from '@/lib/documents/autosave-controller';
-import type { AutosaveStatus } from '@/components/editor/hooks/useEditorAutoSave';
+import type { AutosaveStatus } from '@/features/editor';
 
 /**
  * The title bar and the left dock show a four-value status (idle | saving | saved | error); the document

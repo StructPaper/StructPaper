@@ -3,7 +3,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { usePaperStorage } from '@/hooks/usePaperStorage';
+import { usePaperStorage } from '@/features/editor';
 import type { CompletePaper } from '@/types/paper';
 
 const mockSavePaperToIndexedDb = vi.fn().mockResolvedValue(true);

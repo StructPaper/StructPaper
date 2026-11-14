@@ -1,4 +1,4 @@
-import type { AutosaveStatus } from '@/components/editor/hooks/useEditorAutoSave';
+import type { AutosaveStatus } from '@/features/editor';
 
 export type DocumentSaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 

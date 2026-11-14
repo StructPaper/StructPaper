@@ -14,13 +14,13 @@ import {
 import * as blobRegistry from '@/lib/media/blob-image-registry';
 import { generateFullJournalLatex, generateLatexPackageZip } from '@/lib/latex-template';
 import { generatePaperZip } from '@/lib/exporters';
-import { useSectionMediaHandlers } from '@/components/editor/sections/useSectionMediaHandlers';
-import { FigureSectionItem } from '@/components/editor/sections/FigureSectionItem';
-import { TableSectionItem } from '@/components/editor/sections/TableSectionItem';
+import { useSectionMediaHandlers } from '@/features/editor/components/sections/useSectionMediaHandlers';
+import { FigureSectionItem } from '@/features/editor/components/sections/FigureSectionItem';
+import { TableSectionItem } from '@/features/editor/components/sections/TableSectionItem';
 import {
   TablePreviewGrid,
   TABLE_PREVIEW_MAX_ROWS,
-} from '@/components/editor/sections/TablePreviewGrid';
+} from '@/features/editor/components/sections/TablePreviewGrid';
 import { normalizePaperTable, type CompletePaper, type PaperFigure, type PaperSection, type PaperTable } from '@/types/paper';
 
 const TINY_PNG_BASE64 =

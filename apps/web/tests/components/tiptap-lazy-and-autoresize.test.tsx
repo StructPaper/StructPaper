@@ -3,8 +3,8 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import type { PaperReference } from '@/types/paper';
-import { TipTapParagraphEditor } from '@/components/editor/sections/TipTapParagraphEditor';
-import { AutoResizeTextarea } from '@/components/editor/sections/AutoResizeTextarea';
+import { TipTapParagraphEditor } from '@/features/editor/components/sections/TipTapParagraphEditor';
+import { AutoResizeTextarea } from '@/features/editor/components/sections/AutoResizeTextarea';
 import { supportsCssFieldSizing } from '@/hooks/useSupportsCssFieldSizing';
 
 const mockReferences: PaperReference[] = [

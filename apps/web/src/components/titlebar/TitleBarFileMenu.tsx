@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, FileDown, FilePlus2, FolderOpen, Loader2, Save } from 'lucide-react';
-import type { ExportFormat } from '@/components/documents/DocumentMenuBar';
+import type { ExportFormat } from '@/features/editor';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 

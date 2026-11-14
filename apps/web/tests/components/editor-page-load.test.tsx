@@ -15,8 +15,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('id=paper_old'),
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock('@/hooks', () => ({ usePaperStorage: () => ({ loadPaper }) }));
-vi.mock('@/components/editor', () => ({ UnifiedEditorView: () => null }));
+vi.mock('@/features/editor', () => ({
+  usePaperStorage: () => ({ loadPaper }),
+  UnifiedEditorView: () => null,
+}));
 
 afterEach(() => {
   cleanup();

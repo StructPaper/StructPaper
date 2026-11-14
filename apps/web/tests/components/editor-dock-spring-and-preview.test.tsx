@@ -70,7 +70,7 @@ vi.stubGlobal(
   })
 );
 
-import { EditorLeftDock } from '@/components/editor/EditorLeftDock';
+import { EditorLeftDock } from '@/features/editor';
 import { PaperProvider } from '@/context/PaperContext';
 import { CompletePaper, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
 import PreviewPage from '@/app/preview/page';

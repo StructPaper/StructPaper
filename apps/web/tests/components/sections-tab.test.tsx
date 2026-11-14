@@ -39,12 +39,12 @@ vi.mock('framer-motion', async () => {
 import {
   SectionsTab,
   createPaperCommandBus,
-} from '@/components/editor';
+} from '@/features/editor';
 import {
   TemporaryParagraphInput,
   displayTextToInlines,
   inlinesToDisplayText,
-} from '@/components/editor/sections/TemporaryParagraphInput';
+} from '@/features/editor/components/sections/TemporaryParagraphInput';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import type { Inline } from '@structpaper/doc-model';
 

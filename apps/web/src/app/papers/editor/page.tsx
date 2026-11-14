@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { CompletePaper } from '@/types/paper';
 import { getAuthoringPaperById, getAuthoringPapers, createNewPaperFromTemplate } from '@/lib/authoring/paper-storage';
 import { BUILT_IN_TEMPLATES } from '@/data/templates';
-import { TypstPaperEditorView } from '@/components/authoring/editor/TypstPaperEditorView';
+import { TypstPaperEditorView } from '@/features/editor';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 function PaperEditorLoader() {

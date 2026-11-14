@@ -22,7 +22,7 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-import { SectionsTab } from '@/components/editor';
+import { SectionsTab } from '@/features/editor';
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
 import type { PaperSection } from '@/types/paper';
 

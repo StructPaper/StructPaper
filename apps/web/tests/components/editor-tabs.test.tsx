@@ -43,7 +43,7 @@ import {
   PreflightQCTab,
   createPaperCommandBus,
   computePreflightCheckWrapper,
-} from '@/components/editor';
+} from '@/features/editor';
 import {
   HistoryManager,
 } from '@structpaper/editor-core';

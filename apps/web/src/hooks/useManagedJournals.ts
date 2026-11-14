@@ -10,7 +10,7 @@ import {
   createNewPaperFromJournal,
 } from '@/lib/templates/journal-storage';
 import { usePaper } from '@/context/PaperContext';
-import { usePaperStorage } from './usePaperStorage';
+import { usePaperStorage } from '@/features/editor';
 import { createEmptyPaper } from '@/types/paper';
 import { toast } from '@/components/DynamicIslandToast';
 

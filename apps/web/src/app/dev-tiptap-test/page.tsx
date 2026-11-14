@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TipTapParagraphEditor } from '@/components/editor/sections/TipTapParagraphEditor';
+import { TipTapParagraphEditor } from '@/features/editor/components/sections/TipTapParagraphEditor';
 import type { Inline } from '@structpaper/doc-model';
 import type { PaperReference } from '@/types/paper';
 

@@ -20,7 +20,7 @@ import {
 } from '@/lib/template-engine/storage';
 
 import { TemplateBuilderDock } from './TemplateBuilderDock';
-import { ResizableSplitLayout } from '@/components/editor/ResizableSplitLayout';
+import { ResizableSplitLayout } from '@/features/editor';
 import { UniversalLiveA4Preview } from './UniversalLiveA4Preview';
 
 // Step Components

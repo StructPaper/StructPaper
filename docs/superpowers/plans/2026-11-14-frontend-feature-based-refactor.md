@@ -69,13 +69,13 @@
 - Modify: `apps/web/src/app/editor/page.tsx`
 - Modify: `apps/web/test/documents/` and editor tests
 
-- [ ] **Step 1: Move editor components (`UnifiedEditorView.tsx`, `PaperToolbar.tsx`, sub-components from `components/editor/` and `components/documents/`) into `features/editor/components/`**
-- [ ] **Step 2: Move editor hooks (`useDocumentAutosave.ts`, `usePaperStorage.ts`, `useAssetUpload.ts`, editor sub-hooks) into `features/editor/hooks/`**
-- [ ] **Step 3: Create `src/features/editor/index.ts` exporting editor view and persistence hooks**
-- [ ] **Step 4: Update import paths in `app/editor/page.tsx` and all consumers**
-- [ ] **Step 5: Remove old directories (`components/editor/`, `components/documents/`, `components/authoring/`)**
-- [ ] **Step 6: Run editor and document tests: `pnpm --filter @structpaper/web test test/documents test/hooks/use-paper-storage-sync.spec.tsx`**
-- [ ] **Step 7: Commit changes as `refactor(web): migrate editor and document persistence to features/editor`**
+- [x] **Step 1: Move editor components (`UnifiedEditorView.tsx`, `PaperToolbar.tsx`, sub-components from `components/editor/` and `components/documents/`) into `features/editor/components/`**
+- [x] **Step 2: Move editor hooks (`useDocumentAutosave.ts`, `usePaperStorage.ts`, `useAssetUpload.ts`, editor sub-hooks) into `features/editor/hooks/`**
+- [x] **Step 3: Create `src/features/editor/index.ts` exporting editor view and persistence hooks**
+- [x] **Step 4: Update import paths in `app/editor/page.tsx` and all consumers**
+- [x] **Step 5: Remove old directories (`components/editor/`, `components/documents/`, `components/authoring/`)**
+- [x] **Step 6: Run editor and document tests: `pnpm --filter @structpaper/web test test/documents test/hooks/use-paper-storage-sync.spec.tsx`**
+- [x] **Step 7: Commit changes as `refactor(web): migrate editor and document persistence to features/editor`**
 
 ---
 

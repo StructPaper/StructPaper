@@ -69,14 +69,14 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-import { UnifiedEditorView } from '@/components/editor/UnifiedEditorView';
-import { TableSpreadsheetModal } from '@/components/editor/TableSpreadsheetModal';
-import { FigureSettingsModal } from '@/components/editor/FigureSettingsModal';
 import {
+  UnifiedEditorView,
+  TableSpreadsheetModal,
+  FigureSettingsModal,
   useEditorCompilation,
   useEditorExport,
   useEditorShortcuts,
-} from '@/components/editor/hooks';
+} from '@/features/editor';
 import { PaperProvider } from '@/context/PaperContext';
 import {
   CompletePaper,

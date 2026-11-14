@@ -17,11 +17,10 @@ import type { BatchItem } from '@/lib/batch-import/types';
 import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { usePaper } from '@/context/PaperContext';
-import { usePaperStorage } from '@/hooks';
+import { usePaperStorage, ImportValidationModal } from '@/features/editor';
 import { usePaperDuplicateWarning } from '../../hooks/usePaperDuplicateWarning';
 import { toast } from '@/components/DynamicIslandToast';
 import { DuplicatePaperWarningModal } from '../DuplicatePaperWarningModal';
-import { ImportValidationModal } from '@/components/documents/ValidationModals';
 import { validateForImport, type ValidationReport } from '@/lib/validation/validators';
 import { renumberPaper } from '@/lib/validation/numbering';
 

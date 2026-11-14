@@ -2,7 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { LivePreviewPane } from '@/components/editor/LivePreviewPane';
+import { LivePreviewPane } from '@/features/editor';
 import { DesktopTitleBar } from '@/components/titlebar/DesktopTitleBar';
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { PlatformProvider, createFakePlatform } from '@structpaper/platform';

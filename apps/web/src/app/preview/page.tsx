@@ -4,10 +4,12 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { usePaper } from '@/context/PaperContext';
-import { usePaperStorage } from '@/hooks';
-import { useEditorCompilation } from '@/components/editor/hooks';
-import { LivePreviewPane } from '@/components/editor/LivePreviewPane';
-import { DockIconButton } from '@/components/editor/EditorLeftDock';
+import {
+  usePaperStorage,
+  useEditorCompilation,
+  LivePreviewPane,
+  DockIconButton,
+} from '@/features/editor';
 
 function PreviewContent() {
   const router = useRouter();

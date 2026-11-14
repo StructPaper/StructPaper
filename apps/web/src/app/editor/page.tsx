@@ -3,9 +3,8 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePaper } from '@/context/PaperContext';
-import { UnifiedEditorView } from '@/components/editor';
+import { UnifiedEditorView, usePaperStorage } from '@/features/editor';
 import { CompletePaper } from '@/lib/sample-papers';
-import { usePaperStorage } from '@/hooks';
 
 function EditorContent() {
   const { paper, updatePaper, setPaper, setCurrentJournal } = usePaper();

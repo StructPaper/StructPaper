@@ -77,10 +77,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/editor',
 }));
 
-vi.mock('@/components/editor/sections/SectionHeaderCard', async () => {
+vi.mock('@/features/editor/components/sections/SectionHeaderCard', async () => {
   const actual = await vi.importActual<
-    typeof import('@/components/editor/sections/SectionHeaderCard')
-  >('@/components/editor/sections/SectionHeaderCard');
+    typeof import('@/features/editor/components/sections/SectionHeaderCard')
+  >('@/features/editor/components/sections/SectionHeaderCard');
   const ActualSectionHeaderCard = actual.SectionHeaderCard;
 
   const TrackedSectionHeaderCard: React.FC<
@@ -97,9 +97,9 @@ vi.mock('@/components/editor/sections/SectionHeaderCard', async () => {
   };
 });
 
-import { SectionsTab, UnifiedEditorView } from '@/components/editor';
-import { ParagraphSectionItem } from '@/components/editor/sections/ParagraphSectionItem';
-import { estimateSectionHeight } from '@/components/editor/sections/useSectionVirtualizer';
+import { SectionsTab, UnifiedEditorView } from '@/features/editor';
+import { ParagraphSectionItem } from '@/features/editor/components/sections/ParagraphSectionItem';
+import { estimateSectionHeight } from '@/features/editor/components/sections/useSectionVirtualizer';
 import { PaperProvider } from '@/context/PaperContext';
 
 function createMixedSections(count: number): PaperSection[] {

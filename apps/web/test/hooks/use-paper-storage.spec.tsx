@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePaperStorage } from '@/hooks/usePaperStorage';
+import { usePaperStorage } from '@/features/editor';
 import type { CompletePaper } from '@/types/paper';
 
 const mockSavePaperToIndexedDb = vi.fn().mockResolvedValue(true);

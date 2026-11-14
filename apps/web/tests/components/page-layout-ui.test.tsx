@@ -27,10 +27,10 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-import { EquationSectionItem } from '@/components/editor/sections/EquationSectionItem';
-import { PageLayoutControl } from '@/components/editor/sections/PageLayoutControl';
-import { SectionCardHeader } from '@/components/editor/sections/SectionCardHeader';
-import { LayoutSettingsDrawer } from '@/components/editor/LayoutSettingsDrawer';
+import { EquationSectionItem } from '@/features/editor/components/sections/EquationSectionItem';
+import { PageLayoutControl } from '@/features/editor/components/sections/PageLayoutControl';
+import { SectionCardHeader } from '@/features/editor/components/sections/SectionCardHeader';
+import { LayoutSettingsDrawer } from '@/features/editor';
 import { DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
 import type { PaperSection } from '@/types/paper';
 

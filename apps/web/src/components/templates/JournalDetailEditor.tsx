@@ -21,10 +21,8 @@ import { JournalGeneralTab } from './tabs/JournalGeneralTab';
 import { JournalFrontMatterTab } from './tabs/JournalFrontMatterTab';
 import { JournalArticleTypesTab } from './tabs/JournalArticleTypesTab';
 import { JournalLayoutTab } from './tabs/JournalLayoutTab';
-import { ResizableSplitLayout } from '@/components/editor/ResizableSplitLayout';
-import { LivePreviewPane } from '@/components/editor/LivePreviewPane';
+import { ResizableSplitLayout, LivePreviewPane, useEditorCompilation } from '@/features/editor';
 import { generateSamplePaperForJournal } from '@/lib/templates/sample-template-paper';
-import { useEditorCompilation } from '@/components/editor/hooks';
 import { CompletePaper } from '@/types/paper';
 
 interface JournalDetailEditorProps {

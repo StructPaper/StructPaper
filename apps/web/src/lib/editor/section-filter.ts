@@ -1,5 +1,5 @@
 import type { PaperSection } from '@/types/paper';
-import type { SectionFilterType } from '@/components/editor/hooks/tab-view-state-store';
+import type { SectionFilterType } from '@/features/editor';
 
 /** Which sections the content tab shows for a filter chip (citations are never listed). */
 export function matchesSectionFilter(sec: PaperSection, filter: SectionFilterType): boolean {

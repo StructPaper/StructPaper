@@ -20,7 +20,7 @@ describe('Architecture Guardrails', () => {
     expect(Array.isArray(data.allowlist)).toBe(true);
     expect(data.allowlist.length).toBeGreaterThan(0);
     expect(data.allowlist).toContain('apps/web/src/lib/docx-parser.ts');
-    expect(data.allowlist).toContain('apps/web/src/components/editor/UnifiedEditorView.tsx');
+    expect(data.allowlist).toContain('apps/web/src/features/editor/components/UnifiedEditorView.tsx');
   });
 
   it('verifies dependency-cruiser configuration exists and has required rules', () => {

@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { createEmptyPaper, type CompletePaper } from '@/types/paper';
-import { useDocumentAutosave } from '@/hooks/useDocumentAutosave';
+import { useDocumentAutosave } from '@/features/editor';
 
 const paperOf = (id: string, title: string): CompletePaper => {
   const p = createEmptyPaper();

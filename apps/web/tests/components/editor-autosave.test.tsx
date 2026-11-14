@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useEditorAutoSave } from '@/components/editor/hooks/useEditorAutoSave';
+import { useEditorAutoSave } from '@/features/editor';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 
 function createMockPaper(title = 'Bản thảo ban đầu'): CompletePaper {

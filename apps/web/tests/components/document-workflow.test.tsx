@@ -2,9 +2,12 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { ImportValidationModal, ExportGateModal } from '@/components/documents/ValidationModals';
-import { DocumentMenuBar } from '@/components/documents/DocumentMenuBar';
-import { mergeDocumentLists } from '@/components/documents/OpenDocumentDialog';
+import {
+  ImportValidationModal,
+  ExportGateModal,
+  DocumentMenuBar,
+  mergeDocumentLists,
+} from '@/features/editor';
 import type { ValidationReport, ValidationIssue } from '@/lib/validation/validators';
 
 afterEach(cleanup);

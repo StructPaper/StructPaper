@@ -72,15 +72,13 @@ import {
   ReferencesTab,
   CitationTab,
   PreflightQCTab,
-} from '@/components/editor';
-import {
   applyScrollTopInstantly,
   createEditorTabStateStore,
   EditorTabStateProvider,
   useTabScrollRestoration,
   isElementHiddenByCss,
-} from '@/components/editor/hooks';
-import { useSectionVirtualizer } from '@/components/editor/sections/useSectionVirtualizer';
+} from '@/features/editor';
+import { useSectionVirtualizer } from '@/features/editor/components/sections/useSectionVirtualizer';
 import { PaperProvider } from '@/context/PaperContext';
 import {
   DEFAULT_LAYOUT_SETTINGS,

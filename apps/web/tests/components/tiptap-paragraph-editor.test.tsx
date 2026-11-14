@@ -8,9 +8,9 @@ import {
   tiptapDocToInlines,
   inlinesToTiptapDoc,
   tiptapDocToPlainText,
-} from '@/components/editor/sections/tiptap-schema';
-import { cleanWordPasteHtml } from '@/components/editor/sections/clean-word-paste';
-import { TipTapParagraphEditor } from '@/components/editor/sections/TipTapParagraphEditor';
+} from '@/features/editor/components/sections/tiptap-schema';
+import { cleanWordPasteHtml } from '@/features/editor/components/sections/clean-word-paste';
+import { TipTapParagraphEditor } from '@/features/editor/components/sections/TipTapParagraphEditor';
 
 describe('Task 4.5: TipTap Paragraph Editor & Schema Bidirectional Mapping', () => {
   beforeEach(() => {

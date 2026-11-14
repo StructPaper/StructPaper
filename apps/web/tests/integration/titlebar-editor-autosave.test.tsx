@@ -54,8 +54,8 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-vi.mock('@/hooks', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('@/hooks');
+vi.mock('@/features/editor', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('@/features/editor');
   return {
     ...actual,
     usePaperStorage: () => ({
@@ -67,6 +67,15 @@ vi.mock('@/hooks', async () => {
     }),
   };
 });
+vi.mock('@/features/editor/hooks/usePaperStorage', () => ({
+  usePaperStorage: () => ({
+    savePaper: mockSavePaper,
+    loadPaper: vi.fn(),
+    listPapers: vi.fn().mockResolvedValue([]),
+    deletePaper: vi.fn(),
+    isReady: true,
+  }),
+}));
 
 vi.stubGlobal(
   'fetch',
@@ -85,7 +94,7 @@ vi.stubGlobal(
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { PaperProvider } from '@/context/PaperContext';
 import { DesktopTitleBar } from '@/components/titlebar';
-import { UnifiedEditorView } from '@/components/editor/UnifiedEditorView';
+import { UnifiedEditorView } from '@/features/editor';
 import { sileo } from '@/components/DynamicIslandToast';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { migrateV1toV2 } from '@structpaper/doc-model';

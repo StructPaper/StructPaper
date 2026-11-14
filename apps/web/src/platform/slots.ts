@@ -3,7 +3,7 @@
 import { registerSlot } from '@structpaper/platform';
 import { DownloadDesktopCard } from '@/components/platform/DownloadDesktopCard';
 import { CheckForUpdateCard } from '@/components/platform/CheckForUpdateCard';
-import type { DocumentMenuBarProps } from '@/components/documents/DocumentMenuBar';
+import type { DocumentMenuBarProps } from '@/features/editor';
 
 let registered = false;
 

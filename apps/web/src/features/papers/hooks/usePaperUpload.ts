@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePaper } from '@/context/PaperContext';
-import { usePaperStorage } from '@/hooks';
+import { usePaperStorage } from '@/features/editor';
 import type { CompletePaper } from '@/types/paper';
 
 export function usePaperUpload() {

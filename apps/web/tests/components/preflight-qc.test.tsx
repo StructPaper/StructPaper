@@ -2,8 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { computePreflightCheckWrapper } from '@/components/editor/preflight-wrapper';
-import { PreflightQCTab } from '@/components/editor/PreflightQCTab';
+import { computePreflightCheckWrapper, PreflightQCTab } from '@/features/editor';
 import type { CompletePaper } from '@/types/paper';
 
 describe('Preflight QC & PreflightQCTab Integration', () => {

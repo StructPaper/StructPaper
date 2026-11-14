@@ -7,13 +7,6 @@
     "apps/web/src/app/test-render-latex/page.tsx",
     "apps/web/src/components/ExtractedContentView.tsx",
     "apps/web/src/components/Sidebar.tsx",
-    "apps/web/src/components/editor/ExtractedContentDrawer.tsx",
-    "apps/web/src/components/editor/FigureSettingsModal.tsx",
-    "apps/web/src/components/editor/LayoutSettingsDrawer.tsx",
-    "apps/web/src/components/editor/PreflightQCTab.tsx",
-    "apps/web/src/components/editor/SectionsTab.tsx",
-    "apps/web/src/components/editor/TableSpreadsheetModal.tsx",
-    "apps/web/src/components/editor/UnifiedEditorView.tsx",
     "apps/web/src/components/permissions/PermissionMatrixTab.tsx",
     "apps/web/src/components/preview/PdfInteractiveViewer.tsx",
     "apps/web/src/components/template-builder/TemplateBuilderView.tsx",
@@ -33,6 +26,13 @@
     "apps/web/src/components/template-builder/steps/StepSpecialElements.tsx",
     "apps/web/src/components/ui/DatePicker.tsx",
     "apps/web/src/components/ui/Select.tsx",
+    "apps/web/src/features/editor/components/ExtractedContentDrawer.tsx",
+    "apps/web/src/features/editor/components/FigureSettingsModal.tsx",
+    "apps/web/src/features/editor/components/LayoutSettingsDrawer.tsx",
+    "apps/web/src/features/editor/components/PreflightQCTab.tsx",
+    "apps/web/src/features/editor/components/SectionsTab.tsx",
+    "apps/web/src/features/editor/components/TableSpreadsheetModal.tsx",
+    "apps/web/src/features/editor/components/UnifiedEditorView.tsx",
     "apps/web/src/features/papers/components/CreatePaperModal/CreatePaperModal.tsx",
     "apps/web/src/features/papers/components/PaperTable.tsx",
     "apps/web/src/features/papers/hooks/usePapersHub.ts",
@@ -72,48 +72,6 @@
       "codeLines": 839,
       "maxAllowedTotal": 922,
       "maxAllowedCode": 839
-    },
-    "apps/web/src/components/editor/ExtractedContentDrawer.tsx": {
-      "totalLines": 621,
-      "codeLines": 585,
-      "maxAllowedTotal": 621,
-      "maxAllowedCode": 585
-    },
-    "apps/web/src/components/editor/FigureSettingsModal.tsx": {
-      "totalLines": 499,
-      "codeLines": 468,
-      "maxAllowedTotal": 499,
-      "maxAllowedCode": 468
-    },
-    "apps/web/src/components/editor/LayoutSettingsDrawer.tsx": {
-      "totalLines": 707,
-      "codeLines": 664,
-      "maxAllowedTotal": 707,
-      "maxAllowedCode": 664
-    },
-    "apps/web/src/components/editor/PreflightQCTab.tsx": {
-      "totalLines": 577,
-      "codeLines": 547,
-      "maxAllowedTotal": 577,
-      "maxAllowedCode": 547
-    },
-    "apps/web/src/components/editor/SectionsTab.tsx": {
-      "totalLines": 659,
-      "codeLines": 583,
-      "maxAllowedTotal": 659,
-      "maxAllowedCode": 583
-    },
-    "apps/web/src/components/editor/TableSpreadsheetModal.tsx": {
-      "totalLines": 1064,
-      "codeLines": 926,
-      "maxAllowedTotal": 1064,
-      "maxAllowedCode": 926
-    },
-    "apps/web/src/components/editor/UnifiedEditorView.tsx": {
-      "totalLines": 565,
-      "codeLines": 509,
-      "maxAllowedTotal": 565,
-      "maxAllowedCode": 509
     },
     "apps/web/src/components/ExtractedContentView.tsx": {
       "totalLines": 594,
@@ -241,11 +199,53 @@
       "maxAllowedTotal": 547,
       "maxAllowedCode": 503
     },
+    "apps/web/src/features/editor/components/ExtractedContentDrawer.tsx": {
+      "totalLines": 621,
+      "codeLines": 585,
+      "maxAllowedTotal": 621,
+      "maxAllowedCode": 585
+    },
+    "apps/web/src/features/editor/components/FigureSettingsModal.tsx": {
+      "totalLines": 499,
+      "codeLines": 468,
+      "maxAllowedTotal": 499,
+      "maxAllowedCode": 468
+    },
+    "apps/web/src/features/editor/components/LayoutSettingsDrawer.tsx": {
+      "totalLines": 707,
+      "codeLines": 664,
+      "maxAllowedTotal": 707,
+      "maxAllowedCode": 664
+    },
+    "apps/web/src/features/editor/components/PreflightQCTab.tsx": {
+      "totalLines": 577,
+      "codeLines": 547,
+      "maxAllowedTotal": 577,
+      "maxAllowedCode": 547
+    },
+    "apps/web/src/features/editor/components/SectionsTab.tsx": {
+      "totalLines": 659,
+      "codeLines": 583,
+      "maxAllowedTotal": 659,
+      "maxAllowedCode": 583
+    },
+    "apps/web/src/features/editor/components/TableSpreadsheetModal.tsx": {
+      "totalLines": 1064,
+      "codeLines": 926,
+      "maxAllowedTotal": 1064,
+      "maxAllowedCode": 926
+    },
+    "apps/web/src/features/editor/components/UnifiedEditorView.tsx": {
+      "totalLines": 565,
+      "codeLines": 509,
+      "maxAllowedTotal": 565,
+      "maxAllowedCode": 509
+    },
     "apps/web/src/features/papers/components/CreatePaperModal/CreatePaperModal.tsx": {
-      "totalLines": 474,
-      "codeLines": 421,
-      "maxAllowedTotal": 474,
-      "maxAllowedCode": 421
+      "totalLines": 473,
+      "codeLines": 420,
+      "maxAllowedTotal": 473,
+      "maxAllowedCode": 420
     },
     "apps/web/src/features/papers/components/PaperTable.tsx": {
       "totalLines": 479,

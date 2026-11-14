@@ -8,7 +8,7 @@ import {
 } from '@/lib/editor/autosave-preferences';
 import type { DocumentSaveState } from '@/lib/editor/save-status';
 import type { SaveState } from '@/lib/documents/autosave-controller';
-import type { ExportFormat } from '@/components/documents/DocumentMenuBar';
+import type { ExportFormat } from '@/features/editor';
 
 export interface EditorDocumentSession {
   paperId?: string;

@@ -3,8 +3,7 @@ import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { PlatformProvider, createFakePlatform } from '@structpaper/platform';
-import { EditorDocumentMenuBarSlot } from '@/components/documents/EditorDocumentMenuBarSlot';
-import type { DocumentMenuBarProps } from '@/components/documents/DocumentMenuBar';
+import { EditorDocumentMenuBarSlot, type DocumentMenuBarProps } from '@/features/editor';
 
 const baseProps: DocumentMenuBarProps = {
   name: 'Bản thảo slot test',
