@@ -28,12 +28,7 @@ import {
 } from 'lucide-react';
 import { parseLatexDocument } from '@/lib/latex-parser';
 import { CompletePaper } from '@/types/paper';
-import { JournalHeader } from '@/components/preview/JournalHeader';
-import { JournalFirstPageMeta } from '@/components/preview/JournalFirstPageMeta';
-import { JournalSectionRenderer } from '@/components/preview/JournalSectionRenderer';
-import { JournalReferences } from '@/components/preview/JournalReferences';
-import { JournalCitationFooter } from '@/components/preview/JournalCitationFooter';
-import { CompileErrorModal } from '@/components/preview/CompileErrorModal';
+import { JournalHeader, JournalFirstPageMeta, JournalSectionRenderer, JournalReferences, JournalCitationFooter, CompileErrorModal } from '@/features/preview';
 
 // Sample presets
 const PRESET_MINIMAL = `% !TeX program = xelatex

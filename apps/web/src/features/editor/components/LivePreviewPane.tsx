@@ -2,12 +2,17 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LivePreviewPaneProps } from './types';
-import { CompileErrorModal } from '@/components/preview/CompileErrorModal';
+import {
+  CompileErrorModal,
+  PdfInteractiveViewer,
+  type PdfFillIssue,
+  type PdfPickContext,
+  type PdfRotateContext,
+} from '@/features/preview';
 import { exportToLatex } from '@/lib/exporters';
 import { RefreshCw, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { useEditorSession } from '@/context/EditorSessionContext';
 import type { PaperSection, SectionPageLayout } from '@/types/paper';
-import { PdfInteractiveViewer, type PdfFillIssue, type PdfPickContext, type PdfRotateContext } from '@/components/preview/PdfInteractiveViewer';
 import { rotatePageAt } from '@/lib/editor/page-turn';
 import { equationIndex, extendRotatedRange, resolveClick } from '@/lib/editor/pdf-click-target';
 import { buildFrontIndex, buildSectionIndex, firstNewSectionOnPage, matchLineToFrontTab } from '@/lib/editor/pdf-section-map';

@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from '@structpaper/api-client';
-import { useManuscriptMembers } from '@/hooks/useManuscriptMembers';
+import { useManuscriptMembers } from '@/features/permissions';
 
 const mockAddMemberMutate = vi.fn();
 const mockDeleteSpy = vi.spyOn(http, 'delete');

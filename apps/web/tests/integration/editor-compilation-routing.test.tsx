@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, cleanup, renderHook } from '@testing-library/react';
 import { toast, toastStore } from '@/components/toast/toast-store';
 import { useEditorCompilation } from '@/features/editor';
-import { PublicationPreview } from '@/components/preview/PublicationPreview';
+import { PublicationPreview } from '@/features/preview';
 import { PreviewActionsToolbar } from '@/features/editor';
 import {
   CompilerRouter,

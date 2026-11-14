@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PdfInteractiveViewer, type PdfPickContext, type PdfRotateContext } from '@/components/preview/PdfInteractiveViewer';
+import { PdfInteractiveViewer, type PdfPickContext, type PdfRotateContext } from '@/features/preview';
 
 // Test harness for the preview: a hidden browser pane stops requestAnimationFrame, which pdf.js needs to draw.
 // "?raf=timeout" replaces it with a timer so the viewer can be driven there.

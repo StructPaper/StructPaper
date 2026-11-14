@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { PaperSection } from '@/types/paper';
-import { MathFormula } from '@/components/preview/MathText';
+import { MathFormula } from '@/features/preview';
 import { checkLatexMath } from '@/lib/math-text';
 import { SegmentedOptions } from './SegmentedOptions';
 

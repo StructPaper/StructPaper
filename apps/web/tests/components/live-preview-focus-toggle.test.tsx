@@ -16,9 +16,13 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock PdfInteractiveViewer
-vi.mock('@/components/preview/PdfInteractiveViewer', () => ({
-  PdfInteractiveViewer: () => <div data-testid="pdf-interactive-viewer">PdfInteractiveViewer Loaded</div>,
-}));
+vi.mock('@/features/preview', async () => {
+  const actual = await vi.importActual<any>('@/features/preview');
+  return {
+    ...actual,
+    PdfInteractiveViewer: () => <div data-testid="pdf-interactive-viewer">PdfInteractiveViewer Loaded</div>,
+  };
+});
 
 describe('DesktopTitleBar & LivePreviewPane Focus Toggle Integration', () => {
   beforeEach(() => {

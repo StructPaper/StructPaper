@@ -18,7 +18,7 @@ import {
   InvitationsTab,
   InviteMemberModal,
   type UserRoleItem,
-} from '@/components/permissions';
+} from '@/features/permissions';
 
 export default function PermissionsPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'matrix' | 'invitations'>('users');

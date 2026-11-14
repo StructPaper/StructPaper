@@ -7,8 +7,8 @@
     "apps/web/src/app/test-render-latex/page.tsx",
     "apps/web/src/components/ExtractedContentView.tsx",
     "apps/web/src/components/Sidebar.tsx",
-    "apps/web/src/components/permissions/PermissionMatrixTab.tsx",
-    "apps/web/src/components/preview/PdfInteractiveViewer.tsx",
+    "apps/web/src/features/permissions/components/PermissionMatrixTab.tsx",
+    "apps/web/src/features/preview/components/PdfInteractiveViewer.tsx",
     "apps/web/src/features/templates/components/template-builder/TemplateBuilderView.tsx",
     "apps/web/src/features/templates/components/template-builder/TemplateHubView.tsx",
     "apps/web/src/features/templates/components/template-builder/TemplateLivePreview.tsx",
@@ -79,13 +79,13 @@
       "maxAllowedTotal": 594,
       "maxAllowedCode": 565
     },
-    "apps/web/src/components/permissions/PermissionMatrixTab.tsx": {
+    "apps/web/src/features/permissions/components/PermissionMatrixTab.tsx": {
       "totalLines": 473,
       "codeLines": 454,
       "maxAllowedTotal": 473,
       "maxAllowedCode": 454
     },
-    "apps/web/src/components/preview/PdfInteractiveViewer.tsx": {
+    "apps/web/src/features/preview/components/PdfInteractiveViewer.tsx": {
       "totalLines": 448,
       "codeLines": 412,
       "maxAllowedTotal": 448,

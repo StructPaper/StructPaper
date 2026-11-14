@@ -28,9 +28,7 @@ Object.defineProperty(navigator, 'clipboard', {
 
 // Import permissions page and components
 import PermissionsPage from '../../src/app/permissions/page';
-import { UserRoleAssignmentTab } from '../../src/components/permissions/UserRoleAssignmentTab';
-import { PermissionMatrixTab } from '../../src/components/permissions/PermissionMatrixTab';
-import { InviteMemberModal } from '../../src/components/permissions/InviteMemberModal';
+import { UserRoleAssignmentTab, PermissionMatrixTab, InviteMemberModal } from '@/features/permissions';
 
 // Mock apiClient functions
 const mockAssignRoleMutate = vi.fn();
