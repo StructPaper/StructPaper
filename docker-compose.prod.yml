@@ -22,7 +22,7 @@ services:
       start_period: 10s
 
   minio:
-    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    image: cgr.dev/chainguard/minio:latest
     container_name: structpaper-minio-prod
     restart: always
     ports:
@@ -47,7 +47,7 @@ services:
       start_period: 10s
 
   minio-init:
-    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    image: cgr.dev/chainguard/minio:latest
     container_name: structpaper-minio-init-prod
     depends_on:
       minio:
