@@ -28,7 +28,7 @@ Object.defineProperty(navigator, 'clipboard', {
 
 // Import permissions page and components
 import PermissionsPage from '../../src/app/permissions/page';
-import { UserRoleAssignmentTab, PermissionMatrixTab, InviteMemberModal } from '@/features/permissions';
+import { UserRoleAssignmentTab, PermissionMatrixTab, InviteMemberModal, InvitationsTab } from '@/features/permissions';
 import { sileo } from '@/components/toast';
 
 // Mock apiClient functions
@@ -300,5 +300,95 @@ describe('Permissions & Role Management Page', () => {
         })
       );
     });
+  });
+
+  it('InvitationsTab renders search bar, quick action button, table rows, and end-of-list divider', () => {
+    renderWithClient(<InvitationsTab />);
+
+    // Search input
+    expect(screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i)).toBeDefined();
+
+    // Quick action button
+    expect(screen.getByRole('button', { name: /Mời thành viên mới/i })).toBeDefined();
+
+    // Table rows
+    expect(screen.getByText(/collaborator.guest@vnu.edu.vn/i)).toBeDefined();
+    expect(screen.getByText(/reviewer.le@hcmus.edu.vn/i)).toBeDefined();
+    expect(screen.getByText(/editor.tran@medvnu.edu.vn/i)).toBeDefined();
+
+    // End-of-list divider
+    expect(screen.getByText(/Bạn đã xem hết danh sách lời mời/i)).toBeDefined();
+  });
+
+  it('filters invitations by search query and clear button resets search', () => {
+    renderWithClient(<InvitationsTab />);
+
+    const searchInput = screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i);
+    fireEvent.change(searchInput, { target: { value: 'reviewer.le' } });
+
+    expect(screen.getByText(/TS. Lê Hải Đăng/i)).toBeDefined();
+    expect(screen.queryByText(/ThS. Trần Thị Kim Cương/i)).toBeNull();
+
+    // Clear search button
+    const clearBtn = screen.getByTitle('Xóa tìm kiếm');
+    fireEvent.click(clearBtn);
+
+    expect(screen.getByText(/ThS. Trần Thị Kim Cương/i)).toBeDefined();
+  });
+
+  it('clicking copy link calls clipboard.writeText and triggers sileo.success feedback', async () => {
+    const sileoSpy = vi.spyOn(sileo, 'success');
+    renderWithClient(<InvitationsTab />);
+
+    const copyBtns = screen.getAllByTitle('Sao chép liên kết kích hoạt');
+    expect(copyBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(copyBtns[0]);
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      expect.stringContaining('/activate?token=tok_guest_vnuhcm_78901')
+    );
+
+    await waitFor(() => {
+      expect(sileoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Đã sao chép link kích hoạt',
+          description: expect.stringContaining('collaborator.guest@vnu.edu.vn'),
+        })
+      );
+    });
+  });
+
+  it('clicking resend button triggers onResendInvite callback and triggers sileo.info feedback', async () => {
+    const sileoInfoSpy = vi.spyOn(sileo, 'info');
+    const mockOnResend = vi.fn();
+    renderWithClient(<InvitationsTab onResendInvite={mockOnResend} />);
+
+    const resendBtns = screen.getAllByTitle('Gửi lại email kích hoạt');
+    expect(resendBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(resendBtns[0]);
+
+    expect(mockOnResend).toHaveBeenCalledWith('inv-1');
+    await waitFor(() => {
+      expect(sileoInfoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Đã gửi lại lời mời',
+          description: expect.stringContaining('collaborator.guest@vnu.edu.vn'),
+        })
+      );
+    });
+  });
+
+  it('shows graceful empty state when search query matches no invitations', () => {
+    renderWithClient(<InvitationsTab />);
+
+    const searchInput = screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i);
+    fireEvent.change(searchInput, { target: { value: 'nonexistent-user-query' } });
+
+    expect(
+      screen.getByText(/Không tìm thấy lời mời nào phù hợp với "nonexistent-user-query"/i)
+    ).toBeDefined();
+    expect(screen.queryByText(/Bạn đã xem hết danh sách lời mời/i)).toBeNull();
   });
 });
