@@ -29,6 +29,7 @@ Object.defineProperty(navigator, 'clipboard', {
 // Import permissions page and components
 import PermissionsPage from '../../src/app/permissions/page';
 import { UserRoleAssignmentTab, PermissionMatrixTab, InviteMemberModal } from '@/features/permissions';
+import { sileo } from '@/components/toast';
 
 // Mock apiClient functions
 const mockAssignRoleMutate = vi.fn();
@@ -198,5 +199,76 @@ describe('Permissions & Role Management Page', () => {
     const copyBtn = screen.getByRole('button', { name: /sao chép link/i });
     fireEvent.click(copyBtn);
     expect(mockWriteText).toHaveBeenCalled();
+  });
+
+  it('UserRoleAssignmentTab renders search bar, status chips, role filter, and end of list divider', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    // Search input
+    expect(screen.getByPlaceholderText(/Tìm theo email hoặc họ tên/i)).toBeDefined();
+
+    // Status filter chips
+    expect(screen.getByTestId('status-filter-all')).toBeDefined();
+    expect(screen.getByTestId('status-filter-active')).toBeDefined();
+    expect(screen.getByTestId('status-filter-invited')).toBeDefined();
+    expect(screen.getByTestId('status-filter-suspended')).toBeDefined();
+
+    // End-of-list divider
+    expect(screen.getByText(/Bạn đã xem hết danh sách thành viên/i)).toBeDefined();
+  });
+
+  it('filters users by search query and clear button resets search', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    const searchInput = screen.getByPlaceholderText(/Tìm theo email hoặc họ tên/i);
+    fireEvent.change(searchInput, { target: { value: 'GS. TSKH' } });
+
+    expect(screen.getByText(/GS. TSKH. Nguyễn Hoàng Nam/i)).toBeDefined();
+    expect(screen.queryByText(/PGS. TS. Trần Minh Tuấn/i)).toBeNull();
+
+    // Clear search button
+    const clearBtn = screen.getByTitle('Xóa tìm kiếm');
+    fireEvent.click(clearBtn);
+
+    expect(screen.getByText(/PGS. TS. Trần Minh Tuấn/i)).toBeDefined();
+  });
+
+  it('filters users by status filter chips and role select', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    // Click INVITED chip
+    const invitedChip = screen.getByTestId('status-filter-invited');
+    fireEvent.click(invitedChip);
+
+    expect(screen.getByText(/collaborator.guest@vnu.edu.vn/i)).toBeDefined();
+    expect(screen.queryByText(/admin@structpaper.org/i)).toBeNull();
+
+    // Back to ALL
+    fireEvent.click(screen.getByTestId('status-filter-all'));
+    expect(screen.getByText(/admin@structpaper.org/i)).toBeDefined();
+
+    // Filter by role
+    const roleSelect = screen.getByTestId('filter-role-select');
+    fireEvent.change(roleSelect, { target: { value: 'SuperAdmin' } });
+
+    expect(screen.getByText(/admin@structpaper.org/i)).toBeDefined();
+    expect(screen.queryByText(/PGS. TS. Trần Minh Tuấn/i)).toBeNull();
+  });
+
+  it('changing a user role triggers sileo.success with instant revocation message', async () => {
+    const sileoSpy = vi.spyOn(sileo, 'success');
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    const userRoleSelects = screen.getAllByLabelText(/phân vai trò cho/i);
+    fireEvent.change(userRoleSelects[0], { target: { value: 'Reviewer' } });
+
+    await waitFor(() => {
+      expect(sileoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Cập nhật phân quyền tức thì',
+          description: expect.stringContaining('Đã phân vai trò "Reviewer"'),
+        })
+      );
+    });
   });
 });
