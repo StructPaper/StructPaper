@@ -57,7 +57,7 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-import { PaperHubView } from '@/components/authoring/PaperHubView';
+import { PaperHubView } from '@/features/papers';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
 import { manuscriptApi, setAccessToken } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';

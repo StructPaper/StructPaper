@@ -73,7 +73,7 @@ vi.mock('@/lib/docx-parser', async (importOriginal) => ({
   }),
 }));
 
-import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
+import { CreatePaperModal } from '@/features/papers';
 import { defaultDatabase } from '@structpaper/storage';
 
 const docx = (name: string) => new File([new Uint8Array([1, 2, 3])], name);

@@ -66,10 +66,11 @@ import {
   PaperQuickEditModal,
   PaperDeleteConfirmModal,
   type FilterWorkflowStatus,
-} from '@/components/papers';
-import { CreatePaperModal, DuplicatePaperWarningModal } from '@/components/modals';
+  CreatePaperModal,
+  DuplicatePaperWarningModal,
+  PaperHubView,
+} from '@/features/papers';
 import { getUniquePaperTitle, countDuplicatePapers } from '@/lib/storage/paper-naming';
-import { PaperHubView } from '@/components/authoring/PaperHubView';
 import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { defaultDatabase } from '@structpaper/storage';
 

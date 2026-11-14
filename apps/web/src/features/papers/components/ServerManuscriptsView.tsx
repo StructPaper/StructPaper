@@ -10,7 +10,7 @@ import {
   type Manuscript,
   type ListManuscriptsStatus,
 } from '@structpaper/api-client';
-import { useDeletePaper } from '@/hooks/useDeletePaper';
+import { useDeletePaper } from '../hooks/useDeletePaper';
 import { ManuscriptTable } from './ManuscriptTable';
 import { PaginationControls } from './PaginationControls';
 

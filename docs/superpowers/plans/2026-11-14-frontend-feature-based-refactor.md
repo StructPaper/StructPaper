@@ -33,11 +33,11 @@
 - Modify: `apps/web/src/app/login/page.tsx`
 - Modify: `apps/web/test/auth/use-auth.spec.tsx`
 
-- [ ] **Step 1: Move `useAuth.ts` into `src/features/auth/hooks/` and export via `src/features/auth/index.ts`**
-- [ ] **Step 2: Update all import sites of `useAuth` to `@/features/auth`**
-- [ ] **Step 3: Remove old `apps/web/src/hooks/useAuth.ts`**
-- [ ] **Step 4: Run auth tests: `pnpm --filter @structpaper/web test test/auth`**
-- [ ] **Step 5: Commit changes as `refactor(web): migrate auth to features/auth`**
+- [x] **Step 1: Move `useAuth.ts` into `src/features/auth/hooks/` and export via `src/features/auth/index.ts`**
+- [x] **Step 2: Update all import sites of `useAuth` to `@/features/auth`**
+- [x] **Step 3: Remove old `apps/web/src/hooks/useAuth.ts`**
+- [x] **Step 4: Run auth tests: `pnpm --filter @structpaper/web test test/auth`**
+- [x] **Step 5: Commit changes as `refactor(web): migrate auth to features/auth`**
 
 ---
 
@@ -50,13 +50,13 @@
 - Modify: `apps/web/src/app/papers/page.tsx`
 - Modify: `apps/web/test/papers/` and `apps/web/test/hooks/` tests
 
-- [ ] **Step 1: Move components from `components/papers/`, `components/authoring/PaperHubView.tsx`, and `components/modals/CreatePaperModal` into `features/papers/components/`**
-- [ ] **Step 2: Move papers hooks into `features/papers/hooks/`**
-- [ ] **Step 3: Create `src/features/papers/index.ts` exporting public components, hooks, and types**
-- [ ] **Step 4: Update all import paths in `app/papers/page.tsx`, `PaperHubView.tsx`, and tests**
-- [ ] **Step 5: Remove old files and directories (`components/papers/`, `components/modals/CreatePaperModal/`, obsolete hooks)**
-- [ ] **Step 6: Run papers & hooks tests: `pnpm --filter @structpaper/web test test/papers test/hooks`**
-- [ ] **Step 7: Commit changes as `refactor(web): migrate papers hub and hooks to features/papers`**
+- [x] **Step 1: Move components from `components/papers/`, `components/authoring/PaperHubView.tsx`, and `components/modals/CreatePaperModal` into `features/papers/components/`**
+- [x] **Step 2: Move papers hooks into `features/papers/hooks/`**
+- [x] **Step 3: Create `src/features/papers/index.ts` exporting public components, hooks, and types**
+- [x] **Step 4: Update all import paths in `app/papers/page.tsx`, `PaperHubView.tsx`, and tests**
+- [x] **Step 5: Remove old files and directories (`components/papers/`, `components/modals/CreatePaperModal/`, obsolete hooks)**
+- [x] **Step 6: Run papers & hooks tests: `pnpm --filter @structpaper/web test test/papers test/hooks`**
+- [x] **Step 7: Commit changes as `refactor(web): migrate papers hub and hooks to features/papers`**
 
 ---
 

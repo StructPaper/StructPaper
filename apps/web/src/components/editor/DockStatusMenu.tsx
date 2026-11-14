@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Tag, X } from 'lucide-react';
-import { WORKFLOW_STATUS_CONFIG, getWorkflowStatusConfig, type WorkflowStatus } from '@/components/papers/types';
+import { WORKFLOW_STATUS_CONFIG, getWorkflowStatusConfig, type WorkflowStatus } from '@/features/papers';
 
 export interface DockStatusMenuProps {
   setIsDownloadOpen: (open: boolean) => void;

@@ -20,8 +20,7 @@ import { JOURNAL_TEMPLATES } from '@/lib/templates';
 import { usePaper } from '@/context/PaperContext';
 import { Select, SelectOption } from './ui/Select';
 import { sileo } from '@/components/DynamicIslandToast';
-import { usePaperDuplicateWarning } from '@/hooks';
-import { DuplicatePaperWarningModal } from '@/components/modals';
+import { usePaperDuplicateWarning, DuplicatePaperWarningModal } from '@/features/papers';
 
 interface UploadViewProps {
   onPaperLoaded: (paper: CompletePaper) => void;

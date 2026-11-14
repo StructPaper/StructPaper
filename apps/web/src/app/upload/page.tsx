@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UploadView } from '@/components/UploadView';
-import { usePaperUpload } from '@/hooks';
+import { usePaperUpload } from '@/features/papers';
 
 export default function UploadPage() {
   const { currentPaper, handlePaperLoaded } = usePaperUpload();

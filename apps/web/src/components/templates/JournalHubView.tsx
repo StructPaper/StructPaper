@@ -7,7 +7,7 @@ import { JournalProfilesList } from './JournalProfilesList';
 import { JournalProfileCardShimmer } from './JournalProfileCardShimmer';
 import { BookOpen, CheckCircle2 } from 'lucide-react';
 import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
-import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
+import { CreatePaperModal } from '@/features/papers';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
 
 export const JournalHubView: React.FC = () => {

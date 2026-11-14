@@ -15,7 +15,7 @@ import { adaptV2toV1 } from '@structpaper/doc-model';
 import { normalizeJournalId } from '@structpaper/journal-profiles';
 import { manuscriptApi, getAccessToken } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
-import { manuscriptToCompletePaper } from '@/hooks/useLoadPaper';
+import { manuscriptToCompletePaper } from './useLoadPaper';
 import { ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { getAuthoringPapers } from '@/lib/authoring/paper-storage';
@@ -30,7 +30,7 @@ import {
   getManuscriptTitle,
   getManuscriptAuthors,
   isUuid,
-} from '@/components/papers';
+} from '../components/types';
 
 function remoteManuscriptToRecord(item: any): ManuscriptRecord {
   const rawStatus = (item.status || 'draft').toLowerCase().replace('_', '-');

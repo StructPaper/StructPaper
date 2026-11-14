@@ -15,9 +15,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/papers',
 }));
 
-import { PaginationControls } from '../../src/components/papers/PaginationControls';
-import { ManuscriptTable } from '../../src/components/papers/ManuscriptTable';
-import { ServerManuscriptsView } from '../../src/components/papers/ServerManuscriptsView';
+import { PaginationControls, ManuscriptTable, ServerManuscriptsView } from '@/features/papers';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as apiClient from '@structpaper/api-client';
 import type { Manuscript } from '@structpaper/api-client';

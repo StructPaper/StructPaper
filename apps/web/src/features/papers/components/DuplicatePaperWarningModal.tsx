@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { UploadCloud } from 'lucide-react';
-import { ActionConfirmModal } from './ActionConfirmModal';
-import { getJournalColor, getJournalShortName } from '@/components/papers/types';
+import { ActionConfirmModal } from '@/components/modals';
+import { getJournalColor, getJournalShortName } from './types';
 
 export interface DuplicatePaperWarningModalProps {
   isOpen: boolean;

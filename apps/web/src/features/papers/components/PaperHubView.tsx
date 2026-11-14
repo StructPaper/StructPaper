@@ -4,20 +4,18 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
-import { usePapersHub } from '@/hooks';
+import { usePapersHub } from '../hooks/usePapersHub';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
-import {
-  RecentPapersRow,
-  PaperFiltersBar,
-  PaperCard,
-  PaperCardShimmer,
-  PaperTable,
-  PaperTableShimmer,
-  PaperQuickEditModal,
-  PaperDeleteConfirmModal,
-  EmptyPapersState,
-} from '@/components/papers';
-import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
+import { RecentPapersRow } from './RecentPapersRow';
+import { PaperFiltersBar } from './PaperFiltersBar';
+import { PaperCard } from './PaperCard';
+import { PaperCardShimmer } from './PaperCardShimmer';
+import { PaperTable } from './PaperTable';
+import { PaperTableShimmer } from './PaperTableShimmer';
+import { PaperQuickEditModal } from './PaperQuickEditModal';
+import { PaperDeleteConfirmModal } from './PaperDeleteConfirmModal';
+import { EmptyPapersState } from './EmptyPapersState';
+import { CreatePaperModal } from './CreatePaperModal';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
 
 export const PaperHubView: React.FC = () => {

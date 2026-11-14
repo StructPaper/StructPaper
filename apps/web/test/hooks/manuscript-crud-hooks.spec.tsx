@@ -3,9 +3,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCreatePaper } from '@/hooks/useCreatePaper';
-import { useUpdatePaper } from '@/hooks/useUpdatePaper';
-import { useDeletePaper } from '@/hooks/useDeletePaper';
+import { useCreatePaper, useUpdatePaper, useDeletePaper } from '@/features/papers';
 
 // Mock mutation functions
 const mockCreateMutateAsync = vi.fn();

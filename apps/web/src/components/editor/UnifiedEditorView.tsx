@@ -31,7 +31,13 @@ import { EditorDocumentMenuBarSlot } from '@/components/documents/EditorDocument
 import { notifyManualSaveOutcome } from '@/lib/editor/save-feedback';
 import { OpenDocumentDialog, type OpenListItem } from '@/components/documents/OpenDocumentDialog';
 import { ExportGateModal } from '@/components/documents/ValidationModals';
-import { CreatePaperModal } from '@/components/modals/CreatePaperModal';
+import {
+  CreatePaperModal,
+  useEditorQuickEdit,
+  PaperQuickEditModal,
+  WORKFLOW_STATUS_CONFIG,
+  type WorkflowStatus,
+} from '@/features/papers';
 import { useDocumentAutosave } from '@/hooks/useDocumentAutosave';
 import { DocumentApi } from '@/lib/documents/document-api';
 import { autosaveStatusFromSaveState } from '@/lib/editor/autosave-status';
@@ -48,14 +54,9 @@ import {
   useCreateEditorTabStateStore,
 } from './hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';
-import { usePaperStorage, useEditorQuickEdit } from '@/hooks';
-import { PaperQuickEditModal } from '@/components/papers';
+import { usePaperStorage } from '@/hooks';
 import { ActionConfirmModal } from '@/components/modals/ActionConfirmModal';
 import { usePlatform } from '@structpaper/platform';
-import {
-  WORKFLOW_STATUS_CONFIG,
-  type WorkflowStatus,
-} from '@/components/papers/types';
 
 interface UnifiedEditorViewProps {
   paper: CompletePaper;

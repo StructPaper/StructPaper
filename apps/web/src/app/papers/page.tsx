@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { PaperHubView } from '@/components/authoring/PaperHubView';
+import { PaperHubView } from '@/features/papers';
 
 export const metadata: Metadata = {
   title: 'Soạn Thảo Bài Báo Khoa Học (Typst) | StructPaper',

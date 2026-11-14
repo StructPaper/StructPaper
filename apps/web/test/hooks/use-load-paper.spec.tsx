@@ -3,7 +3,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useLoadPaper } from '@/hooks/useLoadPaper';
+import { useLoadPaper } from '@/features/papers';
 
 // Mock IndexedDB
 const mockLoadPaperFromIndexedDb = vi.fn();

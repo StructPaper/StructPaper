@@ -8,7 +8,7 @@ import {
   getManuscript,
   isMockModeEnabled,
 } from '@structpaper/api-client';
-import { manuscriptToCompletePaper } from '@/hooks/useLoadPaper';
+import { manuscriptToCompletePaper } from '@/features/papers';
 
 export interface UsePaperStorageReturn {
   isSaving: boolean;

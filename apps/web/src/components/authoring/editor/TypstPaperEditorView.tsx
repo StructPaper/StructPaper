@@ -34,8 +34,7 @@ import { ResizableSplitLayout } from '@/components/editor/ResizableSplitLayout';
 import { TypstLivePreviewPane } from './TypstLivePreviewPane';
 import { Home, Eye, Edit3, FileEdit } from 'lucide-react';
 import { sileo } from '@/components/DynamicIslandToast';
-import { PaperQuickEditModal } from '@/components/papers';
-import { useEditorQuickEdit } from '@/hooks';
+import { PaperQuickEditModal, useEditorQuickEdit } from '@/features/papers';
 import { useEditorAutoSave, useSyncEditorSession, useHydrateDisplayName } from '@/components/editor/hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';
 

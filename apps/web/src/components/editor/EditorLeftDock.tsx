@@ -17,7 +17,7 @@ import { usePlatform } from '@structpaper/platform';
 import {
   getWorkflowStatusConfig,
   type WorkflowStatus,
-} from '@/components/papers/types';
+} from '@/features/papers';
 
 import { DockIconButton } from './DockIconButton';
 import { DockDownloadMenu } from './DockDownloadMenu';
