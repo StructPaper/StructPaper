@@ -33,20 +33,20 @@
 - Modify: `packages/api-client/src/index.ts`
 - Test: `packages/api-client/test/http.spec.ts`
 
-- [ ] **Step 1: Write failing unit test in `packages/api-client/test/http.spec.ts`**
+- [x] **Step 1: Write failing unit test in `packages/api-client/test/http.spec.ts`**
   - Test that `http.defaults.baseURL` is `/api/proxy`.
   - Test that requests attach `Authorization: Bearer <token>` when `accessToken` is set.
   - Test that 401 responses trigger token refresh callback and retry the original request.
-- [ ] **Step 2: Update `packages/api-client/src/http.ts`**
+- [x] **Step 2: Update `packages/api-client/src/http.ts`**
   - Set `baseURL: '/api/proxy'`.
   - Configure request interceptor to attach Bearer token.
   - Configure response interceptor to handle 401 queue with `/api/v1/auth/refresh`.
   - Remove unused mock adapter logic.
-- [ ] **Step 3: Update `apps/web/next.config.mjs` rewrites**
+- [x] **Step 3: Update `apps/web/next.config.mjs` rewrites**
   - Add rewrite rule forwarding `/api/proxy/:path*` to `${process.env.INTERNAL_API_URL || 'http://localhost:3001'}/:path*`.
-- [ ] **Step 4: Run unit tests**
+- [x] **Step 4: Run unit tests**
   - Run `pnpm --filter @structpaper/api-client test` and ensure all tests pass.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `feat(api-client): configure unified axios http client with /api/proxy and token refresh`.
 
 ---
@@ -61,22 +61,22 @@
 - Modify: `packages/api-client/src/index.ts`
 - Test: `packages/api-client/test/api-modules.spec.ts`
 
-- [ ] **Step 1: Write unit tests in `packages/api-client/test/api-modules.spec.ts`**
+- [x] **Step 1: Write unit tests in `packages/api-client/test/api-modules.spec.ts`**
   - Test each method of `authApi` (`login`, `logout`, `getAccount`, `refreshToken`).
   - Test `manuscriptApi` (`list`, `get`, `create`, `update`, `delete`, `getMembers`, `addMember`, `removeMember`).
   - Test `assetApi` (`putAsset`, `getAssetBlob`, `hasAsset`).
   - Test `compileApi` (`compileLatex`).
-- [ ] **Step 2: Implement the API modules**
+- [x] **Step 2: Implement the API modules**
   - Mirroring `eatzy_frontend/packages/api/src/auth.ts`, `file.ts`, etc.:
   - Define `authApi` using `http.post('/api/v1/auth/login')`, `http.get('/api/v1/auth/account')`, etc.
   - Define `manuscriptApi` using `http.get('/api/v1/manuscripts')`, `http.post('/api/v1/manuscripts')`, `http.patch('/api/v1/manuscripts/:id')`, etc.
   - Define `assetApi` using `http.put('/api/v1/assets/:hash')`, `http.get('/api/v1/assets/:hash', { responseType: 'blob' })`, etc.
   - Define `compileApi` calling `http.post('/api/v1/compile/latex', ... , { responseType: 'blob' })`.
-- [ ] **Step 3: Export from `packages/api-client/src/index.ts`**
+- [x] **Step 3: Export from `packages/api-client/src/index.ts`**
   - Export `authApi`, `manuscriptApi`, `assetApi`, `compileApi`.
-- [ ] **Step 4: Run unit tests**
+- [x] **Step 4: Run unit tests**
   - Run `pnpm --filter @structpaper/api-client test` and confirm pass.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `feat(api-client): add modular api services matching eatzy architecture`.
 
 ---

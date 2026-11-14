@@ -16,6 +16,12 @@ export {
   ProblemDetailsError,
 } from './http';
 
+// API Modules (Eatzy architecture pattern)
+export * from './modules/auth';
+export * from './modules/manuscripts';
+export * from './modules/assets';
+export * from './modules/compile';
+
 // Mock Adapter
 export { handleMockRequest } from './mock-adapter';
 
