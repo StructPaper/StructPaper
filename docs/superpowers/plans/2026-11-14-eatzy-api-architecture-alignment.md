@@ -134,19 +134,19 @@
 - Modify: `apps/web/src/components/modals/CreatePaperModal/CreatePaperModal.tsx`
 - Test: `apps/web/test/hooks/use-paper-storage-sync.spec.tsx`
 
-- [ ] **Step 1: Write test for ID propagation and cache invalidation**
+- [x] **Step 1: Write test for ID propagation and cache invalidation**
   - Test that calling `savePaper` on a new local paper with temporary ID updates the paper's ID with the returned server UUID.
   - Test that `queryClient.invalidateQueries` is called on `['manuscripts']` (or `['/api/v1/manuscripts']`).
-- [ ] **Step 2: Update `usePaperStorage.ts`**
+- [x] **Step 2: Update `usePaperStorage.ts`**
   - When `createManuscript` is called, capture the returned manuscript:
     - Update `paper.id = created.id` and `(paper as any).version = created.version`.
     - Persist the updated paper with its new UUID to IndexedDB via `savePaperToIndexedDb`.
     - Trigger `queryClient.invalidateQueries`.
-- [ ] **Step 3: Update `CreatePaperModal.tsx`**
+- [x] **Step 3: Update `CreatePaperModal.tsx`**
   - On paper creation completion, invalidate manuscripts query cache so the paper hub updates immediately.
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
   - Run `pnpm --filter @structpaper/web test`.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `fix(web): propagate server UUID on creation and invalidate react-query cache`.
 
 ---
@@ -158,17 +158,17 @@
 - Modify: `apps/web/src/app/api/compile-latex/route.ts`
 - Test: `apps/web/test/compile/compile-route.spec.ts`
 
-- [ ] **Step 1: Write test for compile endpoint**
+- [x] **Step 1: Write test for compile endpoint**
   - Test that `POST /api/compile-latex` invokes backend API and returns PDF stream with appropriate headers, falling back gracefully without complaining about host xelatex.
-- [ ] **Step 2: Add NestJS Compile Endpoint in `apps/api`**
+- [x] **Step 2: Add NestJS Compile Endpoint in `apps/api`**
   - Add `POST /api/v1/compile/latex` in NestJS that handles compilation request via `LatexRunner` or fallback PDF.
-- [ ] **Step 3: Update `apps/web/src/app/api/compile-latex/route.ts`**
+- [x] **Step 3: Update `apps/web/src/app/api/compile-latex/route.ts`**
   - Remove outdated Java Spring Boot 8080 probe.
   - Forward compilation request to `/api/proxy/api/v1/compile/latex` using `compileApi` or Axios `http`.
   - Remove Windows `where xelatex` error response.
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
   - Verify compile tests pass.
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Commit as `feat(compile): connect web compile route to nestjs backend and worker`.
 
 ---

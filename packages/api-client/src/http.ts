@@ -126,11 +126,24 @@ export const customInstance = <T>(
   }) as unknown as Promise<T>;
 };
 
-// Request Interceptor: Attach Bearer Token
+// Request Interceptor: Attach Bearer Token & resolve SSR host if needed
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    if (typeof window === 'undefined' && !config.adapter && !http.defaults.adapter) {
+      const isRelative = (u?: string) => u && !u.startsWith('http://') && !u.startsWith('https://');
+      if (isRelative(config.baseURL)) {
+        const serverHost =
+          process.env.INTERNAL_API_URL ||
+          process.env.API_SERVER_URL ||
+          process.env.NEXT_PUBLIC_API_URL ||
+          'http://127.0.0.1:3001';
+        const cleanHost = serverHost.replace(/\/+$/, '');
+        const cleanBase = config.baseURL!.replace(/^\/api\/proxy/, '');
+        config.baseURL = `${cleanHost}${cleanBase}`;
+      }
     }
     return config;
   },

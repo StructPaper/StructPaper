@@ -1,6 +1,8 @@
 import { Module, Global } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { HealthController } from './controllers/health.controller';
+import { CompileController } from './controllers/compile.controller';
+import { CompileService } from './application/compile.service';
 import { Rfc9457ExceptionFilter } from './filters/rfc9457-exception.filter';
 import { ZodValidationPipe } from './pipes/zod-validation.pipe';
 import { createDbClient } from '@structpaper/db';
@@ -41,7 +43,7 @@ const drizzleProvider = {
 
 @Global()
 @Module({
-  controllers: [HealthController],
+  controllers: [HealthController, CompileController],
   providers: [
     {
       provide: APP_FILTER,
@@ -49,9 +51,10 @@ const drizzleProvider = {
     },
     Rfc9457ExceptionFilter,
     ZodValidationPipe,
+    CompileService,
     dbProvider,
     drizzleProvider,
   ],
-  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, 'DB_CLIENT', DRIZZLE],
+  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, CompileService, 'DB_CLIENT', DRIZZLE],
 })
 export class PlatformModule {}
