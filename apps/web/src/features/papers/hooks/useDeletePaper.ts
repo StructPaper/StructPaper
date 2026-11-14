@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDeleteManuscript, isMockModeEnabled } from '@structpaper/api-client';
-import { IndexedDbManuscriptRepo } from '@structpaper/storage';
+import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
 import { sileo } from '@/components/toast';
 
 export interface UseDeletePaperOptions {
@@ -20,7 +20,7 @@ export function useDeletePaper(options: UseDeletePaperOptions = {}) {
     async (id: string): Promise<boolean> => {
       // 1. Delete from local IndexedDB repository if present
       try {
-        const repo = new IndexedDbManuscriptRepo();
+        const repo = new IndexedDbManuscriptRepo(defaultDatabase);
         await repo.delete(id);
       } catch (localErr) {
         console.warn('[useDeletePaper] Local delete error:', localErr);

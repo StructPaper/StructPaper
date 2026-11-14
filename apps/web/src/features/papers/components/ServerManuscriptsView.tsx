@@ -43,7 +43,7 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [mockActive, setMockActive] = useState(() => isMockModeEnabled());
 
-  const { deletePaper, isPending: isDeleting } = useDeletePaper();
+  const { deletePaper, isDeleting } = useDeletePaper();
 
   // Debounce search input
   useEffect(() => {

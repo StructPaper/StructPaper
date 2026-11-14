@@ -57,8 +57,6 @@ export { usePreviewLinks } from './usePreviewLinks';
 export {
   useDocumentAutosave,
   type UseDocumentAutosaveOptions,
-  type UseDocumentAutosaveResult,
-  type AutosaveState,
 } from './useDocumentAutosave';
 
 export {
@@ -70,5 +68,4 @@ export {
   useAssetUpload,
   type UseAssetUploadOptions,
   type UseAssetUploadReturn,
-  type UploadProgress,
 } from './useAssetUpload';

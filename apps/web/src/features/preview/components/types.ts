@@ -1,9 +1,5 @@
 import { CompletePaper } from '@/lib/sample-papers';
 
-export interface PublicationPreviewProps {
-  paper: CompletePaper;
-}
-
 export interface JournalHeaderProps {
   paper: CompletePaper;
 }

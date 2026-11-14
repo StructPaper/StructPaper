@@ -5,12 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   useCreateManuscript,
   isMockModeEnabled,
-  type CreateManuscript,
+  type CreateManuscriptRequest,
   type Manuscript,
 } from '@structpaper/api-client';
 import { savePaperToIndexedDb } from '@/lib/storage/paper-sync';
 import { sileo } from '@/components/toast';
-import type { CompletePaper } from '@/types/paper';
+import { type CompletePaper, createEmptyPaper } from '@/types/paper';
 
 export interface UseCreatePaperOptions {
   onSuccess?: (manuscript: Manuscript) => void;
@@ -40,7 +40,7 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
           ? paper.journalId
           : undefined;
 
-      const payload: CreateManuscript = {
+      const payload: CreateManuscriptRequest = {
         title: title.trim(),
         journalId,
         metadata: {
@@ -90,24 +90,19 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
         const result = await mutation.mutateAsync({ data: payload });
 
         // Dual-write: Cache newly created manuscript in IndexedDB
+        const emptyBase = createEmptyPaper(result.journalId);
         const completePaperToCache: CompletePaper = 'sections' in paper ? {
           ...(paper as CompletePaper),
           id: result.id,
         } : {
+          ...emptyBase,
           id: result.id,
           metadata: {
+            ...emptyBase.metadata,
             title: result.title,
-            abstract: '',
-            keywords: [],
             journalId: result.journalId,
             ...(('metadata' in paper ? paper.metadata : {}) as any),
           },
-          sections: [],
-          authors: [],
-          abstract: '',
-          references: [],
-          assets: [],
-          version: result.version || 1,
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
         };
@@ -128,23 +123,16 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
       } catch (err: any) {
         // Fallback gracefully to IndexedDB if network error
         const offlineId = 'id' in paper ? (paper as any).id : `offline-${Date.now()}`;
+        const emptyOffline = createEmptyPaper(journalId);
         const offlinePaper: CompletePaper = 'sections' in paper ? (paper as CompletePaper) : {
+          ...emptyOffline,
           id: offlineId,
           metadata: {
+            ...emptyOffline.metadata,
             title,
-            abstract: '',
-            keywords: [],
             journalId,
             ...(('metadata' in paper ? paper.metadata : {}) as any),
           },
-          sections: [],
-          authors: [],
-          abstract: '',
-          references: [],
-          assets: [],
-          version: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         };
 
         try {

@@ -67,7 +67,7 @@ describe('useManuscriptMembers Custom Hook (Task 5)', () => {
 
     expect(result.current.members).toHaveLength(1);
     expect(result.current.members[0].role).toBe('OWNER');
-    expect(result.current.members[0].user?.email).toBe('owner@vnu.edu.vn');
+    expect((result.current.members[0] as any).user?.email).toBe('owner@vnu.edu.vn');
   });
 
   it('adds a new member with role', async () => {

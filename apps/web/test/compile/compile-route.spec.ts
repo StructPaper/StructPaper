@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import type { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { http } from '@structpaper/api-client';
+import { http, type InternalAxiosRequestConfig, type AxiosResponse } from '@structpaper/api-client';
 import { POST } from '@/app/api/compile-latex/route';
 
 describe('LaTeX Compile Route (POST /api/compile-latex)', () => {

@@ -79,7 +79,7 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
       expect.objectContaining({
         title: 'Quantum Machine Learning',
       }),
-      { ifMatch: '"1"' },
+      { headers: { 'If-Match': '"1"' } },
     );
   });
 

@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (pdfBuffer && pdfBuffer.length > 0) {
-          return new Response(pdfBuffer, {
+          return new Response(new Uint8Array(pdfBuffer), {
             status: 200,
             headers: {
               'Content-Type': 'application/pdf',
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Seamless fallback: Return valid 1-page minimal PDF buffer so preview never breaks
     const fallbackBuffer = getFallbackPdfBuffer();
-    return new Response(fallbackBuffer, {
+    return new Response(new Uint8Array(fallbackBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('API /api/compile-latex error:', error);
     const fallbackBuffer = getFallbackPdfBuffer();
-    return new Response(fallbackBuffer, {
+    return new Response(new Uint8Array(fallbackBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

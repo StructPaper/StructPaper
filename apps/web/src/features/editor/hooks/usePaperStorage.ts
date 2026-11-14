@@ -71,7 +71,7 @@ export function usePaperStorage(): UsePaperStorageReturn {
                 },
               },
               (paper as any).version !== undefined
-                ? { ifMatch: `"${(paper as any).version}"` }
+                ? { headers: { 'If-Match': `"${(paper as any).version}"` } }
                 : undefined,
             );
           } else {

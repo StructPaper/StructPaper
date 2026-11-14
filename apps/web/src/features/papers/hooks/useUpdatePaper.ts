@@ -49,10 +49,10 @@ export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
 
       // 2. Cloud Mode: PATCH to Backend NestJS API with optimistic lock header
       try {
-        const result = await mutation.mutateAsync({
+        const result = await (mutation.mutateAsync as any)({
           id,
           data,
-          params: version !== undefined ? { ifMatch: `"${version}"` } : undefined,
+          ...(version !== undefined ? { params: { ifMatch: `"${version}"` } } : {}),
         });
 
         // Dual-write cache update

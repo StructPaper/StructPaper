@@ -152,7 +152,7 @@ describe('usePaperStorage ID Synchronization & Query Invalidation (Task 5)', () 
       expect.objectContaining({
         title: 'Quantum Machine Learning Paper',
       }),
-      { ifMatch: '"1"' },
+      { headers: { 'If-Match': '"1"' } },
     );
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['/api/v1/manuscripts'] });

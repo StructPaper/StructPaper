@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { http, setAccessToken, ProblemDetailsError } from '@structpaper/api-client';
+import {
+  http,
+  setAccessToken,
+  ProblemDetailsError,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+} from '@structpaper/api-client';
 import { DocumentApi, ApiError } from '@/lib/documents/document-api';
 
 describe('DocumentApi with Axios http (@structpaper/api-client)', () => {

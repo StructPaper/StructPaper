@@ -199,7 +199,8 @@ export class DocumentApi {
     }
 
     try {
-      const m = await this.httpClient.get<any>(`${this.resourcePath}/${encodeURIComponent(id)}`);
+      const res = await this.httpClient.get<any>(`${this.resourcePath}/${encodeURIComponent(id)}`);
+      const m = (res as any)?.data ?? res;
       if (this.resourcePath === '/api/v1/documents') {
         return m;
       }
@@ -242,7 +243,8 @@ export class DocumentApi {
     }
 
     try {
-      const m = await this.httpClient.post<any>(this.resourcePath, payload);
+      const res = await this.httpClient.post<any>(this.resourcePath, payload);
+      const m = (res as any)?.data ?? res;
       if (isLegacy) return m;
       return {
         id: m.id,
@@ -291,9 +293,10 @@ export class DocumentApi {
     }
 
     try {
-      const m = isLegacy
+      const res = isLegacy
         ? await this.httpClient.put<any>(`${this.resourcePath}/${encodeURIComponent(id)}`, payload, { headers })
         : await this.httpClient.patch<any>(`${this.resourcePath}/${encodeURIComponent(id)}`, payload, { headers });
+      const m = (res as any)?.data ?? res;
       return {
         id: m.id,
         name: m.title || m.name,

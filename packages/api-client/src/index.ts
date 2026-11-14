@@ -15,6 +15,7 @@ export {
   setMockMode,
   ProblemDetailsError,
 } from './http';
+export type { AxiosResponse, InternalAxiosRequestConfig, AxiosError, AxiosRequestConfig } from 'axios';
 
 // API Modules (Eatzy architecture pattern)
 export * from './modules/auth';

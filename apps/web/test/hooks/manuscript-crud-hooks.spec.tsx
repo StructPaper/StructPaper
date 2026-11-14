@@ -39,6 +39,7 @@ vi.mock('@/lib/storage/paper-sync', () => ({
 
 const mockRepoDelete = vi.fn().mockResolvedValue(true);
 vi.mock('@structpaper/storage', () => ({
+  defaultDatabase: {},
   IndexedDbManuscriptRepo: class {
     delete = mockRepoDelete;
   },
