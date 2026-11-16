@@ -14,7 +14,11 @@ export {
   isMockModeEnabled,
   setMockMode,
   ProblemDetailsError,
+  setGlobalApiErrorHandler,
+  getGlobalApiErrorHandler,
+  STATUS_VI_FALLBACKS,
 } from './http';
+export type { GlobalApiErrorHandler, GlobalApiErrorInfo } from './http';
 export type { AxiosResponse, InternalAxiosRequestConfig, AxiosError, AxiosRequestConfig } from 'axios';
 
 // API Modules (Eatzy architecture pattern)

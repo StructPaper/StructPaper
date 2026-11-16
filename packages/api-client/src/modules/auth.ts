@@ -24,6 +24,6 @@ export const authApi = {
     if (refreshToken) {
       return http.post<T>('/api/v1/auth/refresh', { refreshToken }) as unknown as Promise<T>;
     }
-    return http.get<T>('/api/v1/auth/refresh') as unknown as Promise<T>;
+    return http.post<T>('/api/v1/auth/refresh') as unknown as Promise<T>;
   },
 };

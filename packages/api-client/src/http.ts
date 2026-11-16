@@ -1,6 +1,87 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosRequestConfig } from 'axios';
 import type { InvalidParam, ProblemDetails } from '@structpaper/contracts';
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    skipGlobalToast?: boolean;
+  }
+}
+
+// ======= Global Network Error Notification Handler =======
+export interface GlobalApiErrorInfo {
+  title: string;
+  description?: string;
+  status: number;
+  code?: string;
+  rawError: unknown;
+  config?: AxiosRequestConfig;
+}
+
+export type GlobalApiErrorHandler = (errorInfo: GlobalApiErrorInfo) => void;
+
+let globalApiErrorHandler: GlobalApiErrorHandler | null = null;
+
+export const setGlobalApiErrorHandler = (handler: GlobalApiErrorHandler | null) => {
+  globalApiErrorHandler = handler;
+};
+
+export const getGlobalApiErrorHandler = () => globalApiErrorHandler;
+
+export const STATUS_VI_FALLBACKS: Record<number, { title: string; description: string }> = {
+  400: {
+    title: 'Yêu cầu không hợp lệ',
+    description: 'Dữ liệu gửi lên không đúng định dạng hoặc thiếu thông tin.',
+  },
+  401: {
+    title: 'Phiên đăng nhập hết hạn',
+    description: 'Vui lòng đăng nhập lại để tiếp tục.',
+  },
+  403: {
+    title: 'Không có quyền truy cập',
+    description: 'Bạn không có quyền thực hiện thao tác này.',
+  },
+  404: {
+    title: 'Không tìm thấy tài nguyên',
+    description: 'Tài nguyên được yêu cầu không tồn tại hoặc đã bị xóa.',
+  },
+  408: {
+    title: 'Hết thời gian yêu cầu',
+    description: 'Máy chủ phản hồi quá chậm. Vui lòng thử lại sau.',
+  },
+  409: {
+    title: 'Xung đột dữ liệu',
+    description: 'Dữ liệu đang bị xung đột với trạng thái hiện tại trên máy chủ.',
+  },
+  412: {
+    title: 'Xung đột phiên bản máy chủ',
+    description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
+  },
+  422: {
+    title: 'Dữ liệu không thể xử lý',
+    description: 'Dữ liệu gửi lên không thể xử lý được.',
+  },
+  429: {
+    title: 'Quá nhiều yêu cầu',
+    description: 'Bạn đang thao tác quá nhanh. Vui lòng thử lại sau vài giây.',
+  },
+  500: {
+    title: 'Lỗi máy chủ nội bộ',
+    description: 'Đã xảy ra lỗi không mong muốn trên máy chủ. Vui lòng thử lại sau.',
+  },
+  502: {
+    title: 'Cổng kết nối máy chủ bị lỗi',
+    description: 'Không thể kết nối đến dịch vụ phía sau (Bad Gateway).',
+  },
+  503: {
+    title: 'Dịch vụ tạm thời không khả dụng',
+    description: 'Máy chủ đang bảo trì hoặc quá tải. Vui lòng thử lại sau.',
+  },
+  504: {
+    title: 'Hết thời gian phản hồi từ máy chủ',
+    description: 'Máy chủ mất quá nhiều thời gian để phản hồi (Gateway Timeout).',
+  },
+};
+
 // ======= RFC 9457 Problem Details Error =======
 export class ProblemDetailsError extends Error {
   readonly type: string;
@@ -227,17 +308,89 @@ http.interceptors.response.use(
     const isProblemJson =
       typeof contentType === 'string' && contentType.includes('application/problem+json');
 
+    let finalError: any = error;
     if (
       isProblemJson ||
       (resData && typeof resData === 'object' && ('type' in resData || 'title' in resData || 'status' in resData || 'invalidParams' in resData))
     ) {
-      return Promise.reject(new ProblemDetailsError(resData));
+      finalError = new ProblemDetailsError(resData);
+    } else if (resData) {
+      finalError = resData;
     }
 
-    if (resData) {
-      return Promise.reject(resData);
+    // Global network error notification
+    const status = error.response?.status ?? (typeof finalError?.status === 'number' ? finalError.status : 0);
+    const isNetworkError = !error.response || error.code === 'ERR_NETWORK' || error.message === 'Network Error';
+    const skipGlobalToast = Boolean((originalRequest as any)?.skipGlobalToast);
+
+    if (!skipGlobalToast && globalApiErrorHandler) {
+      const isAuthUrl =
+        originalRequest?.url?.includes('/auth/refresh') || originalRequest?.url?.includes('/auth/login');
+      // Do not trigger global toast on transient 401 refresh failures that redirect to login
+      if (status !== 401 || isAuthUrl) {
+        let title: string;
+        let description: string | undefined;
+
+        if (isNetworkError) {
+          title = 'Mất kết nối máy chủ';
+          description = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền mạng của bạn.';
+        } else {
+          const fallback = STATUS_VI_FALLBACKS[status] || {
+            title: status >= 500 ? 'Lỗi máy chủ nội bộ' : 'Lỗi yêu cầu máy chủ',
+            description: 'Đã xảy ra lỗi trong quá trình xử lý yêu cầu.',
+          };
+
+          const rawTitle = finalError?.title || resData?.title;
+          const genericEnglishTitles = new Set([
+            'Bad Request',
+            'Unauthorized',
+            'Forbidden',
+            'Not Found',
+            'Conflict',
+            'Precondition Failed',
+            'Internal Server Error',
+            'Unprocessable Entity',
+            'Error',
+          ]);
+
+          if (rawTitle && !genericEnglishTitles.has(rawTitle)) {
+            title = rawTitle;
+          } else {
+            title = fallback.title;
+          }
+
+          if (
+            finalError?.invalidParams &&
+            Array.isArray(finalError.invalidParams) &&
+            finalError.invalidParams.length > 0
+          ) {
+            description = finalError.invalidParams
+              .map((p: any) => `${p.name ? p.name + ': ' : ''}${p.reason || ''}`)
+              .join('; ');
+          } else {
+            description =
+              finalError?.detail ||
+              resData?.detail ||
+              resData?.message ||
+              (typeof resData === 'string' ? resData : fallback.description);
+          }
+        }
+
+        try {
+          globalApiErrorHandler({
+            title,
+            description,
+            status: isNetworkError ? 0 : status,
+            code: finalError?.code || resData?.code || error.code,
+            rawError: finalError,
+            config: originalRequest,
+          });
+        } catch {
+          // Swallow any errors in the toast handler to guarantee promise rejection continues cleanly
+        }
+      }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(finalError);
   },
 );

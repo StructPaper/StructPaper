@@ -407,9 +407,10 @@ export class ManuscriptService {
     if (ifMatch !== undefined) {
       const cleanMatch = ifMatch.replace(/^W\//, '').replace(/^"|"$/g, '').trim();
       if (cleanMatch !== String(currentVersion)) {
-        throw new PreconditionFailedException(
-          `Manuscript version conflict: expected version ${cleanMatch}, but current version is ${currentVersion}`,
-        );
+        throw new PreconditionFailedException({
+          title: 'Xung đột phiên bản máy chủ',
+          detail: `Phiên bản bản thảo trên máy chủ (${currentVersion}) không khớp với phiên bản máy bạn (${cleanMatch}). Vui lòng tải lại hoặc chọn "Ghi đè".`,
+        });
       }
     }
 
@@ -444,9 +445,10 @@ export class ManuscriptService {
         .returning?.();
 
       if (result && Array.isArray(result) && result.length === 0) {
-        throw new PreconditionFailedException(
-          `Manuscript version conflict: concurrent update detected on version ${currentVersion}`,
-        );
+        throw new PreconditionFailedException({
+          title: 'Xung đột phiên bản máy chủ',
+          detail: `Phát hiện phiên làm việc khác vừa lưu trên máy chủ (phiên bản ${currentVersion}). Vui lòng chọn "Ghi đè" nếu bạn muốn giữ thay đổi của mình.`,
+        });
       }
 
       const updatedRow = result?.[0];

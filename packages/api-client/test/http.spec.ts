@@ -11,6 +11,8 @@ import {
   isMockModeEnabled,
   setMockMode,
   handleMockRequest,
+  setGlobalApiErrorHandler,
+  getGlobalApiErrorHandler,
   listManuscripts,
   login,
   getRoles,
@@ -575,6 +577,114 @@ describe('HTTP Client & Interceptors', () => {
       const health = await getHealth();
       expect(health.status).toBe('ok');
       expect(health.database.status).toBe('ok');
+    });
+  });
+
+  describe('Global API Network Error Notifications', () => {
+    afterEach(() => {
+      setGlobalApiErrorHandler(null);
+    });
+
+    it('invokes registered global error handler on 4xx/5xx API failures', async () => {
+      const errorHandler = vi.fn();
+      setGlobalApiErrorHandler(errorHandler);
+
+      http.defaults.adapter = async (config) => {
+        const error = new AxiosError('Precondition Failed', 'ERR_BAD_REQUEST', config, null, {
+          status: 412,
+          statusText: 'Precondition Failed',
+          headers: { 'content-type': 'application/problem+json' },
+          data: {
+            title: 'Xung đột phiên bản máy chủ',
+            detail: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác.',
+            status: 412,
+          },
+          config,
+        } as AxiosResponse);
+        throw error;
+      };
+
+      await expect(http.patch('/api/v1/manuscripts/123', {})).rejects.toThrow();
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 412,
+          title: 'Xung đột phiên bản máy chủ',
+          description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác.',
+        })
+      );
+    });
+
+    it('falls back to standard Vietnamese title and description when BE title is generic English', async () => {
+      const errorHandler = vi.fn();
+      setGlobalApiErrorHandler(errorHandler);
+
+      http.defaults.adapter = async (config) => {
+        const error = new AxiosError('Bad Request', 'ERR_BAD_REQUEST', config, null, {
+          status: 400,
+          statusText: 'Bad Request',
+          headers: {},
+          data: {
+            title: 'Bad Request',
+            detail: 'Tên bài báo không được để trống',
+          },
+          config,
+        } as AxiosResponse);
+        throw error;
+      };
+
+      await expect(http.post('/api/v1/manuscripts', {})).rejects.toThrow();
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 400,
+          title: 'Yêu cầu không hợp lệ',
+          description: 'Tên bài báo không được để trống',
+        })
+      );
+    });
+
+    it('suppresses global notification when skipGlobalToast is true', async () => {
+      const errorHandler = vi.fn();
+      setGlobalApiErrorHandler(errorHandler);
+
+      http.defaults.adapter = async (config) => {
+        const error = new AxiosError('Internal Server Error', 'ERR_INTERNAL', config, null, {
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: {},
+          data: { message: 'Database crashed' },
+          config,
+        } as AxiosResponse);
+        throw error;
+      };
+
+      await expect(http.get('/api/v1/crash', { skipGlobalToast: true })).rejects.toThrow();
+
+      expect(errorHandler).not.toHaveBeenCalled();
+    });
+
+    it('handles network disconnection (ERR_NETWORK) with clear Vietnamese message', async () => {
+      const errorHandler = vi.fn();
+      setGlobalApiErrorHandler(errorHandler);
+
+      http.defaults.adapter = async (config) => {
+        const error = new AxiosError('Network Error', 'ERR_NETWORK', config);
+        throw error;
+      };
+
+      await expect(http.get('/api/v1/ping')).rejects.toThrow();
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 0,
+          title: 'Mất kết nối máy chủ',
+          description: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại đường truyền mạng của bạn.',
+        })
+      );
     });
   });
 });

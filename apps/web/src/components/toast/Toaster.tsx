@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import '@/lib/api-client-init';
 import { toastStore, type ToastItem } from './toast-store';
 import { LiquidGlassToast } from './LiquidGlassToast';
 import { FullWidthStickyToast } from './FullWidthStickyToast';
