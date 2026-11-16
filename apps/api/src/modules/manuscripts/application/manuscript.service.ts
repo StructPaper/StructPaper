@@ -424,7 +424,12 @@ export class ManuscriptService {
     if (dto.title !== undefined) updates.title = dto.title;
     if (dto.abstract !== undefined) updates.abstract = dto.abstract;
     if (dto.status !== undefined) updates.status = dto.status;
-    if (dto.metadata !== undefined) updates.metadata = dto.metadata;
+    if (dto.metadata !== undefined) {
+      updates.metadata = {
+        ...(typeof manuscript.metadata === 'object' && manuscript.metadata !== null ? manuscript.metadata : {}),
+        ...dto.metadata,
+      };
+    }
 
     if (this.db) {
       const result = await this.db

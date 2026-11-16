@@ -12,6 +12,7 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
     const abstract = paper.metadata?.abstract || '';
     const metadata = {
       ...paper.metadata,
+      displayName: paper.displayName,
       sections: paper.sections || [],
       references: paper.references || [],
       layoutSettings: paper.layoutSettings,
@@ -122,6 +123,7 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
           title: patch.displayName,
           status: patch.workflowStatus,
           metadata: {
+            displayName: patch.displayName,
             submissionId: patch.submissionId,
             note: patch.note,
             tags: patch.tags,

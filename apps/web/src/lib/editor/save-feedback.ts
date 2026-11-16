@@ -29,8 +29,8 @@ export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boo
   }
   if (state === 'conflict') {
     sileo.warning({
-      title: 'Xung đột phiên bản',
-      description: 'Máy chủ đang có bản mới hơn, hãy chọn Ghi đè hoặc kiểm tra lại',
+      title: 'Xung đột phiên bản máy chủ',
+      description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
     });
     return false;
   }
@@ -43,7 +43,10 @@ export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boo
   }
   sileo.error({
     title: 'Lưu thất bại',
-    description: 'Không thể lưu bản thảo cục bộ vào thiết bị',
+    description:
+      isLocalAvailable === false
+        ? 'Không thể lưu bản thảo lên máy chủ. Vui lòng kiểm tra lại kết nối mạng.'
+        : 'Không thể lưu bản thảo cục bộ vào thiết bị',
   });
   return false;
 }

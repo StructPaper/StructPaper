@@ -35,7 +35,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: FastifyReply,
   ): Promise<TokenResponse> {
     const result = await this.authService.login(body);
-    if (result.refreshToken) {
+    if (result.refreshToken && res?.setCookie) {
       res.setCookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -58,7 +58,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token is required');
     }
     const result = await this.authService.refresh(token);
-    if (result.refreshToken) {
+    if (result.refreshToken && res?.setCookie) {
       res.setCookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -82,7 +82,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token is required');
     }
     const result = await this.authService.refresh(token);
-    if (result.refreshToken) {
+    if (result.refreshToken && res?.setCookie) {
       res.setCookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -92,6 +92,16 @@ export class AuthController {
       });
     }
     return result;
+  }
+
+  async refresh(
+    body: { refreshToken?: string },
+    req?: FastifyRequest,
+    res?: FastifyReply,
+  ): Promise<TokenResponse> {
+    const mockRes = res || ({ setCookie: () => {} } as unknown as FastifyReply);
+    const mockReq = req || ({ cookies: {} } as unknown as FastifyRequest);
+    return this.refreshPost(mockReq, body, mockRes);
   }
 
   @Post('logout')

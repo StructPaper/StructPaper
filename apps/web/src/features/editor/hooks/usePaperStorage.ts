@@ -56,7 +56,20 @@ export function usePaperStorage(): UsePaperStorageReturn {
         return true;
       } catch (err: any) {
         console.warn('[usePaperStorage] save error:', err);
-        setError(err instanceof Error ? err : new Error(String(err)));
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        setError(errorObj);
+        const status = Number(
+          err?.status ||
+          err?.response?.status ||
+          err?.statusCode ||
+          (err as any)?.data?.statusCode
+        );
+        if (status === 412 || status === 409 || err?.isConflict) {
+          const conflictErr = errorObj as any;
+          conflictErr.status = status;
+          conflictErr.isConflict = true;
+          throw conflictErr;
+        }
         return false;
       } finally {
         setIsSaving(false);

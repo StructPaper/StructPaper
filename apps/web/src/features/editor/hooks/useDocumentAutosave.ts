@@ -3,6 +3,7 @@ import type { CompletePaper } from '@/types/paper';
 import { AutosaveController, type SaveState } from '@/lib/documents/autosave-controller';
 import { DocumentApi } from '@/lib/documents/document-api';
 import { DocumentSync } from '@/lib/documents/document-sync';
+import { sileo } from '@/components/toast';
 
 export interface UseDocumentAutosaveOptions {
   /** Current editor content. A new object identity means "edited". */
@@ -66,6 +67,12 @@ export function useDocumentAutosave({
           if ((s === 'saved' || s === 'saved-local') && info?.paper) {
             baseline.current = info.paper;
           }
+          if (s === 'conflict') {
+            sileo.warning({
+              title: 'Xung đột phiên bản máy chủ',
+              description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
+            });
+          }
         },
       }),
     [sync, debounceMs, isLocalAvailable]
@@ -121,7 +128,13 @@ export function useDocumentAutosave({
     [controller, paper]
   );
   const flush = useCallback(() => controller.flush(), [controller]);
-  const resolveKeepMine = useCallback(() => controller.resolveKeepMine(), [controller]);
+  const resolveKeepMine = useCallback(async () => {
+    await controller.resolveKeepMine();
+    sileo.success({
+      title: 'Đã ghi đè thành công',
+      description: 'Bản thảo của bạn đã được lưu đè lên máy chủ.',
+    });
+  }, [controller]);
 
   return { state, savedAt, saveNow, flush, resolveKeepMine, sync };
 }

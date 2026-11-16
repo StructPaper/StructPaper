@@ -162,6 +162,7 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
 
         const builder: any = {
           from: vi.fn().mockImplementation(() => builder),
+          leftJoin: vi.fn().mockImplementation(() => builder),
           where: vi.fn().mockImplementation((cond: any) => {
             whereCond = cond;
             return builder;
@@ -190,6 +191,9 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
               }
               if (limitVal !== undefined) {
                 rows = rows.slice(0, limitVal);
+              }
+              if (fields && fields.manuscript) {
+                return resolve(rows.map((r) => ({ manuscript: r, journal: null })));
               }
               return resolve(rows);
             } catch (err) {

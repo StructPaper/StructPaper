@@ -37,7 +37,7 @@ export function remoteManuscriptToRecord(item: any): ManuscriptRecord {
   return {
     info: {
       id: item.id,
-      displayName: item.title || 'Bản thảo máy chủ',
+      displayName: item.metadata?.displayName || (item.metadata?.doc?.metadata as any)?.displayName || item.title || 'Bản thảo máy chủ',
       workflowStatus,
       pinned: Boolean(item.metadata?.pinned),
       archived: item.status === 'ARCHIVED',
@@ -97,7 +97,7 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
 
   return {
     id: ms.id,
-    displayName: ms.title || meta.title || 'Bản thảo bài báo',
+    displayName: meta.displayName || (ms.metadata as any)?.displayName || ms.title || meta.title || 'Bản thảo bài báo',
     version: ms.version ?? 1,
     currentServerRev: (ms as any).currentServerRev ?? ms.version ?? 1,
     metadata: {

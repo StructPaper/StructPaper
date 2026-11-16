@@ -48,11 +48,15 @@ describe('Manuscript Lifecycle State Machine & Transactional Outbox', () => {
 
   const setupMockManuscript = (overrides: Partial<typeof baseManuscriptRecord> = {}) => {
     const record = { ...baseManuscriptRecord, ...overrides };
+    const queryBuilder = {
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue([{ manuscript: record, journal: null }]),
+      }),
+    };
     mockDb.select.mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([record]),
-        }),
+        leftJoin: vi.fn().mockReturnValue(queryBuilder),
+        where: queryBuilder.where,
       }),
     });
     return record;
