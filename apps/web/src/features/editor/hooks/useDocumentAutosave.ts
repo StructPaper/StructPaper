@@ -15,6 +15,8 @@ export interface UseDocumentAutosaveOptions {
   debounceMs?: number;
   /** false = manual saving only (the editor's auto-save switch): edits are not saved on their own. */
   enabled?: boolean;
+  /** Pass false for Server-Only mode where local persistence is bypassed. */
+  isLocalAvailable?: boolean;
 }
 
 export function useDocumentAutosave({
@@ -24,6 +26,7 @@ export function useDocumentAutosave({
   remote = true,
   debounceMs = 1200,
   enabled = true,
+  isLocalAvailable = false,
 }: UseDocumentAutosaveOptions) {
   const [state, setState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -38,6 +41,7 @@ export function useDocumentAutosave({
       new AutosaveController({
         debounceMs,
         sync,
+        isLocalAvailable,
         saveLocal: (p) => saveLocalRef.current(p),
         onState: (s, info) => {
           setState(s);
@@ -47,7 +51,7 @@ export function useDocumentAutosave({
           }
         },
       }),
-    [sync, debounceMs]
+    [sync, debounceMs, isLocalAvailable]
   );
 
   // Id of the document `baseline` belongs to.

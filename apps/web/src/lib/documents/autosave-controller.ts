@@ -103,13 +103,29 @@ export class AutosaveController {
   /** User chose "keep my version" after a conflict. */
   async resolveKeepMine(): Promise<void> {
     const paper = this.latest;
-    if (!paper || !this.opts.sync) return;
+    if (!paper) return;
     this.emit('saving');
     try {
+      if (this.opts.isLocalAvailable === false || !this.opts.sync) {
+        // Force save directly through saveLocal with force flag
+        (paper as any).forceSave = true;
+        const ok = await this.opts.saveLocal(paper);
+        delete (paper as any).forceSave;
+        if (ok) {
+          this.emit('saved', { savedAt: Date.now(), paper });
+        } else {
+          this.emit('error', { error: new Error('Không thể ghi đè bản thảo') });
+        }
+        return;
+      }
       await this.opts.sync.push(paper, { force: true });
       this.emit('saved', { savedAt: Date.now(), paper });
-    } catch (e) {
-      this.emit('saved-local', { error: e, paper });
+    } catch (e: any) {
+      if (e?.status === 412 || e?.status === 409 || e?.isConflict) {
+        this.emit('conflict', { error: e });
+      } else {
+        this.emit('saved-local', { error: e, paper });
+      }
     }
   }
 
@@ -154,7 +170,11 @@ export class AutosaveController {
     let localOk = false;
     try {
       localOk = await this.opts.saveLocal(paper);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.status === 412 || e?.status === 409 || e?.isConflict) {
+        this.emit('conflict', { error: e });
+        return;
+      }
       this.emit('error', { error: e });
       return;
     }

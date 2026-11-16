@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
+import 'fake-indexeddb/auto';
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePaperStorage } from '@/features/editor';
+import { StorageProvider } from '@/context/StorageContext';
 import type { CompletePaper } from '@/types/paper';
 
 const mockSavePaperToIndexedDb = vi.fn().mockResolvedValue(true);
@@ -19,12 +22,19 @@ vi.mock('@structpaper/api-client', async () => {
   const actual = await vi.importActual<any>('@structpaper/api-client');
   return {
     ...actual,
+    manuscriptApi: {
+      ...actual.manuscriptApi,
+      update: (...args: any[]) => mockUpdateManuscript(...args),
+      create: (...args: any[]) => mockCreateManuscript(...args),
+      get: (...args: any[]) => mockGetManuscript(...args),
+    },
     isMockModeEnabled: () => false,
-    updateManuscript: (...args: any[]) => mockUpdateManuscript(...args),
-    createManuscript: (...args: any[]) => mockCreateManuscript(...args),
-    getManuscript: (...args: any[]) => mockGetManuscript(...args),
   };
 });
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <StorageProvider enableLocal={true}>{children}</StorageProvider>
+);
 
 describe('usePaperStorage Custom Hook (Task 2)', () => {
   beforeEach(() => {
@@ -65,7 +75,7 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
       version: 2,
     });
 
-    const { result } = renderHook(() => usePaperStorage());
+    const { result } = renderHook(() => usePaperStorage(), { wrapper });
 
     let success = false;
     await act(async () => {
@@ -79,7 +89,7 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
       expect.objectContaining({
         title: 'Quantum Machine Learning',
       }),
-      { headers: { 'If-Match': '"1"' } },
+      { 'If-Match': '"1"' },
     );
   });
 
@@ -88,9 +98,10 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
     mockCreateManuscript.mockResolvedValueOnce({
       id: 'server-assigned-uuid',
       title: 'Quantum Machine Learning',
+      version: 1,
     });
 
-    const { result } = renderHook(() => usePaperStorage());
+    const { result } = renderHook(() => usePaperStorage(), { wrapper });
 
     let success = false;
     await act(async () => {
@@ -108,7 +119,7 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
   it('persists locally even if cloud sync fails', async () => {
     mockUpdateManuscript.mockRejectedValueOnce(new Error('Cloud sync error'));
 
-    const { result } = renderHook(() => usePaperStorage());
+    const { result } = renderHook(() => usePaperStorage(), { wrapper });
 
     let success = false;
     await act(async () => {
@@ -122,7 +133,7 @@ describe('usePaperStorage Custom Hook (Task 2)', () => {
   it('loads paper from IndexedDB if available', async () => {
     mockLoadPaperFromIndexedDb.mockResolvedValueOnce(samplePaper);
 
-    const { result } = renderHook(() => usePaperStorage());
+    const { result } = renderHook(() => usePaperStorage(), { wrapper });
 
     let loaded: CompletePaper | null = null;
     await act(async () => {

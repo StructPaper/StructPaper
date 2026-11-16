@@ -10,7 +10,7 @@ import type { CompletePaper } from '@/types/paper';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/editor',
+  usePathname: () => '/papers/paper-preview-test',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));

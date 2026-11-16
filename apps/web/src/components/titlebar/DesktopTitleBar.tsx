@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { Cloud, CloudOff, Crosshair } from 'lucide-react';
 import { useCapabilities } from '@structpaper/platform';
+import { useStorage } from '@/context/StorageContext';
 import { useEditorSession } from '@/context/EditorSessionContext';
 import { formatLocalOnlyTooltip } from '@/lib/editor/save-status';
 import { isEditorTitleBarRoute } from './titlebar-routes';
@@ -26,6 +27,7 @@ import { WindowControls } from './WindowControls';
 export const DesktopTitleBar: React.FC = () => {
   const { kind } = useCapabilities();
   const pathname = usePathname();
+  const storage = useStorage();
   const { autoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, togglePdfFocusMode } = useEditorSession();
   const { handleMouseDown, handleDoubleClick } = useWindowDrag();
 
@@ -33,6 +35,7 @@ export const DesktopTitleBar: React.FC = () => {
   const isEditorRoute = isEditorTitleBarRoute(pathname);
   const isLocalOnly =
     isEditorRoute &&
+    storage.isLocalAvailable &&
     documentSession?.saveState === 'saved' &&
     documentSession?.rawSaveState === 'saved-local';
   const localOnlyTooltip = formatLocalOnlyTooltip(documentSession?.savedAt);
@@ -79,7 +82,7 @@ export const DesktopTitleBar: React.FC = () => {
       />
 
       <div className="flex items-center gap-1.5 shrink-0 h-full pr-1">
-        {isLocalOnly ? (
+        {storage.isLocalAvailable && isLocalOnly ? (
           <span
             data-testid="titlebar-local-only-icon"
             data-no-drag="true"
@@ -89,7 +92,7 @@ export const DesktopTitleBar: React.FC = () => {
           >
             <CloudOff className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
           </span>
-        ) : isEditorRoute ? (
+        ) : storage.isLocalAvailable && isEditorRoute ? (
           <span
             data-testid="titlebar-cloud-icon"
             data-no-drag="true"

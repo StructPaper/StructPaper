@@ -27,6 +27,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { EditorSessionProvider, useEditorSession } from '@/context/EditorSessionContext';
+import { StorageProvider } from '@/context/StorageContext';
 import { DesktopChromeShell, DesktopTitleBar } from '@/components/titlebar';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
 import { Sidebar } from '@/components/layout';
@@ -187,8 +188,8 @@ describe('DesktopTitleBar', () => {
     }
   );
 
-  it('renders App Icon, AutoSave toggle, Paper display title, save state, and 3 controls on /editor', () => {
-    mockPathname.mockReturnValue('/editor');
+  it('renders App Icon, AutoSave toggle, Paper display title, save state, and 3 controls on /papers/[id]', () => {
+    mockPathname.mockReturnValue('/papers/paper-123');
     const { service } = createSpyWindowService(false);
     const desktopPlatform = createFakePlatform({
       kind: 'desktop',
@@ -197,10 +198,12 @@ describe('DesktopTitleBar', () => {
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <EditorSessionBridgeMock title="Bản thảo mẫu tiếng Anh" saveState="saved" />
-          <DesktopTitleBar />
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <EditorSessionBridgeMock title="Bản thảo mẫu tiếng Anh" saveState="saved" />
+            <DesktopTitleBar />
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -216,7 +219,7 @@ describe('DesktopTitleBar', () => {
   });
 
   it('toggles AutoSave On/Off, persists preference, and displays all save states cleanly', () => {
-    mockPathname.mockReturnValue('/editor');
+    mockPathname.mockReturnValue('/papers/paper-123');
     const onManualSave = vi.fn();
     const { service } = createSpyWindowService(false);
     const desktopPlatform = createFakePlatform({
@@ -226,14 +229,16 @@ describe('DesktopTitleBar', () => {
 
     const { rerender } = render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <EditorSessionBridgeMock
-            title="Bài báo Y học ĐHQG"
-            saveState="unsaved"
-            onManualSave={onManualSave}
-          />
-          <DesktopTitleBar />
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <EditorSessionBridgeMock
+              title="Bài báo Y học ĐHQG"
+              saveState="unsaved"
+              onManualSave={onManualSave}
+            />
+            <DesktopTitleBar />
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -254,10 +259,12 @@ describe('DesktopTitleBar', () => {
 
     rerender(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <EditorSessionBridgeMock title="Bài báo Y học ĐHQG" saveState="saving" />
-          <DesktopTitleBar />
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <EditorSessionBridgeMock title="Bài báo Y học ĐHQG" saveState="saving" />
+            <DesktopTitleBar />
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -266,7 +273,7 @@ describe('DesktopTitleBar', () => {
   });
 
   it('invokes minimize, toggleMaximize, close, startDragging, and tracks maximize state', async () => {
-    mockPathname.mockReturnValue('/editor');
+    mockPathname.mockReturnValue('/papers/paper-123');
     const { service, emitMaximized } = createSpyWindowService(false);
     const desktopPlatform = createFakePlatform({
       kind: 'desktop',
@@ -369,8 +376,8 @@ describe('DesktopTitleBar', () => {
     expect(mobileTopBar.className).toContain('top-[var(--titlebar-height,0px)]');
   });
 
-  it('renders TitleBar File menu on /editor when document actions are available and blocks window drag', () => {
-    mockPathname.mockReturnValue('/editor');
+  it('renders TitleBar File menu on /papers/[id] when document actions are available and blocks window drag', () => {
+    mockPathname.mockReturnValue('/papers/paper-123');
     const { service } = createSpyWindowService(false);
     const desktopPlatform = createFakePlatform({
       kind: 'desktop',
@@ -427,7 +434,7 @@ describe('DesktopTitleBar', () => {
   });
 
   it('supports inline click-to-rename on titlebar-paper-title when onRename is provided', () => {
-    mockPathname.mockReturnValue('/editor');
+    mockPathname.mockReturnValue('/papers/paper-123');
     const { service } = createSpyWindowService(false);
     const desktopPlatform = createFakePlatform({
       kind: 'desktop',
@@ -478,20 +485,22 @@ describe('DesktopTitleBar', () => {
   });
 
   it('shows plain gray CloudOff icon on right corner of TitleBar outside Saved pill when rawSaveState is saved-local', () => {
-    mockPathname.mockReturnValue('/editor');
+    mockPathname.mockReturnValue('/papers/paper-123');
     const desktopPlatform = createFakePlatform({ kind: 'desktop' });
     const savedAt = new Date(2026, 10, 12, 9, 15, 30).getTime();
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <EditorSessionBridgeMock
-            saveState="saved"
-            rawSaveState="saved-local"
-            savedAt={savedAt}
-          />
-          <DesktopTitleBar />
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <EditorSessionBridgeMock
+              saveState="saved"
+              rawSaveState="saved-local"
+              savedAt={savedAt}
+            />
+            <DesktopTitleBar />
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -512,20 +521,22 @@ describe('DesktopTitleBar', () => {
   });
 
   it('renders conflict override action in TitleBar when rawSaveState is conflict', () => {
-    mockPathname.mockReturnValue('/editor');
+    mockPathname.mockReturnValue('/papers/paper-123');
     const desktopPlatform = createFakePlatform({ kind: 'desktop' });
     const onKeepMine = vi.fn();
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <EditorSessionBridgeMock
-            saveState="error"
-            rawSaveState="conflict"
-            onKeepMine={onKeepMine}
-          />
-          <DesktopTitleBar />
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <EditorSessionBridgeMock
+              saveState="error"
+              rawSaveState="conflict"
+              onKeepMine={onKeepMine}
+            />
+            <DesktopTitleBar />
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 

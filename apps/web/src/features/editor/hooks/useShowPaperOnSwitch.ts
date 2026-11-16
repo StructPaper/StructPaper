@@ -7,12 +7,14 @@ import type { CompletePaper } from '@/types/paper';
  */
 export function useShowPaperOnSwitch(paper: CompletePaper, show: (copy: CompletePaper) => void, markClean: () => void): void {
   const shown = useRef(paper.id);
+  const shownVersion = useRef(paper.version);
   const latest = useRef({ paper, show, markClean });
   latest.current = { paper, show, markClean };
   useEffect(() => {
-    if (shown.current === paper.id) return;
+    if (shown.current === paper.id && shownVersion.current === paper.version) return;
     shown.current = paper.id;
+    shownVersion.current = paper.version;
     latest.current.show(JSON.parse(JSON.stringify(latest.current.paper)));
     latest.current.markClean();
-  }, [paper.id]);
+  }, [paper.id, paper.version]);
 }

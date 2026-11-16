@@ -1,15 +1,18 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { usePaper } from '@/context/PaperContext';
 import { UnifiedEditorView, usePaperStorage } from '@/features/editor';
 import { CompletePaper } from '@/lib/sample-papers';
 
 function PaperEditorContent({ paperId }: { paperId: string }) {
+  const router = useRouter();
   const { paper, updatePaper, setPaper, setCurrentJournal } = usePaper();
   const { loadPaper } = usePaperStorage();
-  const [isLoading, setIsLoading] = useState(Boolean(paperId && (!paper || paper.id !== paperId)));
+  const [loadedPaper, setLoadedPaper] = useState<CompletePaper | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!paperId) {
@@ -18,13 +21,19 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
     }
 
     let isMounted = true;
+    setIsLoading(true);
+    setNotFound(false);
+
     loadPaper(paperId).then((loaded) => {
       if (isMounted) {
         if (loaded) {
+          setLoadedPaper(loaded);
           setPaper(loaded);
           if (loaded.metadata?.journalId) {
             setCurrentJournal(loaded.metadata.journalId);
           }
+        } else {
+          setNotFound(true);
         }
         setIsLoading(false);
       }
@@ -47,9 +56,28 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
     );
   }
 
+  const currentPaper = loadedPaper || paper;
+
+  if (notFound || !currentPaper) {
+    return (
+      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center bg-slate-900 text-white gap-3 p-4">
+        <p className="text-base font-semibold text-rose-400">Không tìm thấy bản thảo</p>
+        <p className="text-xs text-zinc-400 max-w-md text-center">
+          Bản thảo với mã &ldquo;{paperId}&rdquo; không tồn tại hoặc đã bị xóa trên máy chủ.
+        </p>
+        <button
+          onClick={() => router.push('/papers')}
+          className="mt-2 px-4 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-xs font-medium text-white transition-colors"
+        >
+          Quay lại danh sách bài báo
+        </button>
+      </div>
+    );
+  }
+
   return (
     <UnifiedEditorView
-      paper={paper}
+      paper={currentPaper}
       onUpdatePaper={handleUpdatePaper}
     />
   );

@@ -11,7 +11,7 @@ const { mockSavePaper, mockRouterPush } = vi.hoisted(() => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/editor',
+  usePathname: () => '/papers/paper-titlebar-e2e-1',
   useRouter: () => ({
     push: mockRouterPush,
     replace: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
-  useParams: () => ({ id: 'hs630' }),
+  useParams: () => ({ id: 'paper-titlebar-e2e-1' }),
 }));
 
 vi.mock('framer-motion', async () => {
@@ -93,6 +93,7 @@ vi.stubGlobal(
 
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { PaperProvider } from '@/context/PaperContext';
+import { StorageProvider } from '@/context/StorageContext';
 import { DesktopTitleBar } from '@/components/titlebar';
 import { UnifiedEditorView } from '@/features/editor';
 import { sileo } from '@/components/toast';
@@ -138,12 +139,14 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <PaperProvider>
-            <DesktopTitleBar />
-            <UnifiedEditorView paper={paper} onUpdatePaper={onUpdatePaper} />
-          </PaperProvider>
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={onUpdatePaper} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -251,12 +254,14 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <PaperProvider>
-            <DesktopTitleBar />
-            <UnifiedEditorView paper={paper} onUpdatePaper={onUpdatePaper} />
-          </PaperProvider>
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={onUpdatePaper} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -294,12 +299,14 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <PaperProvider>
-            <DesktopTitleBar />
-            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
-          </PaperProvider>
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -342,12 +349,14 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
 
     render(
       <PlatformProvider value={desktopPlatform}>
-        <EditorSessionProvider>
-          <PaperProvider>
-            <DesktopTitleBar />
-            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
-          </PaperProvider>
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -372,12 +381,14 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
 
     render(
       <PlatformProvider value={webPlatform}>
-        <EditorSessionProvider>
-          <PaperProvider>
-            <DesktopTitleBar />
-            <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
-          </PaperProvider>
-        </EditorSessionProvider>
+        <StorageProvider enableLocal={true}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
       </PlatformProvider>
     );
 
@@ -393,5 +404,36 @@ describe('Integration: DesktopTitleBar AutoSave toggle <-> UnifiedEditorView', (
     expect(screen.queryByTestId('titlebar-minimize-btn')).toBeNull();
     expect(screen.queryByTestId('titlebar-maximize-btn')).toBeNull();
     expect(screen.queryByTestId('titlebar-close-btn')).toBeNull();
+  });
+
+  it('hides pill badge and shows only cloud icon when in Server-Only mode (ENABLE_LOCAL_STORAGE: false)', async () => {
+    const desktopPlatform = createFakePlatform({ kind: 'desktop' });
+    const paper = createTestPaper({ id: 'paper-server-only-1', displayName: 'Bản thảo Server Only' });
+
+    render(
+      <PlatformProvider value={desktopPlatform}>
+        <StorageProvider enableLocal={false}>
+          <EditorSessionProvider>
+            <PaperProvider>
+              <DesktopTitleBar />
+              <UnifiedEditorView paper={paper} onUpdatePaper={vi.fn()} />
+            </PaperProvider>
+          </EditorSessionProvider>
+        </StorageProvider>
+      </PlatformProvider>
+    );
+
+    // Title is displayed
+    expect(screen.getByTestId('titlebar-paper-title').textContent).toBe('Bản thảo Server Only');
+
+    // Cloud icon is displayed as save state indicator
+    const saveStateEl = screen.getByTestId('titlebar-save-state');
+    expect(saveStateEl.getAttribute('data-save-state')).toBe('saved');
+    expect(screen.getByTestId('titlebar-cloud-icon')).toBeTruthy();
+
+    // The text pill ("Đã lưu" / "Unsaved") must NOT be rendered
+    expect(saveStateEl.textContent).not.toContain('Đã lưu');
+    expect(saveStateEl.textContent).not.toContain('Unsaved');
+    expect(saveStateEl.className).not.toContain('rounded-full border text-[11px]');
   });
 });

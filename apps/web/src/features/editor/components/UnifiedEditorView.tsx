@@ -54,6 +54,7 @@ import {
   useCreateEditorTabStateStore,
 } from '../hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';
+import { useStorage } from '@/context/StorageContext';
 import { usePaperStorage } from '../hooks/usePaperStorage';
 import { ActionConfirmModal } from '@/components/modals/ActionConfirmModal';
 import { usePlatform } from '@structpaper/platform';
@@ -67,6 +68,7 @@ interface UnifiedEditorViewProps {
 export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onUpdatePaper }) => {
   const { currentJournal, setCurrentJournal, setPaper } = usePaper();
   const router = useRouter();
+  const storage = useStorage();
   const { savePaper, loadPaper } = usePaperStorage();
   const [formData, setFormData] = useState<CompletePaper>(() => JSON.parse(JSON.stringify(paper)));
   const currentPaperId = useRef(paper.id);
@@ -126,17 +128,23 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
   const remoteSync = !isTestEnv && process.env.NEXT_PUBLIC_DISABLE_SYNC !== '1';
 
-  // Auto-save: every edit is persisted locally (IndexedDB) and pushed to the backend (DB + MinIO).
+  // Auto-save: in Server-Only mode (ENABLE_LOCAL_STORAGE: false), persistence goes directly to the API
+  // via saveLocal, so background DocumentSync is disabled to prevent duplicate PATCH requests and version conflicts.
   const { state: saveState, savedAt, saveNow, flush, resolveKeepMine, sync } = useDocumentAutosave({
     paper: formData,
     documentId: paper.id,
-    remote: remoteSync,
+    remote: storage.isLocalAvailable ? remoteSync : false,
+    isLocalAvailable: storage.isLocalAvailable,
     enabled: autoSaveEnabled, // the title-bar switch: off = nothing is saved until "Lưu"/Ctrl+S
     saveLocal: async (p) => {
       // A save that finishes after the user switched to another document must only persist its own
       // document: pushing it into the shared context would swap the new document back to the old one.
       if (p.id === currentPaperId.current) onUpdatePaper(p);
-      return savePaper(p);
+      const ok = await savePaper(p);
+      if (ok && p.version !== undefined) {
+        setFormData((prev) => (prev.id === p.id ? { ...prev, version: p.version } : prev));
+      }
+      return ok;
     },
   });
 
@@ -162,11 +170,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   const handleSave = useCallback(async (): Promise<boolean> => {
     onUpdatePaper(formData);
-    if (!notifyManualSaveOutcome(await saveNow(formData))) return false;
+    const saveStateOutcome = await saveNow(formData);
+    if (!notifyManualSaveOutcome(saveStateOutcome, storage.isLocalAvailable)) return false;
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
     return true;
-  }, [formData, onUpdatePaper, saveNow]);
+  }, [formData, onUpdatePaper, saveNow, storage.isLocalAvailable]);
 
   // ---- GATE 2: validate before producing the deliverable ----
   const runExport = useCallback(

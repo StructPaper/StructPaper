@@ -73,24 +73,49 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
   const rawMeta = (ms.metadata || {}) as any;
   const doc = rawMeta?.doc || rawMeta;
   const meta = doc?.metadata || rawMeta;
+  const journal = (ms as any).journal;
+
+  const journalCode =
+    journal?.code ||
+    (ms as any).journalCode ||
+    ms.journalId ||
+    meta.journalId ||
+    'VNUHCM-STD';
+
+  const journalName =
+    journal?.name ||
+    meta.journalName ||
+    'Tạp chí Phát triển Khoa học và Công nghệ ĐHQG-HCM';
+
+  const journalAbbv =
+    journal?.shortName ||
+    journal?.code ||
+    meta.journalAbbv ||
+    'STD';
+
+  const journalColor = journal?.color || meta.journalColor || '#000099';
 
   return {
     id: ms.id,
-    displayName: ms.title,
+    displayName: ms.title || meta.title || 'Bản thảo bài báo',
+    version: ms.version ?? 1,
+    currentServerRev: (ms as any).currentServerRev ?? ms.version ?? 1,
     metadata: {
-      title: ms.title,
-      titleEn: meta.titleEn,
-      articleType: meta.articleType || 'Bài báo nghiên cứu',
-      journalId: ms.journalId || meta.journalId || 'vnu-jst',
-      journalName: meta.journalName || 'Tạp chí Khoa học ĐHQGHN',
-      journalAbbv: meta.journalAbbv || 'VNU J. Sci.',
-      authors: meta.authors || [],
-      affiliations: meta.affiliations || [],
+      articleType: 'Bài báo nghiên cứu',
+      ...meta,
+      title: ms.title || meta.title || 'Bản thảo bài báo',
+      titleEn: meta.titleEn || '',
+      journalId: journalCode,
+      journalName,
+      journalAbbv,
+      journalColor,
+      authors: Array.isArray(meta.authors) ? meta.authors : [],
+      affiliations: Array.isArray(meta.affiliations) ? meta.affiliations : [],
       corresponding: meta.corresponding || { name: '', email: '', affiliation: '' },
-      abstract: ms.abstract || meta.abstract || '',
-      abstractEn: meta.abstractEn,
-      keywords: meta.keywords || [],
-      keywordsEn: meta.keywordsEn,
+      abstract: ms.abstract ?? meta.abstract ?? '',
+      abstractEn: meta.abstractEn || '',
+      keywords: Array.isArray(meta.keywords) ? meta.keywords : [],
+      keywordsEn: Array.isArray(meta.keywordsEn) ? meta.keywordsEn : [],
       dates: meta.dates || {
         received: '',
         revised: '',
@@ -103,13 +128,12 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
       year: meta.year || String(new Date().getFullYear()),
       firstPage: meta.firstPage || 1,
       lastPage: meta.lastPage || 10,
-      ...meta,
     },
     sections: doc?.sections || rawMeta?.sections || [],
     references: doc?.references || rawMeta?.references || [],
     layoutSettings: doc?.layoutSettings || rawMeta?.layoutSettings,
-    templateId: doc?.templateId || rawMeta?.templateId || 'vnu-jst',
-    templateName: doc?.templateName || rawMeta?.templateName,
+    templateId: doc?.templateId || rawMeta?.templateId || journalCode.toLowerCase(),
+    templateName: doc?.templateName || rawMeta?.templateName || journalName,
     status: (ms.status?.toLowerCase() as any) || 'draft',
     createdAt: ms.createdAt,
     updatedAt: ms.updatedAt,

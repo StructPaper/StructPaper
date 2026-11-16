@@ -559,6 +559,8 @@ export interface CompletePaper {
   updatedAt?: string;
   createdAt?: string;
   status?: 'draft' | 'review' | 'ready' | string;
-  workflowStatus?: string; version?: number;
+  workflowStatus?: string;
+  version?: number;
+  currentServerRev?: number;
 }
 

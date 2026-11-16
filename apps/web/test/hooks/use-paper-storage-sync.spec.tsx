@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
+import 'fake-indexeddb/auto';
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { usePaperStorage } from '@/features/editor';
+import { StorageProvider } from '@/context/StorageContext';
 import type { CompletePaper } from '@/types/paper';
 
 const mockSavePaperToIndexedDb = vi.fn().mockResolvedValue(true);
@@ -21,10 +23,13 @@ vi.mock('@structpaper/api-client', async () => {
   const actual = await vi.importActual<any>('@structpaper/api-client');
   return {
     ...actual,
+    manuscriptApi: {
+      ...actual.manuscriptApi,
+      update: (...args: any[]) => mockUpdateManuscript(...args),
+      create: (...args: any[]) => mockCreateManuscript(...args),
+      get: (...args: any[]) => mockGetManuscript(...args),
+    },
     isMockModeEnabled: () => false,
-    updateManuscript: (...args: any[]) => mockUpdateManuscript(...args),
-    createManuscript: (...args: any[]) => mockCreateManuscript(...args),
-    getManuscript: (...args: any[]) => mockGetManuscript(...args),
   };
 });
 
@@ -81,7 +86,9 @@ describe('usePaperStorage ID Synchronization & Query Invalidation (Task 5)', () 
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <StorageProvider enableLocal={true}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </StorageProvider>
     );
 
     const { result } = renderHook(() => usePaperStorage(), { wrapper });
@@ -134,7 +141,9 @@ describe('usePaperStorage ID Synchronization & Query Invalidation (Task 5)', () 
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <StorageProvider enableLocal={true}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </StorageProvider>
     );
 
     const { result } = renderHook(() => usePaperStorage(), { wrapper });
@@ -152,7 +161,7 @@ describe('usePaperStorage ID Synchronization & Query Invalidation (Task 5)', () 
       expect.objectContaining({
         title: 'Quantum Machine Learning Paper',
       }),
-      { headers: { 'If-Match': '"1"' } },
+      { 'If-Match': '"1"' },
     );
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['/api/v1/manuscripts'] });
@@ -167,8 +176,12 @@ describe('usePaperStorage ID Synchronization & Query Invalidation (Task 5)', () 
       version: 1,
     });
 
-    // Render without wrapper/QueryClientProvider
-    const { result } = renderHook(() => usePaperStorage());
+    const isolatedWrapper = ({ children }: { children: React.ReactNode }) => (
+      <StorageProvider enableLocal={true}>{children}</StorageProvider>
+    );
+
+    // Render with isolated local storage wrapper without QueryClientProvider
+    const { result } = renderHook(() => usePaperStorage(), { wrapper: isolatedWrapper });
 
     const paper = createPaperFixture('paper-isolated-999');
 

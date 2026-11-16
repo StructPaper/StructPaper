@@ -27,14 +27,24 @@ export class UnifiedManuscriptRepository implements ManuscriptStorage {
     await this.local.savePaper(paper);
 
     // 2. Write to remote server
-    const remoteResult = await this.remote.savePaper(paper);
+    let remoteResult: SavePaperResult | null = null;
+    try {
+      remoteResult = await this.remote.savePaper(paper);
+    } catch (err) {
+      if (!this.local.isLocalAvailable) {
+        throw err;
+      }
+      console.warn('[UnifiedManuscriptRepository] Remote sync failed, paper safely stored in local IndexedDB:', err);
+    }
 
-    // If server assigned a new UUID or version, update paper and sync cache if local is active
+    // Always synchronize updated server version in client memory
+    if (remoteResult?.version !== undefined) {
+      paper.version = remoteResult.version;
+    }
+
+    // If server assigned a new UUID, update paper and sync cache if local is active
     if (remoteResult?.id && remoteResult.id !== originalLocalId) {
       paper.id = remoteResult.id;
-      if (remoteResult.version !== undefined) {
-        (paper as any).version = remoteResult.version;
-      }
       if (this.local.isLocalAvailable) {
         await this.local.savePaper(paper);
         // Clean up temporary local ID to prevent duplicate orphan cards
@@ -48,7 +58,7 @@ export class UnifiedManuscriptRepository implements ManuscriptStorage {
       }
     }
 
-    return remoteResult || { id: paper.id };
+    return remoteResult || { id: paper.id, version: paper.version };
   }
 
   async loadPaper(id: string): Promise<CompletePaper | null> {

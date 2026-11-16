@@ -21,7 +21,8 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
 
     if (paper.id && isUuid(paper.id)) {
       const version = (paper as any).version;
-      const headers = version !== undefined ? { 'If-Match': `"${version}"` } : undefined;
+      const forceSave = Boolean((paper as any).forceSave);
+      const headers = !forceSave && version !== undefined ? { 'If-Match': `"${version}"` } : undefined;
       const updated = await manuscriptApi.update(
         paper.id,
         {
@@ -32,9 +33,15 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
         headers
       );
 
+      const newVersion = updated?.version ?? (version !== undefined ? version + 1 : 1);
+      paper.version = newVersion;
+      if (updated?.id) {
+        paper.id = updated.id;
+      }
+
       return {
         id: updated?.id || paper.id,
-        version: updated?.version ?? version,
+        version: newVersion,
       };
     }
 
@@ -46,9 +53,13 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
       abstract: abstract || null,
     });
 
+    const newVersion = created.version ?? 1;
+    paper.id = created.id;
+    paper.version = newVersion;
+
     return {
       id: created.id,
-      version: created.version ?? 1,
+      version: newVersion,
     };
   }
 
