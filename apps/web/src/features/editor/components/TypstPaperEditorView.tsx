@@ -86,7 +86,7 @@ export const TypstPaperEditorView: React.FC<TypstPaperEditorViewProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingTypst, setIsExportingTypst] = useState(false);
 
-  // Subtab navigation state (same tabs as /editor)
+  // Subtab navigation state (same tabs as /papers/[id])
   const [activeSubTab, setActiveSubTab] = useState<EditorTabKey>('metadata');
 
   // Mobile active pane switch: 'editor' | 'preview'

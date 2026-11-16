@@ -34,8 +34,8 @@ test.describe('Phase 8: End-to-End Browser & System Verification (Agent Omega)',
   test('8.2: Verifies Editor UI layout shell, navigation tabs, dock, and live preview', async ({
     page,
   }) => {
-    // Navigate to editor page
-    await page.goto('/editor', { waitUntil: 'domcontentloaded' });
+    // Navigate to paper editor page
+    await page.goto('/papers/sample-preview-paper', { waitUntil: 'domcontentloaded' });
 
     // Verify main navigation buttons or tabs
     const pageContent = await page.textContent('body');

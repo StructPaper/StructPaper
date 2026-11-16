@@ -40,7 +40,7 @@ export function PaperProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // The setters must keep their identity across renders: effects list them as dependencies
-  // (e.g. the /editor page loads a paper by id), and a changing identity re-runs them forever.
+  // (e.g. the /papers/[id] page loads a paper by id), and a changing identity re-runs them forever.
   const setPaper = useCallback((newPaper: CompletePaper) => {
     const normalized = normalizeCompletePaper(newPaper);
     setPaperState(normalized);

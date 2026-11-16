@@ -9,14 +9,6 @@ export function isEditorTitleBarRoute(pathname?: string | null): boolean {
     return false;
   }
 
-  // Matches /editor, /editor/*, and /papers/:id (where pathname !== '/papers')
-  if (pathname === '/editor' || pathname.startsWith('/editor/')) {
-    return true;
-  }
-
-  if (pathname.startsWith('/papers/') && pathname !== '/papers') {
-    return true;
-  }
-
-  return false;
+  // Matches /papers/:id (where pathname !== '/papers')
+  return pathname.startsWith('/papers/') && pathname !== '/papers';
 }

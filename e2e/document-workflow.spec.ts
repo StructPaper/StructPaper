@@ -33,7 +33,7 @@ test.describe('Word-like document workflow (real backend)', () => {
     test.skip(!(await apiUp()), `API not reachable at ${API}`);
     fs.mkdirSync(OUT, { recursive: true });
 
-    await page.goto('/editor');
+    await page.goto('/papers/sample-preview-paper');
     await expect(page.getByTestId('document-menu-bar')).toBeVisible();
 
     // ---- New: name + import the original Word file ----

@@ -12,6 +12,7 @@ const loadPaper = vi.fn(async (id: string) => {
 });
 
 vi.mock('next/navigation', () => ({
+  useParams: () => ({ id: 'paper_old' }),
   useSearchParams: () => new URLSearchParams('id=paper_old'),
   useRouter: () => ({ push: vi.fn() }),
 }));
@@ -38,12 +39,12 @@ describe('PaperContext setters', () => {
   });
 });
 
-describe('/editor?id=… page', () => {
+describe('/papers/[id] page', () => {
   it('loads the paper once, not in a loop (each load re-renders the provider)', async () => {
-    const { default: EditorPage } = await import('@/app/editor/page');
+    const { default: PaperDetailPage } = await import('@/app/papers/[id]/page');
     render(
       <PaperProvider>
-        <EditorPage />
+        <PaperDetailPage params={{ id: 'paper_old' }} />
       </PaperProvider>
     );
     await act(async () => {

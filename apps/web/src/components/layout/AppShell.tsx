@@ -25,11 +25,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     forceUnlockBodyScroll();
   }, [pathname]);
 
-  // The editor, authoring editor, template builder, and journal template editor are secondary/focused steps, so the main sidebar is hidden
-  const isEditorPage =
-    pathname === '/editor' ||
-    pathname.startsWith('/editor/') ||
-    (pathname.startsWith('/papers/') && pathname !== '/papers');
+  // The paper editor, template builder, and journal template editor are focused workspaces, so the main sidebar is hidden
+  const isEditorPage = Boolean(pathname && pathname.startsWith('/papers/') && pathname !== '/papers');
   const isBuilderPage = pathname === '/templates/builder' || pathname.startsWith('/templates/builder/');
   const isJournalEditorPage = pathname.startsWith('/templates/journal/');
   const isLoginPage = pathname === '/login' || pathname.startsWith('/login');
