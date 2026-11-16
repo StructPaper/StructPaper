@@ -4,9 +4,12 @@ export const ManuscriptStatusEnum = z.enum([
   'DRAFT',
   'SUBMITTED',
   'IN_REVIEW',
+  'PROOFING',
+  'READY',
   'ACCEPTED',
   'REJECTED',
   'PUBLISHED',
+  'ARCHIVED',
 ]);
 
 export type ManuscriptStatus = z.infer<typeof ManuscriptStatusEnum>;
@@ -33,10 +36,12 @@ export const UpdateManuscriptSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   abstract: z.string().nullable().optional(),
   status: z
-    .preprocess(
-      (val) => (typeof val === 'string' ? val.toUpperCase() : val),
-      ManuscriptStatusEnum,
-    )
+    .preprocess((val) => {
+      if (typeof val !== 'string') return val;
+      const clean = val.trim().toUpperCase().replace(/-/g, '_');
+      if (clean === 'UNDER_REVIEW') return 'IN_REVIEW';
+      return clean;
+    }, ManuscriptStatusEnum)
     .optional(),
   metadata: z.record(z.any()).optional(),
 });

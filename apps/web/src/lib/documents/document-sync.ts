@@ -100,9 +100,10 @@ export class DocumentSync {
     opts: { snapshot?: boolean; force?: boolean } = {}
   ): Promise<SaveResult> {
     const packed = await packForServer(paper, this.deps);
+    const rawStatus = (paper as any).workflowStatus || paper.status || 'draft';
     const result = await this.deps.api.save(paper.id, {
       name: documentName(paper),
-      status: paper.status || 'draft',
+      status: String(rawStatus).trim().toUpperCase().replace(/-/g, '_'),
       doc: packed,
       baseRev: opts.force ? undefined : this.revs.get(paper.id),
       snapshot: opts.snapshot,

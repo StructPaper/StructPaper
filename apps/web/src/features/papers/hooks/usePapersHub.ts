@@ -32,16 +32,13 @@ import {
   getManuscriptTitle,
   getManuscriptAuthors,
   isUuid,
+  normalizeWorkflowStatus,
 } from '../components/types';
 
 function remoteManuscriptToRecord(item: any): ManuscriptRecord {
-  const rawStatus = (item.status || 'draft').toLowerCase().replace('_', '-');
-  const validStatuses: WorkflowStatus[] = ['draft', 'in-review', 'proofing', 'ready', 'published'];
-  const workflowStatus: WorkflowStatus = validStatuses.includes(rawStatus as WorkflowStatus)
-    ? (rawStatus as WorkflowStatus)
-    : rawStatus === 'under-review' || rawStatus === 'submitted'
-    ? 'in-review'
-    : 'draft';
+  const workflowStatus = normalizeWorkflowStatus(
+    item.status || item.workflowStatus || item.metadata?.workflowStatus
+  );
 
   const authors = Array.isArray(item.metadata?.authors)
     ? item.metadata.authors
@@ -458,7 +455,7 @@ export function usePapersHub() {
       published: 0,
     };
     for (const r of records) {
-      const st = r.info.workflowStatus;
+      const st = normalizeWorkflowStatus(r.info.workflowStatus || (r as any).remoteData?.status);
       if (st && typeof counts[st] === 'number') {
         counts[st] = (counts[st] || 0) + 1;
       }
@@ -489,7 +486,10 @@ export function usePapersHub() {
         }
 
         // Status Filter
-        if (statusFilter !== 'all' && r.info.workflowStatus !== statusFilter) {
+        if (
+          statusFilter !== 'all' &&
+          normalizeWorkflowStatus(r.info.workflowStatus || (r as any).remoteData?.status) !== statusFilter
+        ) {
           return false;
         }
 

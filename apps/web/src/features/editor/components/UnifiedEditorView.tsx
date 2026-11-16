@@ -36,6 +36,7 @@ import {
   useEditorQuickEdit,
   PaperQuickEditModal,
   WORKFLOW_STATUS_CONFIG,
+  normalizeWorkflowStatus,
   type WorkflowStatus,
 } from '@/features/papers';
 import { useDocumentAutosave } from '../hooks/useDocumentAutosave';
@@ -301,22 +302,37 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   // Handler for updating paper workflow status
   const handleUpdateWorkflowStatus = useCallback(
-    (newStatus: WorkflowStatus) => {
+    async (newStatus: WorkflowStatus) => {
+      const prevFormData = formData;
+      const normalizedStatus = normalizeWorkflowStatus(newStatus);
       const updated: CompletePaper = {
         ...formData,
-        status: newStatus as any,
-        workflowStatus: newStatus,
+        status: normalizedStatus as any,
+        workflowStatus: normalizedStatus,
       };
       setFormData(updated);
       setIsDirty(true);
       onUpdatePaper(updated);
-      const label = WORKFLOW_STATUS_CONFIG[newStatus]?.label || newStatus;
-      sileo.success({
-        title: 'Đã cập nhật trạng thái',
-        description: `Bản thảo đã được chuyển sang trạng thái "${label}"`,
-      });
+
+      try {
+        const outcome = await saveNow(updated, { awaitSync: true });
+        if (outcome === 'saved' || outcome === 'saved-local') {
+          const label = WORKFLOW_STATUS_CONFIG[normalizedStatus]?.label || normalizedStatus;
+          sileo.success({
+            title: 'Đã cập nhật trạng thái',
+            description: `Bản thảo đã được chuyển sang trạng thái "${label}"`,
+          });
+        } else {
+          setFormData(prevFormData);
+          onUpdatePaper(prevFormData);
+        }
+      } catch {
+        // Rollback state if server rejected
+        setFormData(prevFormData);
+        onUpdatePaper(prevFormData);
+      }
     },
-    [formData, onUpdatePaper]
+    [formData, onUpdatePaper, saveNow]
   );
 
   let isDesktop = false;
@@ -458,7 +474,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         paperId={formData.id}
         onBackClick={handleRequestBack}
         autosaveStatus={autosaveStatus}
-        workflowStatus={formData.status || (formData as any).workflowStatus || 'draft'}
+        workflowStatus={normalizeWorkflowStatus((formData as any).workflowStatus || formData.status)}
         onUpdateWorkflowStatus={handleUpdateWorkflowStatus}
         onOpenFullscreenPdf={handleOpenFullscreenPdf}
         onOpenQuickEdit={handleOpenQuickEdit}

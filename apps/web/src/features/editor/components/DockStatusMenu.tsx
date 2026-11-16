@@ -3,7 +3,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Tag, X } from 'lucide-react';
-import { WORKFLOW_STATUS_CONFIG, getWorkflowStatusConfig, type WorkflowStatus } from '@/features/papers';
+import {
+  WORKFLOW_STATUS_CONFIG,
+  getWorkflowStatusConfig,
+  normalizeWorkflowStatus,
+  type WorkflowStatus,
+} from '@/features/papers';
 
 export interface DockStatusMenuProps {
   setIsDownloadOpen: (open: boolean) => void;
@@ -54,6 +59,10 @@ export const DockStatusMenu: React.FC<DockStatusMenuProps> = ({
           }}
         >
           <Tag className="w-4 h-4 text-zinc-700" strokeWidth={2.8} />
+          <span
+            className={`w-2.5 h-2.5 rounded-full absolute top-2 right-2 ${currentStatusConfig.dotBg} ring-2 ring-white shadow-xs`}
+            title={`Trạng thái: ${currentStatusConfig.label}`}
+          />
         </motion.button>
       ) : (
         <motion.div
@@ -90,7 +99,7 @@ export const DockStatusMenu: React.FC<DockStatusMenuProps> = ({
 
           {(['draft', 'in-review', 'proofing', 'ready', 'published'] as const).map((st) => {
             const cfg = WORKFLOW_STATUS_CONFIG[st];
-            const isSelected = (workflowStatus || 'draft') === st;
+            const isSelected = normalizeWorkflowStatus(workflowStatus) === st;
             return (
               <button
                 key={st}

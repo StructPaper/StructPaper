@@ -34,6 +34,8 @@ export function hasPaperContentChanged(current: CompletePaper, baseline: Complet
   if (current.references !== baseline.references) return true;
   if (current.layoutSettings !== baseline.layoutSettings) return true;
   if (current.templateId !== baseline.templateId) return true;
+  if (current.status !== baseline.status) return true;
+  if (current.workflowStatus !== baseline.workflowStatus) return true;
   return false;
 }
 

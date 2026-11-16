@@ -198,7 +198,9 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
             const authors = getManuscriptAuthors(paper);
             const journalColor = getJournalColor(paper.doc.journalId, paper);
             const journalShort = getJournalShortName(paper.doc.journalId, paper);
-            const statusConfig = getWorkflowStatusConfig(paper.info.workflowStatus);
+            const statusConfig = getWorkflowStatusConfig(
+              paper.info.workflowStatus || (paper as any).status || (paper as any).remoteData?.status
+            );
             const syncBadgeConfig = getSyncBadgeConfig(paper);
             const relativeTime = formatRelativeTime(
               paper.info.lastOpenedAt || paper.info.updatedAt

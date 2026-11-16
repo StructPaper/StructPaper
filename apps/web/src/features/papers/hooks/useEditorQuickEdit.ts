@@ -4,6 +4,9 @@ import { useState, useCallback } from 'react';
 import type { ManuscriptRecord, ManuscriptInfo, WorkflowStatus } from '@structpaper/doc-model';
 import { migrateV1toV2 } from '@structpaper/doc-model';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
+import { manuscriptApi, ProblemDetailsError } from '@structpaper/api-client';
+import { isUuid } from '@/lib/storage/converters';
+import { normalizeWorkflowStatus } from '../components/types';
 import { sileo } from '@/components/toast';
 import type { CompletePaper } from '@/types/paper';
 
@@ -31,7 +34,7 @@ export function useEditorQuickEdit(
             id: formData.id || `doc-${Date.now()}`,
             displayName: (formData as any).displayName || formData.metadata?.title || 'Bản thảo bài báo',
             submissionId: (formData as any).submissionId,
-            workflowStatus: ((formData as any).status as WorkflowStatus) || 'draft',
+            workflowStatus: normalizeWorkflowStatus((formData as any).workflowStatus || (formData as any).status),
             note: (formData as any).note || '',
             tags: (formData as any).tags || [formData.metadata?.journalId || 'VNUHCM'],
             pinned: false,
@@ -56,36 +59,63 @@ export function useEditorQuickEdit(
   const handleSaveQuickEdit = useCallback(
     async (id: string, patch: Partial<ManuscriptInfo>) => {
       try {
-        const repo = new IndexedDbManuscriptRepo(defaultDatabase);
-        const existing = await repo.getRecord(id);
-        if (existing) {
-          await repo.updateInfo(id, patch);
-        } else {
-          const v2Doc = migrateV1toV2(formData as any);
-          await repo.save(v2Doc, {
-            id,
-            ...patch,
-            displayName: patch.displayName || formData.metadata?.title || 'Bản thảo bài báo',
+        const normalizedPatchStatus = patch.workflowStatus
+          ? normalizeWorkflowStatus(patch.workflowStatus)
+          : undefined;
+        const normalizedPatch = normalizedPatchStatus
+          ? { ...patch, workflowStatus: normalizedPatchStatus }
+          : patch;
+
+        let nextVersion: number | undefined;
+        if (isUuid(id)) {
+          const updated = await manuscriptApi.update(id, {
+            title: normalizedPatch.displayName,
+            status: normalizedPatchStatus
+              ? (normalizedPatchStatus.toUpperCase().replace(/-/g, '_') as any)
+              : undefined,
+            metadata: {
+              ...(formData.metadata || {}),
+              displayName: normalizedPatch.displayName,
+              submissionId: normalizedPatch.submissionId,
+              note: normalizedPatch.note,
+              tags: normalizedPatch.tags,
+            },
           });
+          if (updated?.version !== undefined) {
+            nextVersion = updated.version;
+          }
+        }
+
+        try {
+          const repo = new IndexedDbManuscriptRepo(defaultDatabase);
+          const existing = await repo.getRecord(id);
+          if (existing) {
+            await repo.updateInfo(id, normalizedPatch);
+          } else {
+            const v2Doc = migrateV1toV2(formData as any);
+            await repo.save(v2Doc, {
+              id,
+              ...normalizedPatch,
+              displayName: normalizedPatch.displayName || formData.metadata?.title || 'Bản thảo bài báo',
+            });
+          }
+        } catch (localErr) {
+          if (!isUuid(id)) throw localErr;
         }
 
         const patchedFields = {
-          displayName: patch.displayName ?? formData.displayName,
-          submissionId: patch.submissionId ?? (formData as any).submissionId,
-          status: (patch.workflowStatus as any) ?? formData.status,
-          workflowStatus: patch.workflowStatus ?? formData.workflowStatus,
-          note: patch.note ?? (formData as any).note,
-          tags: patch.tags ?? (formData as any).tags,
+          displayName: normalizedPatch.displayName ?? formData.displayName,
+          submissionId: normalizedPatch.submissionId ?? (formData as any).submissionId,
+          status: (normalizedPatchStatus as any) ?? formData.status,
+          workflowStatus: normalizedPatchStatus ?? formData.workflowStatus,
+          note: normalizedPatch.note ?? (formData as any).note,
+          tags: normalizedPatch.tags ?? (formData as any).tags,
+          ...(nextVersion !== undefined ? { version: nextVersion, currentServerRev: nextVersion } : {}),
         };
 
         setFormData((prev) => ({
           ...prev,
-          displayName: patch.displayName ?? prev.displayName,
-          submissionId: patch.submissionId ?? (prev as any).submissionId,
-          status: (patch.workflowStatus as any) ?? prev.status,
-          workflowStatus: patch.workflowStatus ?? prev.workflowStatus,
-          note: patch.note ?? (prev as any).note,
-          tags: patch.tags ?? (prev as any).tags,
+          ...patchedFields,
         }));
 
         onQuickEditSynced?.({
@@ -98,10 +128,13 @@ export function useEditorQuickEdit(
           description: 'Thông tin quản lý bài báo đã được cập nhật thành công.',
         });
       } catch (err: any) {
-        sileo.error({
-          title: 'Lỗi cập nhật',
-          description: err?.message || 'Không thể cập nhật thông tin bài báo.',
-        });
+        if (!(err instanceof ProblemDetailsError) && !err?.isAxiosError) {
+          sileo.error({
+            title: 'Lỗi cập nhật',
+            description: err?.message || 'Không thể cập nhật thông tin bài báo.',
+            error: err,
+          });
+        }
         throw err;
       }
     },

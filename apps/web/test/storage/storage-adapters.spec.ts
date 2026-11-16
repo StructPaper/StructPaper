@@ -114,6 +114,8 @@ describe('Storage Layer Architecture (Composite + Null Object Pattern)', () => {
       const paper: CompletePaper = {
         id: validUuid,
         displayName: 'Existing Study',
+        status: 'in-review',
+        workflowStatus: 'in-review',
         metadata: { title: 'Existing Study' } as any,
         sections: [],
         references: [],
@@ -123,7 +125,7 @@ describe('Storage Layer Architecture (Composite + Null Object Pattern)', () => {
       const res = await server.savePaper(paper);
       expect(manuscriptApi.update).toHaveBeenCalledWith(
         validUuid,
-        expect.objectContaining({ title: 'Existing Study' }),
+        expect.objectContaining({ title: 'Existing Study', status: 'IN_REVIEW' }),
         { 'If-Match': '"1"' }
       );
       expect(res.id).toBe(validUuid);

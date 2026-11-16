@@ -16,6 +16,7 @@ import {
 import { usePlatform } from '@structpaper/platform';
 import {
   getWorkflowStatusConfig,
+  normalizeWorkflowStatus,
   type WorkflowStatus,
 } from '@/features/papers';
 
@@ -145,7 +146,7 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
   };
 
   const currentStatusTheme =
-    WORKFLOW_STATUS_THEMES[workflowStatus as WorkflowStatus] || WORKFLOW_STATUS_THEMES.draft;
+    WORKFLOW_STATUS_THEMES[normalizeWorkflowStatus(workflowStatus)] || WORKFLOW_STATUS_THEMES.draft;
 
   const springTransition = isTest
     ? { duration: 0 }

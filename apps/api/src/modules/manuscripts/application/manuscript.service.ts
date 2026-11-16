@@ -611,10 +611,13 @@ export class ManuscriptService {
     const VALID_TRANSITIONS: Record<ManuscriptStatus, ManuscriptStatus[]> = {
       DRAFT: ['SUBMITTED'],
       SUBMITTED: ['IN_REVIEW', 'REJECTED', 'DRAFT'],
-      IN_REVIEW: ['ACCEPTED', 'REJECTED', 'DRAFT'],
-      ACCEPTED: ['PUBLISHED', 'DRAFT'],
+      IN_REVIEW: ['PROOFING', 'READY', 'ACCEPTED', 'REJECTED', 'DRAFT'],
+      PROOFING: ['READY', 'PUBLISHED', 'IN_REVIEW', 'DRAFT'],
+      READY: ['PUBLISHED', 'PROOFING', 'DRAFT'],
+      ACCEPTED: ['READY', 'PUBLISHED', 'DRAFT'],
       REJECTED: ['DRAFT'],
-      PUBLISHED: ['DRAFT'],
+      PUBLISHED: ['DRAFT', 'ARCHIVED'],
+      ARCHIVED: ['DRAFT'],
     };
 
     const allowedNextStatuses = VALID_TRANSITIONS[currentStatus] || [];

@@ -58,11 +58,20 @@ export const WORKFLOW_STATUS_CONFIG: Record<WorkflowStatus, WorkflowStatusConfig
   },
 };
 
-export function getWorkflowStatusConfig(status?: string): WorkflowStatusConfig {
-  if (status && status in WORKFLOW_STATUS_CONFIG) {
-    return WORKFLOW_STATUS_CONFIG[status as WorkflowStatus];
-  }
-  return WORKFLOW_STATUS_CONFIG.draft;
+export function normalizeWorkflowStatus(status?: string | null): WorkflowStatus {
+  if (!status) return 'draft';
+  const clean = status.trim().toLowerCase().replace(/_/g, '-');
+  if (clean === 'submitted' || clean === 'under-review' || clean === 'in-review') return 'in-review';
+  if (clean === 'proofing') return 'proofing';
+  if (clean === 'ready' || clean === 'accepted') return 'ready';
+  if (clean === 'published') return 'published';
+  if (clean in WORKFLOW_STATUS_CONFIG) return clean as WorkflowStatus;
+  return 'draft';
+}
+
+export function getWorkflowStatusConfig(status?: string | null): WorkflowStatusConfig {
+  const normalized = normalizeWorkflowStatus(status);
+  return WORKFLOW_STATUS_CONFIG[normalized] || WORKFLOW_STATUS_CONFIG.draft;
 }
 
 export const JOURNAL_COLOR_MAP: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { defaultDatabase, IndexedDbManuscriptRepo, IndexedDbAssetRepo } from '@structpaper/storage';
 import { migrateV1toV2, adaptV2toV1, computeSha256 } from '@structpaper/doc-model';
+import { normalizeWorkflowStatus } from '@/features/papers/components/types';
 import type { CompletePaper } from '@/types/paper';
 
 /**
@@ -48,10 +49,11 @@ export async function savePaperToIndexedDb(paper: CompletePaper): Promise<boolea
         paper.metadata?.title ||
         paper.metadata?.titleEn ||
         'Bản thảo bài báo',
-      workflowStatus:
-        (paper.status as any) ||
-        existingRecord?.info?.workflowStatus ||
-        'draft',
+      workflowStatus: normalizeWorkflowStatus(
+        (paper as any).workflowStatus ||
+          paper.status ||
+          existingRecord?.info?.workflowStatus
+      ),
       submissionId:
         (paper as any).submissionId || existingRecord?.info?.submissionId,
       note: (paper as any).note || existingRecord?.info?.note,
@@ -85,7 +87,9 @@ export async function loadPaperFromIndexedDb(id: string): Promise<CompletePaper 
     if (!v1.id) v1.id = record.info.id;
     (v1 as any).displayName = record.info.displayName;
     (v1 as any).submissionId = record.info.submissionId;
-    (v1 as any).workflowStatus = record.info.workflowStatus;
+    const normalizedStatus = normalizeWorkflowStatus(record.info.workflowStatus || (v1 as any).status);
+    (v1 as any).workflowStatus = normalizedStatus;
+    v1.status = normalizedStatus as any;
     (v1 as any).tags = record.info.tags;
     (v1 as any).note = record.info.note;
     if (record.info.displayName && v1.metadata && !v1.metadata.title) {

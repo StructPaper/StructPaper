@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGetManuscript, isMockModeEnabled, type Manuscript } from '@structpaper/api-client';
 import { loadPaperFromIndexedDb, savePaperToIndexedDb } from '@/lib/storage/paper-sync';
+import { normalizeWorkflowStatus } from '../components/types';
 import type { CompletePaper } from '@/types/paper';
 
 export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
@@ -46,7 +47,9 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
     layoutSettings: doc?.layoutSettings || rawMeta?.layoutSettings,
     templateId: doc?.templateId || rawMeta?.templateId || 'vnu-jst',
     templateName: doc?.templateName || rawMeta?.templateName,
-    status: (ms.status?.toLowerCase() as any) || 'draft',
+    status: normalizeWorkflowStatus(ms.status || (ms as any).workflowStatus),
+    workflowStatus: normalizeWorkflowStatus(ms.status || (ms as any).workflowStatus),
+    version: (ms as any).version ?? 1,
     createdAt: ms.createdAt,
     updatedAt: ms.updatedAt,
   };
@@ -124,6 +127,8 @@ export function useLoadPaper(paperId?: string | null): UseLoadPaperReturn {
           abstract: serverData.abstract || localPaper.metadata.abstract,
           journalId: serverData.journalId || localPaper.metadata.journalId,
         },
+        status: normalizeWorkflowStatus(serverData.status || (localPaper as any).workflowStatus || localPaper.status),
+        workflowStatus: normalizeWorkflowStatus(serverData.status || (localPaper as any).workflowStatus || localPaper.status),
         version: (serverData as any).version || (localPaper as any).version,
         updatedAt: serverData.updatedAt || localPaper.updatedAt,
       };

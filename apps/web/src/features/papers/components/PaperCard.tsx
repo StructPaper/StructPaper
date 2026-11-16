@@ -59,7 +59,9 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const authors = getManuscriptAuthors(paper);
   const journalColor = getJournalColor(doc.journalId, paper);
   const journalShort = getJournalShortName(doc.journalId, paper);
-  const statusConfig = getWorkflowStatusConfig(info.workflowStatus);
+  const statusConfig = getWorkflowStatusConfig(
+    info.workflowStatus || (paper as any).status || (paper as any).remoteData?.status
+  );
   const syncBadgeConfig = getSyncBadgeConfig(paper);
   const relativeTime = formatRelativeTime(info.lastOpenedAt || info.updatedAt);
 

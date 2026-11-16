@@ -24,11 +24,16 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
       const version = (paper as any).version;
       const forceSave = Boolean((paper as any).forceSave);
       const headers = !forceSave && version !== undefined ? { 'If-Match': `"${version}"` } : undefined;
+      const rawStatus = (paper as any).workflowStatus || paper.status;
+      const apiStatus = rawStatus
+        ? (String(rawStatus).trim().toUpperCase().replace(/-/g, '_') as any)
+        : undefined;
       const updated = await manuscriptApi.update(
         paper.id,
         {
           title,
           abstract,
+          ...(apiStatus ? { status: apiStatus } : {}),
           metadata,
         },
         headers
@@ -121,7 +126,7 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
       try {
         await manuscriptApi.update(id, {
           title: patch.displayName,
-          status: patch.workflowStatus,
+          status: patch.workflowStatus ? (patch.workflowStatus.toUpperCase().replace(/-/g, '_') as any) : undefined,
           metadata: {
             displayName: patch.displayName,
             submissionId: patch.submissionId,
