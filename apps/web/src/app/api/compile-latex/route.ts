@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { compileApi } from '@structpaper/api-client';
 
 /**
  * Minimal valid 1-page PDF buffer fallback so PDF viewer / preview never breaks.
@@ -51,47 +50,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Forward compilation request to NestJS Backend via compileApi (/api/proxy/api/v1/compile/latex)
+    // 1. Forward compilation request to NestJS Backend via direct fetch
     try {
+      const backendBaseUrl = (
+        process.env.INTERNAL_API_URL ||
+        process.env.API_SERVER_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        'http://localhost:3001'
+      ).replace(/\/+$/, '');
+
       const compilePayload = {
         tex,
         texContent: tex,
         jobName: jobName || 'article',
-        engine: engine || 'xelatex',
+        engine: engine || 'tectonic',
         autoFontFallback: autoFontFallback !== false,
         images: images || {},
       };
 
-      const backendRes: any = await compileApi.compileLatex(compilePayload, {
-        responseType: 'arraybuffer',
-        timeout: 60000,
+      const backendRes = await fetch(`${backendBaseUrl}/api/v1/compile/latex`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(compilePayload),
       });
 
-      if (backendRes) {
-        let pdfBuffer: Buffer | null = null;
-        if (Buffer.isBuffer(backendRes)) {
-          pdfBuffer = backendRes;
-        } else if (backendRes instanceof ArrayBuffer) {
-          pdfBuffer = Buffer.from(backendRes);
-        } else if (backendRes?.data) {
-          pdfBuffer = Buffer.isBuffer(backendRes.data)
-            ? backendRes.data
-            : Buffer.from(backendRes.data);
-        } else if (typeof backendRes === 'string') {
-          pdfBuffer = Buffer.from(backendRes);
-        }
-
-        if (pdfBuffer && pdfBuffer.length > 0) {
-          return new Response(new Uint8Array(pdfBuffer), {
+      if (backendRes.ok) {
+        const arrayBuf = await backendRes.arrayBuffer();
+        if (arrayBuf && arrayBuf.byteLength > 0) {
+          const engineHeader =
+            backendRes.headers.get('x-compiler-engine') || 'NestJS Compiler Engine (Tectonic)';
+          return new Response(new Uint8Array(arrayBuf), {
             status: 200,
             headers: {
               'Content-Type': 'application/pdf',
               'Content-Disposition': 'inline; filename="article.pdf"',
-              'X-Compiler-Engine': 'NestJS Compiler Engine',
+              'X-Compiler-Engine': engineHeader,
               'X-Compiled-Timestamp': new Date().toISOString(),
             },
           });
         }
+      } else {
+        const errorText = await backendRes.text().catch(() => '');
+        console.warn(`[compile-latex] NestJS Backend returned status ${backendRes.status}:`, errorText);
       }
     } catch (backendErr: any) {
       console.warn('[compile-latex] NestJS Backend proxy failed or unreachable:', backendErr?.message || backendErr);

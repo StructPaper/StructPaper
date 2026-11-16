@@ -102,12 +102,16 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-jwt-refresh-secret-32-chars-minimum!}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@structpaper.org}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-AdminPassword123!}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
     volumes:
       - .:/app
       - /app/node_modules
       - /app/apps/api/node_modules
       - /app/packages/contracts/node_modules
       - /app/packages/db/node_modules
+      - tectonic_cache:/root/.cache/Tectonic
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,6 +135,8 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       S3_BUCKET: ${S3_BUCKET:-structpaper-dev}
       S3_REGION: ${S3_REGION:-us-east-1}
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
     volumes:
       - .:/app
       - /app/node_modules
@@ -170,3 +176,4 @@ services:
 volumes:
   postgres_dev_data:
   minio_dev_data:
+  tectonic_cache:

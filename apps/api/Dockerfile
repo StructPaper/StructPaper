@@ -4,7 +4,12 @@ FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat curl ca-certificates fontconfig freetype
+
+# Install official Tectonic static musl binary for Linux x86_64
+RUN curl -sL https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz | tar -xz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/tectonic
+
 WORKDIR /app
 
 # Stage 1: Development target (Live code mount & Hot Reload)
@@ -29,7 +34,8 @@ RUN pnpm --filter @structpaper/api build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat fontconfig freetype ca-certificates
+COPY --from=base /usr/local/bin/tectonic /usr/local/bin/tectonic
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate

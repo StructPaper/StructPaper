@@ -21,7 +21,10 @@ export interface CompileLatexResult {
 
 @Injectable()
 export class CompileService {
-  private readonly logger = new Logger(CompileService.name);
+  private readonly logger = new Logger(CompileService.name); // Hot-reload verified in Docker container
+  private readonly compileCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+  private static readonly MAX_CACHE_ENTRIES = 50;
+  private static readonly CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
   /**
    * Generates a minimal, specification-compliant 1-page PDF buffer
@@ -59,6 +62,22 @@ startxref
       return {
         pdfBuffer: CompileService.generateFallbackPdf(),
         engine: 'NestJS Compiler Engine',
+      };
+    }
+
+    // 1. In-memory Content Cache
+    const cacheKey = crypto
+      .createHash('sha256')
+      .update(texContent)
+      .update(JSON.stringify(options.images || {}))
+      .digest('hex');
+
+    const cached = this.compileCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CompileService.CACHE_TTL_MS) {
+      this.logger.log(`[Compile] Cache HIT for key ${cacheKey.substring(0, 8)}`);
+      return {
+        pdfBuffer: cached.buffer,
+        engine: 'NestJS Compiler Engine (Cached)',
       };
     }
 
@@ -103,26 +122,58 @@ startxref
         }
       }
 
-      const engine = (options.engine || 'xelatex').toLowerCase();
-      const executable = engine.includes('tectonic') ? 'tectonic' : 'xelatex';
-      const args =
-        executable === 'tectonic'
-          ? [texFileName]
-          : ['-interaction=nonstopmode', '-halt-on-error', texFileName];
+      // 2. Select Compiler Binary (prefer Tectonic)
+      const requestedEngine = (options.engine || 'tectonic').toLowerCase();
+      let executable = 'tectonic';
+      let args = [texFileName];
+
+      if (requestedEngine.includes('xelatex')) {
+        executable = 'xelatex';
+        args = ['-interaction=nonstopmode', '-halt-on-error', texFileName];
+      } else {
+        // Resolve tectonic on Windows host if applicable
+        if (process.platform === 'win32') {
+          const candidates = [
+            path.resolve(process.cwd(), 'bin/tectonic.exe'),
+            path.resolve(process.cwd(), '../../bin/tectonic.exe'),
+            path.resolve(process.cwd(), '../bin/tectonic.exe'),
+          ];
+          for (const cand of candidates) {
+            if (fs.existsSync(cand)) {
+              executable = cand;
+              break;
+            }
+          }
+        }
+      }
+
+      this.logger.log(`[Compile] Executing ${executable} on ${texFileName}...`);
 
       const compileResult = await new Promise<Buffer | null>((resolve) => {
         let childProcess: any;
+        let stdout = '';
+        let stderr = '';
+
         try {
           childProcess = spawn(executable, args, {
             cwd: tempDir,
             timeout: 60000,
             shell: false,
           });
-        } catch {
+        } catch (spawnErr: any) {
+          this.logger.warn(`Failed to spawn compiler '${executable}': ${spawnErr.message}`);
           return resolve(null);
         }
 
-        childProcess.on('error', () => {
+        childProcess.stdout?.on('data', (d: any) => {
+          stdout += d.toString();
+        });
+        childProcess.stderr?.on('data', (d: any) => {
+          stderr += d.toString();
+        });
+
+        childProcess.on('error', (err: any) => {
+          this.logger.warn(`Compiler process error: ${err?.message}`);
           return resolve(null);
         });
 
@@ -134,18 +185,31 @@ startxref
               return resolve(fs.readFileSync(pdfPath));
             }
           }
+          this.logger.warn(
+            `Compiler '${executable}' exited with code ${code}.\nStdout: ${stdout.slice(-500)}\nStderr: ${stderr.slice(-500)}`,
+          );
           return resolve(null);
         });
       });
 
       if (compileResult && compileResult.length > 0) {
+        if (this.compileCache.size >= CompileService.MAX_CACHE_ENTRIES) {
+          const firstKey = this.compileCache.keys().next().value;
+          if (firstKey) this.compileCache.delete(firstKey);
+        }
+        this.compileCache.set(cacheKey, { buffer: compileResult, timestamp: Date.now() });
+
+        this.logger.log(
+          `[Compile] Successfully compiled ${jobName}.pdf (${Math.round(compileResult.length / 1024)} KB)`,
+        );
+
         return {
           pdfBuffer: compileResult,
-          engine: 'NestJS Compiler Engine',
+          engine: 'NestJS Compiler Engine (Tectonic)',
         };
       }
     } catch (err: any) {
-      this.logger.warn(`Host compilation failed: ${err?.message}. Falling back.`);
+      this.logger.warn(`Compilation failed: ${err?.message}. Falling back.`);
     } finally {
       try {
         if (fs.existsSync(tempDir)) {
