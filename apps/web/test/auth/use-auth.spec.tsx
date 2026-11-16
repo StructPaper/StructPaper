@@ -147,7 +147,6 @@ describe('useAuth Hook and Session Hydration (Eatzy Alignment)', () => {
           email: 'expired@vnuhcm.edu.vn',
           displayName: 'Expired Session User',
         },
-        'stale-refresh-token',
       );
     });
 
