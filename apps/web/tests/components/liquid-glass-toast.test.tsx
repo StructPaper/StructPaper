@@ -361,4 +361,57 @@ describe('Liquid Glass Dynamic Island Toast System', () => {
     });
     expect(toastStore.getToasts().length).toBe(0);
   });
+
+  describe('Centralized error code preservation in toast title', () => {
+    it('appends (xxx) status code to warning and error toast titles when status option is provided', () => {
+      act(() => {
+        sileo.warning({
+          title: 'Xung đột phiên bản máy chủ',
+          description: 'Máy chủ đang có bản mới hơn.',
+          status: 412,
+        });
+      });
+
+      const toasts = toastStore.getToasts();
+      expect(toasts[0].title).toBe('Xung đột phiên bản máy chủ (412)');
+    });
+
+    it('extracts status code from error object or Axios-like response', () => {
+      act(() => {
+        toast.error('Lỗi lưu bài báo', 'Chi tiết lỗi', {
+          error: { response: { status: 409 } },
+        });
+      });
+
+      const toasts = toastStore.getToasts();
+      expect(toasts[0].title).toBe('Lỗi lưu bài báo (409)');
+    });
+
+    it('extracts status code from description message (e.g. status code 404)', () => {
+      act(() => {
+        toast.error('Không tìm thấy tài nguyên', 'Request failed with status code 404');
+      });
+
+      const toasts = toastStore.getToasts();
+      expect(toasts[0].title).toBe('Không tìm thấy tài nguyên (404)');
+    });
+
+    it('does not duplicate error code if title already includes it in parentheses', () => {
+      act(() => {
+        toast.error('Lỗi xác thực (401)', 'Phiên làm việc hết hạn', { status: 401 });
+      });
+
+      const toasts = toastStore.getToasts();
+      expect(toasts[0].title).toBe('Lỗi xác thực (401)');
+    });
+
+    it('never appends status code to success toasts', () => {
+      act(() => {
+        toast.success('Cập nhật thành công', 'Hoàn tất', { status: 200 } as any);
+      });
+
+      const toasts = toastStore.getToasts();
+      expect(toasts[0].title).toBe('Cập nhật thành công');
+    });
+  });
 });

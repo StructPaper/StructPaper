@@ -71,6 +71,7 @@ export function useDocumentAutosave({
             sileo.warning({
               title: 'Xung đột phiên bản máy chủ',
               description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
+              status: 412,
             });
           }
         },
