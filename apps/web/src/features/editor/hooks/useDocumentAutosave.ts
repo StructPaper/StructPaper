@@ -67,13 +67,6 @@ export function useDocumentAutosave({
           if ((s === 'saved' || s === 'saved-local') && info?.paper) {
             baseline.current = info.paper;
           }
-          if (s === 'conflict') {
-            sileo.warning({
-              title: 'Xung đột phiên bản máy chủ',
-              description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
-              error: info?.error,
-            });
-          }
         },
       }),
     [sync, debounceMs, isLocalAvailable]
