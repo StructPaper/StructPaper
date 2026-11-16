@@ -1,59 +1,25 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { usePaper } from '@/context/PaperContext';
-import { UnifiedEditorView, usePaperStorage } from '@/features/editor';
-import { CompletePaper } from '@/lib/sample-papers';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-function EditorContent() {
-  const { paper, updatePaper, setPaper, setCurrentJournal } = usePaper();
-  const { loadPaper } = usePaperStorage();
+function EditorRedirect() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const paperId = searchParams.get('id');
-  const [isLoading, setIsLoading] = useState(Boolean(paperId && (!paper || paper.id !== paperId)));
+  const id = searchParams.get('id');
 
   useEffect(() => {
-    if (!paperId) {
-      setIsLoading(false);
-      return;
+    if (id) {
+      router.replace(`/papers/${encodeURIComponent(id)}`);
+    } else {
+      router.replace('/papers');
     }
-
-    let isMounted = true;
-    loadPaper(paperId).then((loaded) => {
-      if (isMounted) {
-        if (loaded) {
-          setPaper(loaded);
-          if (loaded.metadata?.journalId) {
-            setCurrentJournal(loaded.metadata.journalId);
-          }
-        }
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [paperId, loadPaper, setPaper, setCurrentJournal]);
-
-  const handleUpdatePaper = (updated: CompletePaper) => {
-    updatePaper(updated);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex items-center justify-center bg-slate-900 text-white text-sm font-medium">
-        Đang tải bản thảo từ cơ sở dữ liệu...
-      </div>
-    );
-  }
+  }, [id, router]);
 
   return (
-    <UnifiedEditorView
-      paper={paper}
-      onUpdatePaper={handleUpdatePaper}
-    />
+    <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex items-center justify-center bg-slate-900 text-white text-sm font-medium">
+      Đang chuyển tiếp sang trình soạn thảo...
+    </div>
   );
 }
 
@@ -62,11 +28,11 @@ export default function EditorPage() {
     <Suspense
       fallback={
         <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex items-center justify-center bg-slate-900 text-white text-sm font-medium">
-          Đang khởi tạo trình soạn thảo...
+          Đang chuyển tiếp...
         </div>
       }
     >
-      <EditorContent />
+      <EditorRedirect />
     </Suspense>
   );
 }

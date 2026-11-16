@@ -172,7 +172,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
       `Đã tạo bài báo mới theo chuẩn "${managed.profile.names?.short || managed.id.toUpperCase()}"`
     );
 
-    const targetUrl = finalPaper.id ? `/editor?id=${encodeURIComponent(finalPaper.id)}` : '/editor';
+    const targetUrl = finalPaper.id ? `/papers/${encodeURIComponent(finalPaper.id)}` : '/papers';
     onClose();
     router.push(targetUrl);
 
@@ -274,7 +274,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
 
   const openBatchItem = (item: BatchItem) => {
     closeModal();
-    router.push(`/editor?id=${encodeURIComponent(item.paperId || '')}`);
+    router.push(`/papers/${encodeURIComponent(item.paperId || '')}`);
   };
 
   return (

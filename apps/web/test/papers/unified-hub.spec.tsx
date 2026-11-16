@@ -58,16 +58,24 @@ vi.mock('framer-motion', async () => {
 });
 
 import { PaperHubView } from '@/features/papers';
+import { StorageProvider } from '@/context/StorageContext';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
 import { manuscriptApi, setAccessToken } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
 
 describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
   const repo = new IndexedDbManuscriptRepo(defaultDatabase);
+  const renderHub = () =>
+    render(
+      <StorageProvider enableLocal={true}>
+        <PaperHubView />
+      </StorageProvider>
+    );
 
   beforeEach(async () => {
     mockPush.mockClear();
     vi.restoreAllMocks();
+    vi.spyOn(manuscriptApi, 'list').mockResolvedValue({ items: [] } as any);
     setAccessToken(null);
     useAuthStore.getState().clearAuth();
     await defaultDatabase.manuscripts.clear();
@@ -96,7 +104,7 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
       tags: ['VNUHCM-STD'],
     });
 
-    render(<PaperHubView />);
+    renderHub();
 
     // 1. Verify 2-tab switcher is completely gone
     expect(screen.queryByTestId('tab-source-local')).toBeNull();
@@ -147,7 +155,7 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
       workflowStatus: 'draft',
     });
 
-    render(<PaperHubView />);
+    renderHub();
 
     await waitFor(() => {
       expect(screen.getAllByText('Bài Báo Đã Đồng Bộ Cloud').length).toBeGreaterThan(0);
@@ -206,7 +214,7 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
     } as any);
 
     // 4. Render unified hub
-    render(<PaperHubView />);
+    renderHub();
 
     // 5. Wait for background reconciliation to call manuscriptApi.create
     await waitFor(() => {
@@ -271,7 +279,7 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
       } as any,
     ]);
 
-    render(<PaperHubView />);
+    renderHub();
 
     // Both local paper and remote paper must appear in the unified list!
     await waitFor(() => {

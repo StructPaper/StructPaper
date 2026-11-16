@@ -322,7 +322,7 @@ export function usePapersHub() {
             setCurrentJournal(norm);
           }
           toast.success('Đã tải bài báo', 'Đang chuyển sang bộ soạn thảo StructPaper...');
-          router.push(`/editor?id=${encodeURIComponent(id)}`);
+          router.push(`/papers/${encodeURIComponent(id)}`);
           return;
         } catch (err) {
           console.warn('[usePapersHub] manuscriptToCompletePaper failed:', err);
@@ -369,7 +369,7 @@ export function usePapersHub() {
     }
 
     toast.success('Đã tải bài báo', 'Đang chuyển sang bộ soạn thảo StructPaper...');
-    router.push(`/editor?id=${encodeURIComponent(id)}`);
+    router.push(`/papers/${encodeURIComponent(id)}`);
   }, [records, setPaper, setCurrentJournal, router]);
 
   const handleTogglePin = useCallback(async (id: string, currentPinned: boolean) => {

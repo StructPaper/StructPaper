@@ -57,7 +57,8 @@ function PreviewContent() {
   });
 
   const handleBackToEditor = () => {
-    const destination = paperId ? `/editor?id=${paperId}` : (paper.id ? `/editor?id=${paper.id}` : '/editor');
+    const id = paperId || paper?.id;
+    const destination = id ? `/papers/${encodeURIComponent(id)}` : '/papers';
     router.push(destination);
   };
 

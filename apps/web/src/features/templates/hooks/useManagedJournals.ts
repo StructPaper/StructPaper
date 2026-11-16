@@ -124,7 +124,8 @@ export function useManagedJournals() {
           'Đã khởi tạo bản thảo',
           `Đã tạo bài báo mới theo chuẩn mẫu "${managed.profile.names?.short || managed.id.toUpperCase()}"`
         );
-        router.push('/editor');
+        const target = emptyPaper.id ? `/papers/${encodeURIComponent(emptyPaper.id)}` : '/papers';
+        router.push(target);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Lỗi không xác định';
         toast.error('Không thể tạo bài báo', msg);
@@ -145,7 +146,8 @@ export function useManagedJournals() {
           console.warn('Failed to background persist test paper:', err);
         });
         toast.success('Đã tạo bài báo', 'Đang chuyển đến trang soạn thảo...');
-        router.push('/editor');
+        const target = newPaper.id ? `/papers/${encodeURIComponent(newPaper.id)}` : '/papers';
+        router.push(target);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Không thể tạo bài báo';
         toast.error('Lỗi', msg);

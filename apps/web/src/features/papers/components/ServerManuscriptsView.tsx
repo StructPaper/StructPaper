@@ -115,7 +115,7 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
     if (onOpenManuscript) {
       onOpenManuscript(id);
     } else {
-      router.push(`/editor?id=${id}`);
+      router.push(`/papers/${encodeURIComponent(id)}`);
     }
   };
 

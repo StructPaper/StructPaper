@@ -12,7 +12,10 @@ export default function ExtractedPage() {
   return (
     <ExtractedContentView
       paper={paper}
-      onGoToEditor={() => router.push('/editor')}
+      onGoToEditor={() => {
+        const target = paper?.id ? `/papers/${encodeURIComponent(paper.id)}` : '/papers';
+        router.push(target);
+      }}
       onGoToPreview={() => router.push('/preview')}
     />
   );

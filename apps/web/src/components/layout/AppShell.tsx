@@ -29,8 +29,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const isEditorPage =
     pathname === '/editor' ||
     pathname.startsWith('/editor/') ||
-    pathname === '/papers/editor' ||
-    pathname.startsWith('/papers/editor/');
+    (pathname.startsWith('/papers/') && pathname !== '/papers');
   const isBuilderPage = pathname === '/templates/builder' || pathname.startsWith('/templates/builder/');
   const isJournalEditorPage = pathname.startsWith('/templates/journal/');
   const isLoginPage = pathname === '/login' || pathname.startsWith('/login');

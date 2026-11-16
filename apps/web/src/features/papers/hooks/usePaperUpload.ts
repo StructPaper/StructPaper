@@ -22,7 +22,8 @@ export function usePaperUpload() {
         savePaper(newPaper).catch((err) => {
           console.warn('[usePaperUpload] Background save warning:', err);
         });
-        router.push('/editor');
+        const target = newPaper.id ? `/papers/${encodeURIComponent(newPaper.id)}` : '/papers';
+        router.push(target);
       } catch (err: any) {
         const errObj = err instanceof Error ? err : new Error(String(err));
         setError(errObj);

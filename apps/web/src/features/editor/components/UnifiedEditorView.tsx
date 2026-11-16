@@ -252,7 +252,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       setPaper(loaded);
       if (loaded.metadata?.journalId) setCurrentJournal(loaded.metadata.journalId);
       setIsOpenDialog(false);
-      router.replace(`/editor?id=${encodeURIComponent(loaded.id)}`);
+      router.replace(`/papers/${encodeURIComponent(loaded.id)}`);
     },
     [flush, loadPaper, sync, savePaper, setPaper, setCurrentJournal, router]
   );
