@@ -1,10 +1,15 @@
+'use client';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGetManuscript, isMockModeEnabled, type Manuscript } from '@structpaper/api-client';
 import { loadPaperFromIndexedDb, savePaperToIndexedDb } from '@/lib/storage/paper-sync';
 import type { CompletePaper } from '@/types/paper';
 
 export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
-  const meta = (ms.metadata || {}) as any;
+  const rawMeta = (ms.metadata || {}) as any;
+  const doc = rawMeta?.doc || rawMeta;
+  const meta = doc?.metadata || rawMeta;
+
   return {
     id: ms.id,
     displayName: ms.title,
@@ -12,7 +17,7 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
       title: ms.title,
       titleEn: meta.titleEn,
       articleType: meta.articleType || 'Bài báo nghiên cứu',
-      journalId: ms.journalId || 'vnu-jst',
+      journalId: ms.journalId || meta.journalId || 'vnu-jst',
       journalName: meta.journalName || 'Tạp chí Khoa học ĐHQGHN',
       journalAbbv: meta.journalAbbv || 'VNU J. Sci.',
       authors: meta.authors || [],
@@ -36,11 +41,11 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
       lastPage: meta.lastPage || 10,
       ...meta,
     },
-    sections: meta.sections || [],
-    references: meta.references || [],
-    layoutSettings: meta.layoutSettings,
-    templateId: meta.templateId || 'vnu-jst',
-    templateName: meta.templateName,
+    sections: doc?.sections || rawMeta?.sections || [],
+    references: doc?.references || rawMeta?.references || [],
+    layoutSettings: doc?.layoutSettings || rawMeta?.layoutSettings,
+    templateId: doc?.templateId || rawMeta?.templateId || 'vnu-jst',
+    templateName: doc?.templateName || rawMeta?.templateName,
     status: (ms.status?.toLowerCase() as any) || 'draft',
     createdAt: ms.createdAt,
     updatedAt: ms.updatedAt,

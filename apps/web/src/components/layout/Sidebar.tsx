@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
+import { authApi } from '@structpaper/api-client';
 
 const NAV_ITEMS = [
   {
@@ -209,10 +210,13 @@ export const Sidebar: React.FC = () => {
     return pathname === path;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (typeof window !== 'undefined') {
       const confirmLogout = window.confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?');
       if (confirmLogout) {
+        try {
+          await authApi.logout();
+        } catch {}
         logout();
       }
     }

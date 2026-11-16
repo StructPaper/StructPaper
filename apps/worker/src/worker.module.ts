@@ -79,8 +79,8 @@ export class WorkerModule implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject('PG_BOSS') private readonly boss: PgBoss,
-    private readonly compileProcessor: LatexCompileProcessor,
-    private readonly outboxProcessor: OutboxDispatcherProcessor,
+    @Inject(LatexCompileProcessor) private readonly compileProcessor: LatexCompileProcessor,
+    @Inject(OutboxDispatcherProcessor) private readonly outboxProcessor: OutboxDispatcherProcessor,
   ) {}
 
   public async onModuleInit(): Promise<void> {

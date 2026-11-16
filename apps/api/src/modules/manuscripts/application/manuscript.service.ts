@@ -12,6 +12,7 @@ import {
   manuscripts,
   manuscriptMembers,
   manuscriptDocs,
+  journals,
   outboxEvents,
   eq,
   and,
@@ -66,17 +67,40 @@ export class ManuscriptService {
     const now = new Date();
 
     let journalId = dto.journalId;
-    if (!journalId && this.db?.query?.journals?.findFirst) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(journalId || '');
+    if (journalId && !isUuid && this.db) {
       try {
-        const defaultJournal = await this.db.query.journals.findFirst();
-        if (defaultJournal?.id) {
-          journalId = defaultJournal.id;
+        const clean = journalId.toLowerCase().replace(/_/g, '-');
+        const shortClean = clean.replace(/^vnuhcm-/, '');
+        if (this.db.query?.journals?.findFirst) {
+          const found = await this.db.query.journals.findFirst({
+            where: or(
+              eq(journals.slug, clean),
+              eq(journals.slug, `vnuhcm-${shortClean}`),
+            ),
+          });
+          if (found?.id) {
+            journalId = found.id;
+          }
         }
       } catch {
-        // Fallback gracefully
+        // Fallback
       }
     }
-    if (!journalId) {
+
+    if (!journalId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(journalId)) {
+      if (this.db?.query?.journals?.findFirst) {
+        try {
+          const defaultJournal = await this.db.query.journals.findFirst();
+          if (defaultJournal?.id) {
+            journalId = defaultJournal.id;
+          }
+        } catch {
+          // Fallback gracefully
+        }
+      }
+    }
+    if (!journalId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(journalId)) {
       journalId = '00000000-0000-0000-0000-000000000000';
     }
 
@@ -280,17 +304,44 @@ export class ManuscriptService {
     const countResult = await countQuery;
     const total = Number(countResult?.[0]?.count ?? 0);
 
-    // Execute items query with sorting and pagination directly in SQL
-    let itemsQuery = this.db.select().from(manuscripts);
+    // Execute items query with sorting and pagination directly in SQL, joining journals
+    let itemsQuery = this.db
+      .select({
+        manuscript: manuscripts,
+        journal: journals,
+      })
+      .from(manuscripts)
+      .leftJoin(journals, eq(manuscripts.journalId, journals.id));
+
     if (combinedWhere) {
-      itemsQuery = itemsQuery.where(combinedWhere);
+      itemsQuery = itemsQuery.where(combinedWhere) as any;
     }
-    itemsQuery = itemsQuery.orderBy(...orderByClauses).limit(limit);
+    itemsQuery = itemsQuery.orderBy(...orderByClauses).limit(limit) as any;
     if (!query.cursor && offset > 0) {
-      itemsQuery = itemsQuery.offset(offset);
+      itemsQuery = itemsQuery.offset(offset) as any;
     }
 
-    const items = (await itemsQuery) || [];
+    const rows = (await itemsQuery) || [];
+    const items = rows.map((r: any) => {
+      const ms = r.manuscript || r;
+      const j = r.journal;
+      const settings = j?.settings || {};
+      const journalDto = j
+        ? {
+            id: j.id,
+            slug: j.slug,
+            code: settings.code || (j.slug ? `VNUHCM-${j.slug.replace(/^vnuhcm-/, '').toUpperCase()}` : 'VNUHCM-STD'),
+            name: j.name,
+            shortName: settings.shortName || (j.slug ? j.slug.replace(/^vnuhcm-/, '').toUpperCase() : 'STD'),
+            color: settings.color || '#000099',
+          }
+        : undefined;
+
+      return {
+        ...ms,
+        journal: journalDto,
+      };
+    });
 
     // Compute next cursor
     let nextCursor: string | undefined;
@@ -666,15 +717,44 @@ export class ManuscriptService {
   private async findManuscriptById(id: string): Promise<any> {
     if (!this.db) return null;
 
+    if (this.db.select) {
+      const rows = await this.db
+        .select({
+          manuscript: manuscripts,
+          journal: journals,
+        })
+        .from(manuscripts)
+        .leftJoin(journals, eq(manuscripts.journalId, journals.id))
+        .where(eq(manuscripts.id, id))
+        .limit(1);
+
+      if (rows && rows.length > 0) {
+        const ms = rows[0].manuscript;
+        const j = rows[0].journal;
+        const settings = j?.settings || {};
+        const journalDto = j
+          ? {
+              id: j.id,
+              slug: j.slug,
+              code: settings.code || (j.slug ? `VNUHCM-${j.slug.replace(/^vnuhcm-/, '').toUpperCase()}` : 'VNUHCM-STD'),
+              name: j.name,
+              shortName: settings.shortName || (j.slug ? j.slug.replace(/^vnuhcm-/, '').toUpperCase() : 'STD'),
+              color: settings.color || '#000099',
+            }
+          : undefined;
+
+        return {
+          ...ms,
+          journal: journalDto,
+        };
+      }
+      return null;
+    }
+
     if (this.db.query?.manuscripts?.findFirst) {
       return this.db.query.manuscripts.findFirst({
         where: eq(manuscripts.id, id),
       });
-    }
-
-    if (this.db.select) {
-      const rows = await this.db.select().from(manuscripts).where(eq(manuscripts.id, id)).limit(1);
-      return rows[0] || null;
     }
 
     return null;

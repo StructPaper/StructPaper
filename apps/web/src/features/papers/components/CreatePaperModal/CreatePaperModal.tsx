@@ -14,6 +14,8 @@ import { toBatchJournal } from '@/lib/batch-import/journals';
 import { useBatchImport } from '../../hooks/useBatchImport';
 import { summarize } from '@/lib/batch-import/summary';
 import type { BatchItem } from '@/lib/batch-import/types';
+import { manuscriptApi } from '@structpaper/api-client';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { usePaper } from '@/context/PaperContext';
@@ -145,11 +147,31 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
 
   const executeSaveAndRedirect = async (finalPaper: CompletePaper, managed: ManagedJournalProfile) => {
     const journalCode = `VNUHCM-${managed.id.toUpperCase()}`;
-    setPaper(finalPaper);
     setCurrentJournal(journalCode);
 
     try {
-      await savePaper(finalPaper);
+      if (!isLocalStorageEnabled()) {
+        const title = finalPaper.metadata?.title?.trim() || finalPaper.displayName || 'Bản thảo bài báo';
+        const created = await manuscriptApi.create({
+          title,
+          journalId: journalCode,
+          metadata: {
+            ...finalPaper.metadata,
+            sections: finalPaper.sections || [],
+            references: finalPaper.references || [],
+            layoutSettings: finalPaper.layoutSettings,
+            templateId: finalPaper.templateId,
+          },
+          abstract: finalPaper.metadata?.abstract || null,
+        });
+
+        if (created?.id) {
+          finalPaper.id = created.id;
+          (finalPaper as any).version = created.version ?? 1;
+        }
+      } else {
+        await savePaper(finalPaper);
+      }
       setPaper({ ...finalPaper });
     } catch (saveErr) {
       console.warn('Background save error:', saveErr);
@@ -169,12 +191,13 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
       `Đã tạo bài báo mới theo chuẩn "${managed.profile.names?.short || managed.id.toUpperCase()}"`
     );
 
+    const targetUrl = finalPaper.id ? `/editor?id=${encodeURIComponent(finalPaper.id)}` : '/editor';
+    onClose();
+    router.push(targetUrl);
+
     if (onPaperCreated) {
       onPaperCreated(finalPaper);
     }
-
-    onClose();
-    router.push('/editor');
   };
 
   // Finalize paper creation with chosen template

@@ -69,11 +69,20 @@ export default function LoginPage() {
     }
   }, []);
 
+  const handleQuickFillAdmin = () => {
+    setEmail('admin@structpaper.org');
+    setPassword('AdminPassword123!');
+    setErrorMessage(null);
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMessage(null);
 
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMessage('Vui lòng nhập đầy đủ email và mật khẩu.');
       return;
     }
@@ -81,20 +90,19 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res: any = await http.post('/api/v1/auth/login', {
-        email: email.trim().toLowerCase(),
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       const token = res?.accessToken || res?.access_token || res?.data?.accessToken;
-      const refreshToken = res?.refreshToken || res?.refresh_token || res?.data?.refreshToken;
       const user = res?.user || res?.data?.user;
 
       if (!token || !user) {
         throw new Error('Dữ liệu phản hồi xác thực không hợp lệ');
       }
 
-      // Store in memory and auth state
-      setLogin(token, user, refreshToken);
+      // Store in memory and auth state (matching Eatzy)
+      setLogin(token, user);
 
       // Clean session expired warning
       if (typeof window !== 'undefined') {
@@ -150,7 +158,19 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Form starts directly without dev helpers */}
+      {/* Quick Fill Dev Helper */}
+      <div className="flex items-center justify-between pb-1">
+        <span className="text-xs text-zinc-500 font-medium">Tài khoản quản trị:</span>
+        <button
+          type="button"
+          onClick={handleQuickFillAdmin}
+          className="text-xs font-bold text-[#14532D] bg-[#D9F99D] hover:bg-[#bef264] px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+        >
+          ⚡ Điền nhanh Admin
+        </button>
+      </div>
+
+      {/* Form starts directly */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Capsule Input */}
         <div className="space-y-1.5">

@@ -7,6 +7,7 @@ import { BottomNav } from './BottomNav';
 import { useAuthStore } from '@/lib/auth-store';
 import { useAuth } from '@/features/auth';
 import { isMockModeEnabled } from '@structpaper/api-client';
+import { forceUnlockBodyScroll } from '@/components/modals/ModalPortal';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -18,6 +19,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   // Automatic session hydration on mount across all pages
   useAuth();
+
+  // Route change: ensure body scroll is never trapped by any unmounted modal
+  useEffect(() => {
+    forceUnlockBodyScroll();
+  }, [pathname]);
 
   // The editor, authoring editor, template builder, and journal template editor are secondary/focused steps, so the main sidebar is hidden
   const isEditorPage =
@@ -34,15 +40,35 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     if (isLoginPage) return;
 
     const checkAuth = () => {
-      const { isAuthenticated, token } = useAuthStore.getState();
-      if (!isAuthenticated && !token && !isMockModeEnabled()) {
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      try {
+        const { isAuthenticated, user } = useAuthStore.getState();
+        let hasAuth = Boolean(isAuthenticated || user);
+
+        if (!hasAuth && typeof window !== 'undefined') {
+          const raw = window.localStorage.getItem('structpaper_auth_storage');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.state?.user) {
+              hasAuth = true;
+            }
+          }
+        }
+
+        if (!hasAuth && !isMockModeEnabled()) {
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        }
+      } catch {
+        if (!isMockModeEnabled()) {
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        }
       }
     };
 
+    checkAuth();
+
     if (useAuthStore.persist?.hasHydrated?.()) {
       checkAuth();
-    } else {
+    } else if (useAuthStore.persist?.onFinishHydration) {
       const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
         checkAuth();
       });

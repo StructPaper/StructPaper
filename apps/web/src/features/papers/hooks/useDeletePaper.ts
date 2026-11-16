@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDeleteManuscript, isMockModeEnabled } from '@structpaper/api-client';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { sileo } from '@/components/toast';
 
 export interface UseDeletePaperOptions {
@@ -18,12 +19,14 @@ export function useDeletePaper(options: UseDeletePaperOptions = {}) {
 
   const deletePaper = useCallback(
     async (id: string): Promise<boolean> => {
-      // 1. Delete from local IndexedDB repository if present
-      try {
-        const repo = new IndexedDbManuscriptRepo(defaultDatabase);
-        await repo.delete(id);
-      } catch (localErr) {
-        console.warn('[useDeletePaper] Local delete error:', localErr);
+      // 1. Delete from local IndexedDB repository only if local storage is enabled
+      if (isLocalStorageEnabled()) {
+        try {
+          const repo = new IndexedDbManuscriptRepo(defaultDatabase);
+          await repo.delete(id);
+        } catch (localErr) {
+          console.warn('[useDeletePaper] Local delete error:', localErr);
+        }
       }
 
       // 2. If in Mock Mode, finish after local deletion

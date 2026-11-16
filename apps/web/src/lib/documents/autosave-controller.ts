@@ -1,6 +1,7 @@
 import type { CompletePaper } from '@/types/paper';
 import { ApiError } from './document-api';
 import type { DocumentSync } from './document-sync';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 
 /**
  * Auto-save state machine (framework-free so it is unit-testable).
@@ -158,7 +159,13 @@ export class AutosaveController {
       return;
     }
     if (!localOk) {
-      this.emit('error', { error: new Error('Không thể lưu cục bộ') });
+      this.emit('error', { error: new Error('Không thể lưu bản thảo') });
+      return;
+    }
+
+    if (!isLocalStorageEnabled()) {
+      // Server-Only Mode: saveLocal already persisted directly to the server API
+      this.emit('saved', { savedAt: Date.now(), paper });
       return;
     }
 

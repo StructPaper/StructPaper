@@ -24,6 +24,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -55,8 +56,8 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const { info, doc } = paper;
   const title = getManuscriptTitle(paper);
   const authors = getManuscriptAuthors(paper);
-  const journalColor = getJournalColor(doc.journalId);
-  const journalShort = getJournalShortName(doc.journalId);
+  const journalColor = getJournalColor(doc.journalId, paper);
+  const journalShort = getJournalShortName(doc.journalId, paper);
   const statusConfig = getWorkflowStatusConfig(info.workflowStatus);
   const syncBadgeConfig = getSyncBadgeConfig(paper);
   const relativeTime = formatRelativeTime(info.lastOpenedAt || info.updatedAt);
@@ -107,13 +108,15 @@ export const PaperCard: React.FC<PaperCardProps> = ({
               </span>
             )}
 
-            {/* Sync Status Badge */}
-            <span
-              data-testid={`sync-badge-${info.id}`}
-              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
-            >
-              {syncBadgeConfig.label}
-            </span>
+            {/* Sync Status Badge (only when local storage is active and not synced) */}
+            {isLocalStorageEnabled() && paper.syncState !== 'synced' && (
+              <span
+                data-testid={`sync-badge-${info.id}`}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
+              >
+                {syncBadgeConfig.label}
+              </span>
+            )}
 
             <span
               className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${statusConfig.chipBg} ${statusConfig.chipText}`}

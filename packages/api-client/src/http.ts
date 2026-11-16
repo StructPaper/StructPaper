@@ -160,9 +160,11 @@ http.interceptors.response.use(
 
     // 401 Unauthorized handling & Token Refresh Queue
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      // Prevent infinite loops if the refresh endpoint itself returns 401
-      if (originalRequest.url?.includes('/auth/refresh')) {
-        onRefreshFailed(error);
+      // Do not attempt token refresh for login or refresh requests themselves
+      if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/login')) {
+        if (originalRequest.url?.includes('/auth/refresh')) {
+          onRefreshFailed(error);
+        }
         return Promise.reject(error);
       }
 

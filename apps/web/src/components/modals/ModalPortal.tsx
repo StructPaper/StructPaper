@@ -14,6 +14,33 @@ interface ModalPortalProps {
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
+// Global reference-counted scroll lock manager
+let scrollLockCount = 0;
+let originalBodyOverflow = '';
+
+export function lockBodyScroll() {
+  if (typeof document === 'undefined') return;
+  if (scrollLockCount === 0) {
+    originalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  scrollLockCount++;
+}
+
+export function unlockBodyScroll() {
+  if (typeof document === 'undefined') return;
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0) {
+    document.body.style.overflow = originalBodyOverflow || '';
+  }
+}
+
+export function forceUnlockBodyScroll() {
+  if (typeof document === 'undefined') return;
+  scrollLockCount = 0;
+  document.body.style.overflow = '';
+}
+
 export const ModalPortal: React.FC<ModalPortalProps> = ({
   isOpen,
   onClose,
@@ -31,8 +58,7 @@ export const ModalPortal: React.FC<ModalPortalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -42,7 +68,7 @@ export const ModalPortal: React.FC<ModalPortalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      unlockBodyScroll();
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);

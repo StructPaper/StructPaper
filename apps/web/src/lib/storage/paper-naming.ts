@@ -1,5 +1,6 @@
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 
 /**
  * Extracts a normalized, readable title from a Manuscript doc or returns empty string.
@@ -106,7 +107,7 @@ export async function checkPaperTitleDuplicate(
   excludeId?: string
 ): Promise<{ count: number; uniqueTitle: string }> {
   try {
-    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined' || !isLocalStorageEnabled()) {
       return { count: 0, uniqueTitle: targetTitle.trim() || 'Bản thảo bài báo' };
     }
     const repo = new IndexedDbManuscriptRepo(defaultDatabase);
@@ -130,7 +131,7 @@ export async function validateDisplayNameUniqueness(
   targetDisplayName: string
 ): Promise<{ isDuplicate: boolean; duplicateSubmissionId?: string }> {
   try {
-    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined' || !isLocalStorageEnabled()) {
       return { isDuplicate: false };
     }
     const repo = new IndexedDbManuscriptRepo(defaultDatabase);

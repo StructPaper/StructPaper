@@ -107,6 +107,9 @@ export class DocumentSync {
       baseRev: opts.force ? undefined : this.revs.get(paper.id),
       snapshot: opts.snapshot,
     });
+    if (result.id && result.id !== paper.id) {
+      paper.id = result.id;
+    }
     this.revs.set(paper.id, result.rev);
     return result;
   }

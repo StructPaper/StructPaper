@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Cloud, HardDrive, FileText, Loader2, Search, X } from 'lucide-react';
 import { ModalPortal } from '@/components/modals/ModalPortal';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { DocumentApi } from '@/lib/documents/document-api';
 
 export interface OpenListItem {
@@ -55,20 +56,22 @@ export const OpenDocumentDialog: React.FC<Props> = ({ isOpen, onClose, onOpen, a
     setCloudError(false);
     (async () => {
       let local: Parameters<typeof mergeDocumentLists>[0] = [];
-      try {
-        const repo = new IndexedDbManuscriptRepo(defaultDatabase);
-        const recs = await repo.listRecords();
-        local = recs
-          .filter((r) => !r.info.archived)
-          .map((r) => ({
-            id: r.info.id,
-            name: r.info.displayName,
-            journalId: r.doc?.journalId,
-            status: r.info.workflowStatus,
-            updatedAt: r.info.updatedAt,
-          }));
-      } catch {
-        /* IndexedDB unavailable: continue with cloud only */
+      if (isLocalStorageEnabled()) {
+        try {
+          const repo = new IndexedDbManuscriptRepo(defaultDatabase);
+          const recs = await repo.listRecords();
+          local = recs
+            .filter((r) => !r.info.archived)
+            .map((r) => ({
+              id: r.info.id,
+              name: r.info.displayName,
+              journalId: r.doc?.journalId,
+              status: r.info.workflowStatus,
+              updatedAt: r.info.updatedAt,
+            }));
+        } catch {
+          /* IndexedDB unavailable: continue with cloud only */
+        }
       }
       let cloud: Parameters<typeof mergeDocumentLists>[1] = [];
       try {

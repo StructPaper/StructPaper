@@ -21,7 +21,7 @@ export const ManuscriptMemberRoleEnum = z.enum([
 export type ManuscriptMemberRole = z.infer<typeof ManuscriptMemberRoleEnum>;
 
 export const CreateManuscriptSchema = z.object({
-  journalId: z.string().uuid('Invalid journal UUID').optional(),
+  journalId: z.string().optional(),
   title: z.string().min(1, 'Title is required').max(500),
   abstract: z.string().nullable().optional(),
   metadata: z.record(z.any()).optional().default({}),
@@ -32,7 +32,12 @@ export type CreateManuscript = z.infer<typeof CreateManuscriptSchema>;
 export const UpdateManuscriptSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   abstract: z.string().nullable().optional(),
-  status: ManuscriptStatusEnum.optional(),
+  status: z
+    .preprocess(
+      (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+      ManuscriptStatusEnum,
+    )
+    .optional(),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -87,6 +92,14 @@ export const ManuscriptResponseSchema = z.object({
   metadata: z.record(z.any()),
   createdAt: z.union([z.string().datetime(), z.date()]),
   updatedAt: z.union([z.string().datetime(), z.date()]),
+  journal: z.object({
+    id: z.string(),
+    slug: z.string(),
+    code: z.string(),
+    name: z.string(),
+    shortName: z.string().optional(),
+    color: z.string().optional(),
+  }).optional(),
 });
 
 export type ManuscriptResponse = z.infer<typeof ManuscriptResponseSchema>;

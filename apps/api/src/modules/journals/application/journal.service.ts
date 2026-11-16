@@ -27,7 +27,7 @@ export interface JournalDto {
 export class JournalService {
   constructor(
     @Optional()
-    @Inject('DB_CLIENT')
+    @Inject('DRIZZLE')
     private readonly db?: DbClient,
   ) {}
 
@@ -54,6 +54,7 @@ export class JournalService {
    */
   async getJournalById(idOrSlug: string): Promise<JournalDto> {
     const normalized = idOrSlug.trim().toLowerCase();
+    const prefixedSlug = normalized.startsWith('vnuhcm-') ? normalized : `vnuhcm-${normalized}`;
 
     if (this.db) {
       try {
@@ -65,6 +66,18 @@ export class JournalService {
 
         if (bySlug && bySlug.length > 0) {
           return this.mapToDto(bySlug[0]);
+        }
+
+        if (prefixedSlug !== normalized) {
+          const byPrefixedSlug = await this.db
+            .select()
+            .from(journals)
+            .where(eq(journals.slug, prefixedSlug))
+            .limit(1);
+
+          if (byPrefixedSlug && byPrefixedSlug.length > 0) {
+            return this.mapToDto(byPrefixedSlug[0]);
+          }
         }
 
         // Try UUID match if valid uuid

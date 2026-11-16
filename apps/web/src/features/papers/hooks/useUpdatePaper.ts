@@ -9,6 +9,7 @@ import {
   type Manuscript,
 } from '@structpaper/api-client';
 import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { sileo } from '@/components/toast';
 import type { CompletePaper } from '@/types/paper';
 
@@ -55,23 +56,25 @@ export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
           ...(version !== undefined ? { params: { ifMatch: `"${version}"` } } : {}),
         });
 
-        // Dual-write cache update
-        if (localPaper) {
-          await savePaperToIndexedDb(localPaper);
-        } else {
-          try {
-            const existing = await loadPaperFromIndexedDb(id);
-            if (existing) {
-              existing.metadata = {
-                ...existing.metadata,
-                title: result.title || existing.metadata?.title || '',
-              };
-              existing.version = result.version || existing.version;
-              existing.updatedAt = result.updatedAt || new Date().toISOString();
-              await savePaperToIndexedDb(existing);
+        // Cache update only if local storage is enabled
+        if (isLocalStorageEnabled()) {
+          if (localPaper) {
+            await savePaperToIndexedDb(localPaper);
+          } else {
+            try {
+              const existing = await loadPaperFromIndexedDb(id);
+              if (existing) {
+                existing.metadata = {
+                  ...existing.metadata,
+                  title: result.title || existing.metadata?.title || '',
+                };
+                existing.version = result.version || existing.version;
+                existing.updatedAt = result.updatedAt || new Date().toISOString();
+                await savePaperToIndexedDb(existing);
+              }
+            } catch {
+              // ignore cache sync error
             }
-          } catch {
-            // ignore cache sync error
           }
         }
 

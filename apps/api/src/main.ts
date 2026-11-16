@@ -1,8 +1,22 @@
 import 'reflect-metadata';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// Automatically load root .env file in dev mode
+const envPaths = [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env'), resolve(__dirname, '../../../.env')];
+for (const p of envPaths) {
+  if (existsSync(p)) {
+    try {
+      process.loadEnvFile(p);
+      break;
+    } catch {}
+  }
+}
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
+import fastifyCookie from '@fastify/cookie';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { Rfc9457ExceptionFilter } from './modules/platform/filters/rfc9457-exception.filter';
@@ -22,6 +36,10 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
   await app.register(cors as any, {
     origin: process.env.CORS_ORIGIN || true,
     credentials: true,
+  });
+
+  await app.register(fastifyCookie as any, {
+    secret: process.env.COOKIE_SECRET || process.env.JWT_SECRET || 'dev-jwt-cookie-secret-structpaper',
   });
 
   app.setGlobalPrefix('api/v1', {

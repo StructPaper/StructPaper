@@ -20,6 +20,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -194,8 +195,8 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
           recentPapers.map((paper) => {
             const title = getManuscriptTitle(paper);
             const authors = getManuscriptAuthors(paper);
-            const journalColor = getJournalColor(paper.doc.journalId);
-            const journalShort = getJournalShortName(paper.doc.journalId);
+            const journalColor = getJournalColor(paper.doc.journalId, paper);
+            const journalShort = getJournalShortName(paper.doc.journalId, paper);
             const statusConfig = getWorkflowStatusConfig(paper.info.workflowStatus);
             const syncBadgeConfig = getSyncBadgeConfig(paper);
             const relativeTime = formatRelativeTime(
@@ -225,12 +226,14 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
                     {paper.info.pinned && (
                       <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
                     )}
-                    <span
-                      data-testid={`sync-badge-${paper.info.id}`}
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
-                    >
-                      {syncBadgeConfig.label}
-                    </span>
+                    {isLocalStorageEnabled() && paper.syncState !== 'synced' && (
+                      <span
+                        data-testid={`sync-badge-${paper.info.id}`}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}
+                      >
+                        {syncBadgeConfig.label}
+                      </span>
+                    )}
                     <span
                       className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${statusConfig.chipBg} ${statusConfig.chipText}`}
                     >

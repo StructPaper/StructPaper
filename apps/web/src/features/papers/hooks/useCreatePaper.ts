@@ -9,6 +9,7 @@ import {
   type Manuscript,
 } from '@structpaper/api-client';
 import { savePaperToIndexedDb } from '@/lib/storage/paper-sync';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { sileo } from '@/components/toast';
 import { type CompletePaper, createEmptyPaper } from '@/types/paper';
 
@@ -89,24 +90,30 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
       try {
         const result = await mutation.mutateAsync({ data: payload });
 
-        // Dual-write: Cache newly created manuscript in IndexedDB
-        const emptyBase = createEmptyPaper(result.journalId);
-        const completePaperToCache: CompletePaper = 'sections' in paper ? {
-          ...(paper as CompletePaper),
-          id: result.id,
-        } : {
-          ...emptyBase,
-          id: result.id,
-          metadata: {
-            ...emptyBase.metadata,
-            title: result.title,
-            journalId: result.journalId,
-            ...(('metadata' in paper ? paper.metadata : {}) as any),
-          },
-          createdAt: result.createdAt,
-          updatedAt: result.updatedAt,
-        };
-        await savePaperToIndexedDb(completePaperToCache);
+        // Dual-write: Cache newly created manuscript in IndexedDB only if local storage is enabled
+        if (isLocalStorageEnabled()) {
+          try {
+            const emptyBase = createEmptyPaper(result.journalId);
+            const completePaperToCache: CompletePaper = 'sections' in paper ? {
+              ...(paper as CompletePaper),
+              id: result.id,
+            } : {
+              ...emptyBase,
+              id: result.id,
+              metadata: {
+                ...emptyBase.metadata,
+                title: result.title,
+                journalId: result.journalId,
+                ...(('metadata' in paper ? paper.metadata : {}) as any),
+              },
+              createdAt: result.createdAt,
+              updatedAt: result.updatedAt,
+            };
+            await savePaperToIndexedDb(completePaperToCache);
+          } catch (e) {
+            console.warn('[useCreatePaper] Local cache save failed:', e);
+          }
+        }
 
         // Invalidate manuscripts list cache so UI updates immediately
         queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });

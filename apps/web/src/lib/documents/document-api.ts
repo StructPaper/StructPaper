@@ -263,6 +263,27 @@ export class DocumentApi {
 
   async save(id: string, body: SaveBody): Promise<SaveResult> {
     const isLegacy = this.resourcePath === '/api/v1/documents';
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    // If local non-UUID manuscript id, create it on the server first to establish cloud persistence
+    if (!isLegacy && !isUuid) {
+      const created = await this.create(
+        body.name || 'Bản thảo bài báo',
+        (body.doc as any)?.metadata?.journalId,
+        body.doc,
+      );
+      if (body.doc && typeof body.doc === 'object') {
+        (body.doc as any).id = created.id;
+      }
+      return {
+        id: created.id,
+        name: created.name,
+        rev: created.rev,
+        updatedAt: created.updatedAt || new Date().toISOString(),
+        snapshotted: Boolean(body.snapshot),
+      };
+    }
+
     const method = isLegacy ? 'PUT' : 'PATCH';
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (body.baseRev !== undefined && !isLegacy) {

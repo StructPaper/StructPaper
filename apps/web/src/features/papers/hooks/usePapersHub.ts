@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -16,6 +18,7 @@ import { normalizeJournalId } from '@structpaper/journal-profiles';
 import { manuscriptApi, getAccessToken } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
 import { manuscriptToCompletePaper } from './useLoadPaper';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import { ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { getAuthoringPapers } from '@/lib/authoring/paper-storage';
@@ -47,6 +50,15 @@ function remoteManuscriptToRecord(item: any): ManuscriptRecord {
     ? [{ name: item.metadata.authors }]
     : [];
 
+  const rawMeta = item.metadata || {};
+  const docMeta = rawMeta.doc?.metadata || rawMeta;
+  const journalCode =
+    item.journal?.code ||
+    item.metadata?.journalAbbv ||
+    rawMeta.journalId ||
+    docMeta.journalId ||
+    'VNUHCM-STD';
+
   return {
     info: {
       id: item.id,
@@ -54,14 +66,15 @@ function remoteManuscriptToRecord(item: any): ManuscriptRecord {
       workflowStatus,
       pinned: false,
       archived: item.status === 'ARCHIVED',
-      tags: item.metadata?.tags || [item.journalId || 'VNUHCM'],
+      tags: item.metadata?.tags || [journalCode],
       createdAt: item.createdAt || new Date().toISOString(),
       updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
       submissionId: item.metadata?.submissionId,
     },
     doc: {
       id: item.id,
-      journalId: item.journalId || 'VNUHCM-STD',
+      journalId: journalCode,
+      journal: item.journal,
       meta: {
         title: [{ t: 'text', v: item.title || 'Bản thảo máy chủ' }],
         authors,
@@ -136,7 +149,7 @@ export function usePapersHub() {
   const reconcileLocalDrafts = useCallback(
     async (currentRecords: ManuscriptRecord[]) => {
       const token = getAccessToken() || useAuthStore.getState()?.token;
-      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
       const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
       if (!isAuth || !isOnline) return;
 
@@ -246,11 +259,41 @@ export function usePapersHub() {
 
   const loadRecords = useCallback(async () => {
     try {
-      const loaded = await repo.listRecords();
-
       const token = getAccessToken() || useAuthStore.getState()?.token;
-      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
       const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+
+      if (!isLocalStorageEnabled()) {
+        // SERVER-ONLY MODE: Purge stale local drafts so no "Chỉ trên máy" cards duplicate
+        try {
+          const localRecords = await repo.listRecords();
+          for (const lr of localRecords) {
+            await repo.delete(lr.info.id);
+          }
+        } catch {
+          // ignore
+        }
+
+        let remoteRecords: ManuscriptRecord[] = [];
+        if (isAuth && isOnline) {
+          try {
+            const remoteRes = await manuscriptApi.list();
+            const remoteItems: any[] = Array.isArray(remoteRes)
+              ? remoteRes
+              : (remoteRes as any)?.items || (remoteRes as any)?.data || [];
+            remoteRecords = remoteItems.map(remoteManuscriptToRecord);
+          } catch (remoteErr) {
+            console.warn('[usePapersHub] Remote manuscript fetch failed:', remoteErr);
+          }
+        }
+
+        setRecords(remoteRecords);
+        setError(null);
+        return;
+      }
+
+      // LOCAL STORAGE ENABLED (Config fallback)
+      const loaded = await repo.listRecords();
 
       let remoteRecords: ManuscriptRecord[] = [];
       if (isAuth && isOnline) {
@@ -310,7 +353,7 @@ export function usePapersHub() {
 
   useEffect(() => {
     const unsub = useAuthStore.subscribe((state, prevState) => {
-      if (state.token && !prevState.token) {
+      if ((state.token || state.user) && (!prevState.token && !prevState.user)) {
         loadRecords();
       }
     });
@@ -336,7 +379,7 @@ export function usePapersHub() {
             setCurrentJournal(norm);
           }
           toast.success('Đã tải bài báo', 'Đang chuyển sang bộ soạn thảo StructPaper...');
-          router.push('/editor');
+          router.push(`/editor?id=${encodeURIComponent(id)}`);
           return;
         } catch (err) {
           console.warn('[usePapersHub] manuscriptToCompletePaper failed:', err);
@@ -383,12 +426,14 @@ export function usePapersHub() {
     }
 
     toast.success('Đã tải bài báo', 'Đang chuyển sang bộ soạn thảo StructPaper...');
-    router.push('/editor');
+    router.push(`/editor?id=${encodeURIComponent(id)}`);
   }, [records, setPaper, setCurrentJournal, router]);
 
   const handleTogglePin = useCallback(async (id: string, currentPinned: boolean) => {
     try {
-      await repo.updateInfo(id, { pinned: !currentPinned });
+      if (isLocalStorageEnabled()) {
+        await repo.updateInfo(id, { pinned: !currentPinned });
+      }
       toast.success(
         !currentPinned ? 'Đã ghim bài báo lên đầu' : 'Đã bỏ ghim bài báo',
         'Danh sách đã được cập nhật thứ tự ưu tiên.'
@@ -404,7 +449,20 @@ export function usePapersHub() {
     patch: Partial<ManuscriptInfo>
   ) => {
     try {
-      await repo.updateInfo(id, patch);
+      if (isLocalStorageEnabled()) {
+        await repo.updateInfo(id, patch);
+      }
+      if (isUuid(id)) {
+        await manuscriptApi.update(id, {
+          title: patch.displayName,
+          status: patch.workflowStatus,
+          metadata: {
+            submissionId: patch.submissionId,
+            note: patch.note,
+            tags: patch.tags,
+          },
+        });
+      }
       toast.success(
         'Cập nhật thành công',
         'Thông tin bài báo đã được cập nhật trực tiếp vào cơ sở dữ liệu.'
@@ -417,20 +475,40 @@ export function usePapersHub() {
 
   const handleDuplicate = useCallback(async (paper: ManuscriptRecord) => {
     try {
+      const rawTitle = paper.info.displayName || getManuscriptTitle(paper);
+      const title = `${rawTitle} (Bản sao)`;
+      const journalId = paper.doc.journalId || 'VNUHCM-STD';
+
+      if (!isLocalStorageEnabled()) {
+        await manuscriptApi.create({
+          title,
+          journalId,
+          metadata: {
+            displayName: title,
+            authors: (paper.doc.meta as any)?.authors || [],
+            sections: (paper.doc as any)?.sections || [],
+            abstract: (paper.doc.meta as any)?.abstract || '',
+          },
+        });
+        toast.success('Đã nhân bản bài báo', `Bản sao "${title}" đã được tạo trên máy chủ.`);
+        await loadRecords();
+        return;
+      }
+
       const newId = `paper_${Date.now()}`;
       const newDoc = {
         ...paper.doc,
         id: newId,
         meta: {
           ...paper.doc.meta,
-          title: [{ t: 'text', v: `${getManuscriptTitle(paper)} (Bản sao)` }],
+          title: [{ t: 'text', v: title }],
         },
       };
 
       const newInfo: Partial<ManuscriptInfo> = {
         ...paper.info,
         id: newId,
-        displayName: `${paper.info.displayName || getManuscriptTitle(paper)} (Bản sao)`,
+        displayName: title,
         submissionId: paper.info.submissionId
           ? `${paper.info.submissionId}_copy`
           : undefined,
@@ -472,14 +550,16 @@ export function usePapersHub() {
   }, [assetRepo]);
 
   const handleDelete = useCallback(async (id: string) => {
-    try {
-      await repo.delete(id);
-    } catch {
-      // ignore
+    if (isLocalStorageEnabled()) {
+      try {
+        await repo.delete(id);
+      } catch {
+        // ignore
+      }
     }
 
     const token = getAccessToken() || useAuthStore.getState()?.token;
-    const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated);
+    const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
     const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
     if (isUuid(id) && isAuth && isOnline) {
       try {

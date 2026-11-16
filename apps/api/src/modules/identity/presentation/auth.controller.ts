@@ -9,7 +9,10 @@ import {
   UnauthorizedException,
   UsePipes,
   Inject,
+  Req,
+  Res,
 } from '@nestjs/common';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
   LoginRequestSchema,
   ResetPasswordSchema,
@@ -27,20 +30,80 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(LoginRequestSchema))
-  async login(@Body() body: LoginRequest): Promise<TokenResponse> {
-    return this.authService.login(body);
+  async login(
+    @Body() body: LoginRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<TokenResponse> {
+    const result = await this.authService.login(body);
+    if (result.refreshToken) {
+      res.setCookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return result;
+  }
+
+  @Get('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshGet(
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<TokenResponse> {
+    const token = (req.cookies as Record<string, string> | undefined)?.refreshToken;
+    if (!token) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+    const result = await this.authService.refresh(token);
+    if (result.refreshToken) {
+      res.setCookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return result;
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body() body: { refreshToken: string }): Promise<TokenResponse> {
-    return this.authService.refresh(body?.refreshToken);
+  async refreshPost(
+    @Req() req: FastifyRequest,
+    @Body() body: { refreshToken?: string },
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<TokenResponse> {
+    const token = body?.refreshToken || (req.cookies as Record<string, string> | undefined)?.refreshToken;
+    if (!token) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+    const result = await this.authService.refresh(token);
+    if (result.refreshToken) {
+      res.setCookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return result;
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() body: { refreshToken?: string }): Promise<{ success: boolean }> {
-    return this.authService.logout(body?.refreshToken || '');
+  async logout(
+    @Req() req: FastifyRequest,
+    @Body() body: { refreshToken?: string },
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<{ success: boolean }> {
+    const token = body?.refreshToken || (req.cookies as Record<string, string> | undefined)?.refreshToken || '';
+    res.clearCookie('refreshToken', { path: '/' });
+    return this.authService.logout(token);
   }
 
   @Post('activate')
@@ -66,5 +129,10 @@ export class AuthController {
     const token = authHeader.replace('Bearer ', '').trim();
     const user = await this.authService.verifyTokenWithPermissions(token);
     return this.authService.me(user.id);
+  }
+
+  @Get('account')
+  async account(@Headers('authorization') authHeader?: string): Promise<any> {
+    return this.me(authHeader);
   }
 }

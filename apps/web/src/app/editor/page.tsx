@@ -11,7 +11,7 @@ function EditorContent() {
   const { loadPaper } = usePaperStorage();
   const searchParams = useSearchParams();
   const paperId = searchParams.get('id');
-  const [isLoading, setIsLoading] = useState(Boolean(paperId));
+  const [isLoading, setIsLoading] = useState(Boolean(paperId && (!paper || paper.id !== paperId)));
 
   useEffect(() => {
     if (!paperId) {

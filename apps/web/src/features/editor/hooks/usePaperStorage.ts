@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CompletePaper } from '@/types/paper';
 import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
+import { isLocalStorageEnabled } from '@/config/storage.config';
 import {
   createManuscript,
   updateManuscript,
@@ -43,14 +44,16 @@ export function usePaperStorage(): UsePaperStorageReturn {
       setIsSaving(true);
       setError(null);
 
-      // 1. Local-First: Always save to IndexedDB immediately
-      try {
-        await savePaperToIndexedDb(paper);
-      } catch (idbErr) {
-        console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
+      // 1. Local storage (only if enabled via config)
+      if (isLocalStorageEnabled()) {
+        try {
+          await savePaperToIndexedDb(paper);
+        } catch (idbErr) {
+          console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
+        }
       }
 
-      // 2. Cloud Sync: If not mock mode and id exists
+      // 2. Cloud Persistence: Always persist to Backend (/api/v1/manuscripts)
       if (!isMockModeEnabled() && paper.id) {
         try {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paper.id);
@@ -90,10 +93,12 @@ export function usePaperStorage(): UsePaperStorageReturn {
             if (created?.id) {
               paper.id = created.id;
               (paper as any).version = created.version ?? 1;
-              try {
-                await savePaperToIndexedDb(paper);
-              } catch (idbErr) {
-                console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
+              if (isLocalStorageEnabled()) {
+                try {
+                  await savePaperToIndexedDb(paper);
+                } catch (idbErr) {
+                  console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
+                }
               }
             }
           }
@@ -107,7 +112,10 @@ export function usePaperStorage(): UsePaperStorageReturn {
             }
           }
         } catch (syncErr: any) {
-          console.warn('[usePaperStorage] Cloud sync failed, local copy preserved:', syncErr);
+          console.warn('[usePaperStorage] Server persistence failed:', syncErr);
+          setError(syncErr instanceof Error ? syncErr : new Error(String(syncErr)));
+          setIsSaving(false);
+          return false;
         }
       }
 
@@ -121,19 +129,23 @@ export function usePaperStorage(): UsePaperStorageReturn {
     setIsLoading(true);
     setError(null);
     try {
-      // 1. Try local cache first
-      const local = await loadPaperFromIndexedDb(id);
-      if (local) {
-        return local;
+      // 1. Try local cache only if enabled
+      if (isLocalStorageEnabled()) {
+        const local = await loadPaperFromIndexedDb(id);
+        if (local) {
+          return local;
+        }
       }
 
-      // 2. If not local and not mock mode, try fetching from backend
+      // 2. Fetch directly from server API
       if (!isMockModeEnabled()) {
         try {
           const remote = await getManuscript(id);
           if (remote) {
             const paper = manuscriptToCompletePaper(remote);
-            await savePaperToIndexedDb(paper);
+            if (isLocalStorageEnabled()) {
+              await savePaperToIndexedDb(paper);
+            }
             return paper;
           }
         } catch (serverErr) {
