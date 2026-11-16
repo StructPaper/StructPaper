@@ -17,8 +17,9 @@ export {
   setGlobalApiErrorHandler,
   getGlobalApiErrorHandler,
   STATUS_VI_FALLBACKS,
+  getStatusFallback,
 } from './http';
-export type { GlobalApiErrorHandler, GlobalApiErrorInfo } from './http';
+export type { GlobalApiErrorHandler, GlobalApiErrorInfo, StatusMessageFallback } from './http';
 export type { AxiosResponse, InternalAxiosRequestConfig, AxiosError, AxiosRequestConfig } from 'axios';
 
 // API Modules (Eatzy architecture pattern)

@@ -3,30 +3,26 @@
 import { setGlobalApiErrorHandler, type GlobalApiErrorInfo } from '@structpaper/api-client';
 import { toast, sileo } from '@/components/toast';
 
+/**
+ * Bridge between UI-agnostic @structpaper/api-client and Next.js Web UI.
+ * Registers global toast presentation for any unhandled network or API failures.
+ */
 if (typeof window !== 'undefined') {
   setGlobalApiErrorHandler((errorInfo: GlobalApiErrorInfo) => {
     const { title, description, status, rawError } = errorInfo;
 
-    // Deduplication ID: Prevents duplicate toasts stacking up
+    // Deduplication ID: Prevents duplicate toasts stacking up across concurrent calls
     const dedupeId = `api-error-${status}-${title}`;
 
-    // For 412 or 409 (version/data conflict), present as warning toast
-    if (status === 412 || status === 409) {
-      sileo.warning({
-        id: dedupeId,
-        title,
-        description:
-          description ||
-          'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
-        error: rawError,
-        status,
-      });
-      return;
-    }
+    // Concurrency conflicts (409/412) are non-fatal warnings with resolution options (Keep Mine),
+    // whereas all other failures (4xx/5xx/network offline) are errors.
+    const isConflictWarning = status === 409 || status === 412;
+    const notify = isConflictWarning ? sileo.warning : toast.error;
 
-    // For other errors (4xx, 5xx, network offline), present as error toast
-    toast.error(title, description, {
+    notify({
       id: dedupeId,
+      title,
+      description,
       error: rawError,
       status,
     });
