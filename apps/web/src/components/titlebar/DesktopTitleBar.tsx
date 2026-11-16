@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { Cloud, CloudOff, Crosshair, Loader2 } from 'lucide-react';
+import { Cloud, CloudOff, Crosshair } from 'lucide-react';
 import { useCapabilities } from '@structpaper/platform';
 import { useStorage } from '@/context/StorageContext';
 import { useEditorSession } from '@/context/EditorSessionContext';
-import { formatLocalOnlyTooltip, formatSavedTime } from '@/lib/editor/save-status';
+import { formatLocalOnlyTooltip } from '@/lib/editor/save-status';
 import { isEditorTitleBarRoute } from './titlebar-routes';
 import { useWindowDrag } from './useWindowDrag';
 import { AppLogoMark } from './AppLogoMark';
@@ -33,101 +33,12 @@ export const DesktopTitleBar: React.FC = () => {
 
   const isDesktop = kind === 'desktop';
   const isEditorRoute = isEditorTitleBarRoute(pathname);
-  const saveState = documentSession?.saveState ?? 'saved';
   const isLocalOnly =
     isEditorRoute &&
     storage.isLocalAvailable &&
-    saveState === 'saved' &&
+    documentSession?.saveState === 'saved' &&
     documentSession?.rawSaveState === 'saved-local';
   const localOnlyTooltip = formatLocalOnlyTooltip(documentSession?.savedAt);
-  const savedTime = formatSavedTime(documentSession?.savedAt);
-
-  const canManualSave = Boolean(
-    documentSession?.onManualSave && (saveState === 'unsaved' || saveState === 'error')
-  );
-
-  let cloudTooltip: string;
-  if (storage.isLocalAvailable && isLocalOnly) {
-    cloudTooltip = localOnlyTooltip;
-  } else if (saveState === 'saved') {
-    cloudTooltip = savedTime
-      ? (storage.isLocalAvailable ? `Đã đồng bộ máy chủ lúc ${savedTime}` : `Đã lưu vào máy chủ lúc ${savedTime}`)
-      : (storage.isLocalAvailable ? 'Đã đồng bộ máy chủ' : 'Đã lưu vào máy chủ');
-  } else if (saveState === 'saving') {
-    cloudTooltip = 'Đang lưu vào máy chủ...';
-  } else if (saveState === 'unsaved') {
-    cloudTooltip = 'Có thay đổi chưa lưu. Nhấn để lưu ngay (Ctrl+S)';
-  } else if (saveState === 'error') {
-    cloudTooltip = 'Lỗi lưu vào máy chủ. Nhấn để thử lại';
-  } else {
-    cloudTooltip = 'Đã lưu vào máy chủ';
-  }
-
-  const renderCloudIcon = () => {
-    if (storage.isLocalAvailable && isLocalOnly) {
-      return (
-        <CloudOff
-          data-testid="titlebar-cloud-icon"
-          className="w-4 h-4 text-zinc-500 shrink-0"
-          strokeWidth={2}
-          aria-hidden="true"
-        />
-      );
-    }
-    switch (saveState) {
-      case 'saved':
-        return (
-          <Cloud
-            data-testid="titlebar-cloud-icon"
-            className="w-4 h-4 text-[#78C841] shrink-0"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        );
-      case 'saving':
-        return (
-          <Loader2
-            data-testid="titlebar-cloud-icon"
-            className="w-4 h-4 text-sky-600 animate-spin shrink-0"
-            strokeWidth={2.2}
-            aria-hidden="true"
-          />
-        );
-      case 'unsaved':
-        return (
-          <span className="relative inline-flex items-center justify-center shrink-0">
-            <Cloud
-              data-testid="titlebar-cloud-icon"
-              className="w-4 h-4 text-amber-500 shrink-0"
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-            <span
-              className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF9B2F] ring-1 ring-white"
-              aria-hidden="true"
-            />
-          </span>
-        );
-      case 'error':
-        return (
-          <CloudOff
-            data-testid="titlebar-cloud-icon"
-            className="w-4 h-4 text-rose-500 shrink-0"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        );
-      default:
-        return (
-          <Cloud
-            data-testid="titlebar-cloud-icon"
-            className="w-4 h-4 text-zinc-400 shrink-0"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        );
-    }
-  };
 
   return (
     <header
@@ -171,62 +82,48 @@ export const DesktopTitleBar: React.FC = () => {
       />
 
       <div className="flex items-center gap-1.5 shrink-0 h-full pr-1">
-        {isEditorRoute && (
-          <>
-            <button
-              type="button"
-              onClick={togglePdfFocusMode}
-              data-testid="titlebar-toggle-interactive-pdf"
-              data-no-drag="true"
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer select-none ${
-                pdfFocusMode
-                  ? 'bg-[#78C841] text-zinc-950 shadow-2xs ring-1 ring-[#78C841]/50'
-                  : 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-600'
-              }`}
-              title={
-                pdfFocusMode
-                  ? 'Chế độ định vị đang bật: Nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng. Bấm để tắt.'
-                  : 'Bật chế độ định vị: Cho phép nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng trong bài.'
-              }
-            >
-              <Crosshair className={`w-3.5 h-3.5 ${pdfFocusMode ? 'text-zinc-950' : 'text-zinc-500'}`} />
-              <span>Focus định vị</span>
-            </button>
+        {storage.isLocalAvailable && isLocalOnly ? (
+          <span
+            data-testid="titlebar-local-only-icon"
+            data-no-drag="true"
+            title={localOnlyTooltip}
+            aria-label={localOnlyTooltip}
+            className="inline-flex items-center justify-center px-1.5 h-full text-zinc-500 shrink-0 select-none"
+          >
+            <CloudOff className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+          </span>
+        ) : storage.isLocalAvailable && isEditorRoute ? (
+          <span
+            data-testid="titlebar-cloud-icon"
+            data-no-drag="true"
+            title="Đã đồng bộ máy chủ"
+            aria-label="Đã đồng bộ máy chủ"
+            className="inline-flex items-center justify-center px-1.5 h-full text-zinc-500 shrink-0 select-none"
+          >
+            <Cloud className="w-3.5 h-3.5 text-zinc-500" strokeWidth={2} aria-hidden="true" />
+          </span>
+        ) : null}
 
-            {canManualSave ? (
-              <button
-                type="button"
-                data-testid={!storage.isLocalAvailable ? 'titlebar-save-state' : undefined}
-                data-save-state={!storage.isLocalAvailable ? saveState : undefined}
-                data-no-drag="true"
-                onClick={() => void documentSession?.onManualSave?.()}
-                aria-label={cloudTooltip}
-                title={cloudTooltip}
-                className="p-1 rounded-md hover:bg-zinc-300/50 text-zinc-600 shrink-0 transition-colors cursor-pointer inline-flex items-center justify-center select-none"
-              >
-                {renderCloudIcon()}
-              </button>
-            ) : (
-              <span
-                data-testid={
-                  !storage.isLocalAvailable
-                    ? 'titlebar-save-state'
-                    : isLocalOnly
-                    ? 'titlebar-local-only-icon'
-                    : undefined
-                }
-                data-save-state={!storage.isLocalAvailable ? saveState : undefined}
-                data-no-drag="true"
-                aria-label={cloudTooltip}
-                title={cloudTooltip}
-                className={`p-1 rounded-md shrink-0 inline-flex items-center justify-center select-none ${
-                  isLocalOnly ? 'text-zinc-500' : 'text-zinc-600'
-                }`}
-              >
-                {renderCloudIcon()}
-              </span>
-            )}
-          </>
+        {isEditorRoute && (
+          <button
+            type="button"
+            onClick={togglePdfFocusMode}
+            data-testid="titlebar-toggle-interactive-pdf"
+            data-no-drag="true"
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer select-none ${
+              pdfFocusMode
+                ? 'bg-[#78C841] text-zinc-950 shadow-2xs ring-1 ring-[#78C841]/50'
+                : 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-600'
+            }`}
+            title={
+              pdfFocusMode
+                ? 'Chế độ định vị đang bật: Nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng. Bấm để tắt.'
+                : 'Bật chế độ định vị: Cho phép nhấp đúp vào văn bản trên PDF để nhảy đến khối tương ứng trong bài.'
+            }
+          >
+            <Crosshair className={`w-3.5 h-3.5 ${pdfFocusMode ? 'text-zinc-950' : 'text-zinc-500'}`} />
+            <span>Focus định vị</span>
+          </button>
         )}
       </div>
 

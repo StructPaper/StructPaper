@@ -52,9 +52,9 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
 
   if (isLoading) {
     return (
-      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-[#F8F9FA] text-[#1A1A1A]">
         <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />
-        <p className="text-sm font-medium text-zinc-300">Đang tải nội dung bài báo.....</p>
+        <p className="text-sm font-medium text-zinc-600">Đang tải nội dung bài báo.....</p>
       </div>
     );
   }
@@ -63,14 +63,14 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
 
   if (notFound || !currentPaper) {
     return (
-      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center bg-slate-900 text-white gap-3 p-4">
-        <p className="text-base font-semibold text-rose-400">Không tìm thấy bản thảo</p>
-        <p className="text-xs text-zinc-400 max-w-md text-center">
+      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center bg-[#F8F9FA] text-[#1A1A1A] gap-3 p-4">
+        <p className="text-base font-semibold text-rose-500">Không tìm thấy bản thảo</p>
+        <p className="text-xs text-zinc-500 max-w-md text-center">
           Bản thảo với mã &ldquo;{paperId}&rdquo; không tồn tại hoặc đã bị xóa trên máy chủ.
         </p>
         <button
           onClick={() => router.push('/papers')}
-          className="mt-2 px-4 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-xs font-medium text-white transition-colors"
+          className="mt-2 px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-white transition-colors"
         >
           Quay lại danh sách bài báo
         </button>
@@ -94,9 +94,9 @@ export default function PaperDetailPage({ params }: { params?: { id?: string } }
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+        <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-[#F8F9FA] text-[#1A1A1A]">
           <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />
-          <p className="text-sm font-medium text-zinc-300">Đang tải nội dung bài báo.....</p>
+          <p className="text-sm font-medium text-zinc-600">Đang tải nội dung bài báo.....</p>
         </div>
       }
     >

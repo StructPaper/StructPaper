@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, Loader2, Pencil } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Cloud, CloudOff, Loader2, Pencil } from 'lucide-react';
 import { useStorage } from '@/context/StorageContext';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 import {
@@ -96,13 +96,83 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
   };
 
   let savedTooltip: string | undefined;
-  if (isLocalOnly) {
-    savedTooltip = formatLocalOnlyTooltip(savedAt);
-  } else if (saveState === 'saved' && savedTime) {
-    savedTooltip = `Đã lưu và đồng bộ lúc ${savedTime}`;
-  } else if (isConflict) {
-    savedTooltip = 'Xung đột phiên bản trên máy chủ';
+  if (!isLocalAvailable) {
+    if (saveState === 'saved') {
+      savedTooltip = savedTime ? `Đã lưu vào máy chủ lúc ${savedTime}` : 'Đã lưu vào máy chủ';
+    } else if (saveState === 'saving') {
+      savedTooltip = 'Đang lưu vào máy chủ...';
+    } else if (saveState === 'unsaved') {
+      savedTooltip = 'Có thay đổi chưa lưu. Nhấn để lưu ngay (Ctrl+S)';
+    } else if (saveState === 'error') {
+      savedTooltip = 'Lỗi lưu vào máy chủ. Nhấn để thử lại';
+    } else if (isConflict) {
+      savedTooltip = 'Xung đột phiên bản trên máy chủ. Chọn Ghi đè để áp dụng bản sửa đổi của bạn.';
+    }
+  } else {
+    if (isLocalOnly) {
+      savedTooltip = formatLocalOnlyTooltip(savedAt);
+    } else if (saveState === 'saved' && savedTime) {
+      savedTooltip = `Đã lưu và đồng bộ lúc ${savedTime}`;
+    } else if (isConflict) {
+      savedTooltip = 'Xung đột phiên bản trên máy chủ';
+    }
   }
+
+  const renderCloudIndicator = () => {
+    switch (saveState) {
+      case 'saved':
+        return (
+          <Cloud
+            data-testid="titlebar-cloud-icon"
+            className="w-4 h-4 text-[#78C841] shrink-0"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        );
+      case 'saving':
+        return (
+          <Loader2
+            data-testid="titlebar-cloud-icon"
+            className="w-4 h-4 text-sky-600 animate-spin shrink-0"
+            strokeWidth={2.2}
+            aria-hidden="true"
+          />
+        );
+      case 'unsaved':
+        return (
+          <span className="relative inline-flex items-center justify-center shrink-0">
+            <Cloud
+              data-testid="titlebar-cloud-icon"
+              className="w-4 h-4 text-amber-500 shrink-0"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            <span
+              className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#FF9B2F] ring-1 ring-white"
+              aria-hidden="true"
+            />
+          </span>
+        );
+      case 'error':
+        return (
+          <CloudOff
+            data-testid="titlebar-cloud-icon"
+            className="w-4 h-4 text-rose-500 shrink-0"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        );
+      default:
+        return (
+          <Cloud
+            data-testid="titlebar-cloud-icon"
+            className="w-4 h-4 text-zinc-400 shrink-0"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        );
+    }
+  };
 
   return (
     <div
@@ -187,39 +257,60 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
         </span>
       )}
 
-      {isLocalAvailable && (
-        <>
-          <span className="text-zinc-400 text-[10px] shrink-0 select-none" aria-hidden="true">
-            •
-          </span>
+      <span className="text-zinc-400 text-[10px] shrink-0 select-none" aria-hidden="true">
+        •
+      </span>
 
-          {canManualSave ? (
-            <button
-              type="button"
-              data-testid="titlebar-save-state"
-              data-save-state={saveState}
-              data-no-drag="true"
-              onClick={() => void onManualSave?.()}
-              aria-label={`${metadata.ariaLabel} — Nhấn để lưu`}
-              title={savedTooltip ?? 'Nhấn để lưu ngay (Ctrl+S)'}
-              className={`px-2 py-[2px] rounded-full border text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer ${visual.pillClass}`}
-            >
-              {visual.icon}
-              <span>{metadata.label}</span>
-            </button>
-          ) : (
-            <span
-              data-testid="titlebar-save-state"
-              data-save-state={saveState}
-              aria-label={metadata.ariaLabel}
-              title={savedTooltip}
-              className={`px-2 py-[2px] rounded-full border text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 select-none ${visual.pillClass}`}
-            >
-              {visual.icon}
-              <span>{metadata.label}</span>
-            </span>
-          )}
-        </>
+      {!isLocalAvailable ? (
+        canManualSave ? (
+          <button
+            type="button"
+            data-testid="titlebar-save-state"
+            data-save-state={saveState}
+            data-no-drag="true"
+            onClick={() => void onManualSave?.()}
+            aria-label={`${metadata.ariaLabel} — Nhấn để lưu`}
+            title={savedTooltip}
+            className="p-1 rounded-md hover:bg-zinc-300/50 text-zinc-600 shrink-0 transition-colors cursor-pointer inline-flex items-center justify-center"
+          >
+            {renderCloudIndicator()}
+          </button>
+        ) : (
+          <span
+            data-testid="titlebar-save-state"
+            data-save-state={saveState}
+            aria-label={metadata.ariaLabel}
+            title={savedTooltip}
+            className="p-1 rounded-md text-zinc-600 shrink-0 inline-flex items-center justify-center select-none"
+          >
+            {renderCloudIndicator()}
+          </span>
+        )
+      ) : canManualSave ? (
+        <button
+          type="button"
+          data-testid="titlebar-save-state"
+          data-save-state={saveState}
+          data-no-drag="true"
+          onClick={() => void onManualSave?.()}
+          aria-label={`${metadata.ariaLabel} — Nhấn để lưu`}
+          title={savedTooltip ?? 'Nhấn để lưu ngay (Ctrl+S)'}
+          className={`px-2 py-[2px] rounded-full border text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer ${visual.pillClass}`}
+        >
+          {visual.icon}
+          <span>{metadata.label}</span>
+        </button>
+      ) : (
+        <span
+          data-testid="titlebar-save-state"
+          data-save-state={saveState}
+          aria-label={metadata.ariaLabel}
+          title={savedTooltip}
+          className={`px-2 py-[2px] rounded-full border text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 select-none ${visual.pillClass}`}
+        >
+          {visual.icon}
+          <span>{metadata.label}</span>
+        </span>
       )}
 
       {isConflict && onKeepMine && (
