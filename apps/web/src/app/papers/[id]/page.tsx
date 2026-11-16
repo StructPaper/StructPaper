@@ -2,6 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { usePaper } from '@/context/PaperContext';
 import { UnifiedEditorView, usePaperStorage } from '@/features/editor';
 import { CompletePaper } from '@/lib/sample-papers';
@@ -51,8 +52,9 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
 
   if (isLoading) {
     return (
-      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex items-center justify-center bg-slate-900 text-white text-sm font-medium">
-        Đang tải bản thảo từ cơ sở dữ liệu...
+      <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+        <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />
+        <p className="text-sm font-medium text-zinc-300">Đang tải nội dung bài báo.....</p>
       </div>
     );
   }
@@ -92,8 +94,9 @@ export default function PaperDetailPage({ params }: { params?: { id?: string } }
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex items-center justify-center bg-slate-900 text-white text-sm font-medium">
-          Đang khởi tạo trình soạn thảo...
+        <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+          <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />
+          <p className="text-sm font-medium text-zinc-300">Đang tải nội dung bài báo.....</p>
         </div>
       }
     >

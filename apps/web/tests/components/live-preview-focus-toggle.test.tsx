@@ -61,7 +61,7 @@ describe('DesktopTitleBar & LivePreviewPane Focus Toggle Integration', () => {
     references: [],
   };
 
-  it('renders Focus toggle button on TitleBar to the right of the cloud icon', () => {
+  it('renders Focus toggle button on TitleBar with the cloud icon to its right', () => {
     const platform = createFakePlatform({ kind: 'web' });
     render(
       <PlatformProvider value={platform}>
@@ -75,10 +75,10 @@ describe('DesktopTitleBar & LivePreviewPane Focus Toggle Integration', () => {
     expect(toggleBtn).toBeDefined();
     expect(toggleBtn.textContent).toContain('Focus định vị');
 
-    // Cloud icon is present on the TitleBar to the left of the Focus toggle button
+    // Cloud icon is present on the TitleBar to the right of the Focus toggle button
     const cloudIcon = screen.getByTestId('titlebar-cloud-icon');
     expect(cloudIcon).toBeDefined();
-    expect(cloudIcon.compareDocumentPosition(toggleBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toggleBtn.compareDocumentPosition(cloudIcon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('renders standard iframe by default without any top bar header in preview pane', () => {
