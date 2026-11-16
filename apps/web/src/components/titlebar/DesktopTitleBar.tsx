@@ -90,7 +90,7 @@ export const DesktopTitleBar: React.FC = () => {
             aria-label={localOnlyTooltip}
             className="inline-flex items-center justify-center px-1.5 h-full text-zinc-500 shrink-0 select-none"
           >
-            <CloudOff className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+            <CloudOff className="w-3.5 h-3.5" strokeWidth={2.8} aria-hidden="true" />
           </span>
         ) : storage.isLocalAvailable && isEditorRoute ? (
           <span
@@ -100,7 +100,7 @@ export const DesktopTitleBar: React.FC = () => {
             aria-label="Đã đồng bộ máy chủ"
             className="inline-flex items-center justify-center px-1.5 h-full text-zinc-500 shrink-0 select-none"
           >
-            <Cloud className="w-3.5 h-3.5 text-zinc-500" strokeWidth={2} aria-hidden="true" />
+            <Cloud className="w-3.5 h-3.5 text-zinc-500" strokeWidth={2.8} aria-hidden="true" />
           </span>
         ) : null}
 
