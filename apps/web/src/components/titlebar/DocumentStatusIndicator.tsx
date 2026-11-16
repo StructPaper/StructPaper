@@ -125,7 +125,7 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
           <Cloud
             data-testid="titlebar-cloud-icon"
             className="w-4 h-4 text-[#78C841] shrink-0"
-            strokeWidth={2.8}
+            strokeWidth={3.3}
             aria-hidden="true"
           />
         );
@@ -134,7 +134,7 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
           <Loader2
             data-testid="titlebar-cloud-icon"
             className="w-4 h-4 text-sky-600 animate-spin shrink-0"
-            strokeWidth={2.8}
+            strokeWidth={3.3}
             aria-hidden="true"
           />
         );
@@ -144,7 +144,7 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
             <Cloud
               data-testid="titlebar-cloud-icon"
               className="w-4 h-4 text-amber-500 shrink-0"
-              strokeWidth={2.8}
+              strokeWidth={3.3}
               aria-hidden="true"
             />
             <span
@@ -158,7 +158,7 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
           <CloudOff
             data-testid="titlebar-cloud-icon"
             className="w-4 h-4 text-rose-500 shrink-0"
-            strokeWidth={2.8}
+            strokeWidth={3.3}
             aria-hidden="true"
           />
         );
@@ -167,7 +167,7 @@ export const DocumentStatusIndicator: React.FC<DocumentStatusIndicatorProps> = (
           <Cloud
             data-testid="titlebar-cloud-icon"
             className="w-4 h-4 text-zinc-400 shrink-0"
-            strokeWidth={2.8}
+            strokeWidth={3.3}
             aria-hidden="true"
           />
         );
