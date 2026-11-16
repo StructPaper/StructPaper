@@ -111,3 +111,62 @@ describe('useDocumentAutosave with the auto-save switch off', () => {
     expect(saveLocal).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useDocumentAutosave in server-only mode (isLocalAvailable: false)', () => {
+  it('does not re-trigger autosave or enter dirty state when only version changes after save', async () => {
+    let currentVersion = 1;
+    const saveLocal = vi.fn(async (p: CompletePaper) => {
+      currentVersion += 1;
+      p.version = currentVersion;
+      return true;
+    });
+
+    const base = paperOf('doc1', 'Bản thảo gốc');
+    base.version = 1;
+
+    const { result, rerender } = renderHook(
+      ({ paper }) =>
+        useDocumentAutosave({
+          paper,
+          documentId: 'doc1',
+          saveLocal,
+          remote: false,
+          debounceMs: 100,
+          isLocalAvailable: false,
+        }),
+      { initialProps: { paper: base } }
+    );
+
+    // Initial state is idle
+    expect(result.current.state).toBe('idle');
+
+    // User types an edit
+    const edited = { ...base, metadata: { ...base.metadata, title: 'Bản thảo đã sửa' } };
+    rerender({ paper: edited });
+
+    expect(result.current.state).toBe('dirty');
+
+    // Debounce timer fires and saves to server
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+
+    expect(saveLocal).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toBe('saved');
+
+    // Editor re-renders with new version from server response
+    const updatedWithVersion = { ...edited, version: currentVersion, currentServerRev: currentVersion };
+    rerender({ paper: updatedWithVersion });
+
+    // Must NOT revert to 'dirty' or schedule another save
+    expect(result.current.state).toBe('saved');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+
+    // Still only 1 call - NO INFINITE LOOP!
+    expect(saveLocal).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toBe('saved');
+  });
+});

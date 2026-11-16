@@ -19,6 +19,23 @@ export interface UseDocumentAutosaveOptions {
   isLocalAvailable?: boolean;
 }
 
+/**
+ * Returns true if user-facing document content has changed relative to baseline.
+ * Ignores server synchronization counters (version, currentServerRev, updatedAt)
+ * to prevent auto-save response cycles.
+ */
+export function hasPaperContentChanged(current: CompletePaper, baseline: CompletePaper): boolean {
+  if (current === baseline) return false;
+  if (current.id !== baseline.id) return true;
+  if (current.displayName !== baseline.displayName) return true;
+  if (current.metadata !== baseline.metadata) return true;
+  if (current.sections !== baseline.sections) return true;
+  if (current.references !== baseline.references) return true;
+  if (current.layoutSettings !== baseline.layoutSettings) return true;
+  if (current.templateId !== baseline.templateId) return true;
+  return false;
+}
+
 export function useDocumentAutosave({
   paper,
   documentId,
@@ -26,7 +43,7 @@ export function useDocumentAutosave({
   remote = true,
   debounceMs = 1200,
   enabled = true,
-  isLocalAvailable = false,
+  isLocalAvailable = true,
 }: UseDocumentAutosaveOptions) {
   const [state, setState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -73,9 +90,12 @@ export function useDocumentAutosave({
       baseline.current = paper;
       return;
     }
-    if (paper !== baseline.current) {
+    if (hasPaperContentChanged(paper, baseline.current)) {
       if (enabled) controller.notify(paper);
       else controller.markDirty(paper);
+    } else {
+      // Version or non-content metadata changed as a result of save; advance baseline reference.
+      baseline.current = paper;
     }
   }, [paper, documentId, controller, enabled]);
 

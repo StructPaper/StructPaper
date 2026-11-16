@@ -139,11 +139,11 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     saveLocal: async (p) => {
       // A save that finishes after the user switched to another document must only persist its own
       // document: pushing it into the shared context would swap the new document back to the old one.
-      if (p.id === currentPaperId.current) onUpdatePaper(p);
       const ok = await savePaper(p);
       if (ok && p.version !== undefined) {
-        setFormData((prev) => (prev.id === p.id ? { ...prev, version: p.version } : prev));
+        setFormData((prev) => (prev.id === p.id ? { ...prev, version: p.version, currentServerRev: p.version } : prev));
       }
+      if (p.id === currentPaperId.current) onUpdatePaper(p);
       return ok;
     },
   });

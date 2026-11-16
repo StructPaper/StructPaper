@@ -45,6 +45,7 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
   }, [paperId, loadPaper, setPaper, setCurrentJournal]);
 
   const handleUpdatePaper = (updated: CompletePaper) => {
+    setLoadedPaper(updated);
     updatePaper(updated);
   };
 
