@@ -5,7 +5,11 @@ import type { SaveState } from '@/lib/documents/autosave-controller';
  * Emits an accurate toast matching the settled SaveState from an explicit save.
  * Returns true only when persistence succeeded cleanly.
  */
-export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boolean): boolean {
+export function notifyManualSaveOutcome(
+  state: SaveState,
+  isLocalAvailable?: boolean,
+  error?: unknown
+): boolean {
   if (state === 'saved') {
     sileo.success({
       title: 'Đã lưu tài liệu',
@@ -31,7 +35,7 @@ export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boo
     sileo.warning({
       title: 'Xung đột phiên bản máy chủ',
       description: 'Máy chủ đang có bản mới hơn từ phiên làm việc khác. Bạn có thể chọn "Ghi đè" trên thanh tiêu đề.',
-      status: 412,
+      error,
     });
     return false;
   }
@@ -48,6 +52,7 @@ export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boo
       isLocalAvailable === false
         ? 'Không thể lưu bản thảo lên máy chủ. Vui lòng kiểm tra lại kết nối mạng.'
         : 'Không thể lưu bản thảo cục bộ vào thiết bị',
+    error,
   });
   return false;
 }
