@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 import { AppShell } from '@/components/layout/AppShell';
 import { Toaster } from '@/components/toast';
 import { PlatformProvider } from '@/platform/provider';
+import { StorageProvider } from '@/context/StorageContext';
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { DesktopChromeShell } from '@/components/titlebar';
 import { UpdateToastNotifier } from '@/components/platform/UpdateToastNotifier';
@@ -38,17 +39,19 @@ export default function RootLayout({
         />
         <QueryProvider>
           <PlatformProvider>
-            <EditorSessionProvider>
-              <PaperProvider>
-                <DesktopChromeShell>
-                  <Toaster />
-                  <UpdateToastNotifier />
-                  <AppShell>
-                    {children}
-                  </AppShell>
-                </DesktopChromeShell>
-              </PaperProvider>
-            </EditorSessionProvider>
+            <StorageProvider>
+              <EditorSessionProvider>
+                <PaperProvider>
+                  <DesktopChromeShell>
+                    <Toaster />
+                    <UpdateToastNotifier />
+                    <AppShell>
+                      {children}
+                    </AppShell>
+                  </DesktopChromeShell>
+                </PaperProvider>
+              </EditorSessionProvider>
+            </StorageProvider>
           </PlatformProvider>
         </QueryProvider>
       </body>

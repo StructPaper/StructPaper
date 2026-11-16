@@ -1,12 +1,11 @@
 import { sileo } from '@/components/toast';
 import type { SaveState } from '@/lib/documents/autosave-controller';
-import { isLocalStorageEnabled } from '@/config/storage.config';
 
 /**
  * Emits an accurate toast matching the settled SaveState from an explicit save.
  * Returns true only when persistence succeeded cleanly.
  */
-export function notifyManualSaveOutcome(state: SaveState): boolean {
+export function notifyManualSaveOutcome(state: SaveState, isLocalAvailable?: boolean): boolean {
   if (state === 'saved') {
     sileo.success({
       title: 'Đã lưu tài liệu',
@@ -15,7 +14,7 @@ export function notifyManualSaveOutcome(state: SaveState): boolean {
     return true;
   }
   if (state === 'saved-local') {
-    if (!isLocalStorageEnabled()) {
+    if (isLocalAvailable === false) {
       sileo.success({
         title: 'Đã lưu tài liệu',
         description: 'Nội dung đã được lưu lên máy chủ thành công',

@@ -24,7 +24,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -53,6 +53,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   onExportBackup,
   onDelete,
 }) => {
+  const storage = useStorage();
   const { info, doc } = paper;
   const title = getManuscriptTitle(paper);
   const authors = getManuscriptAuthors(paper);
@@ -109,7 +110,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
             )}
 
             {/* Sync Status Badge (only when local storage is active and not synced) */}
-            {isLocalStorageEnabled() && paper.syncState !== 'synced' && (
+            {storage.isLocalAvailable && paper.syncState !== 'synced' && (
               <span
                 data-testid={`sync-badge-${info.id}`}
                 className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}

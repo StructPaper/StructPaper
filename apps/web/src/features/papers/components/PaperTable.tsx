@@ -25,7 +25,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -62,6 +62,7 @@ export const PaperTable: React.FC<PaperTableProps> = ({
   onExportBackup,
   onDelete,
 }) => {
+  const storage = useStorage();
   const [mounted, setMounted] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -230,7 +231,7 @@ export const PaperTable: React.FC<PaperTableProps> = ({
                         />
                         {statusConfig.label}
                       </span>
-                      {isLocalStorageEnabled() && paper.syncState !== 'synced' && (
+                      {storage.isLocalAvailable && paper.syncState !== 'synced' && (
                         <span
                           data-testid={`sync-badge-${info.id}`}
                           className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}

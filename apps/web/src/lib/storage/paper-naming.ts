@@ -1,6 +1,5 @@
 import type { ManuscriptRecord } from '@structpaper/doc-model';
-import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { getUnifiedStorage } from './storage-factory';
 
 /**
  * Extracts a normalized, readable title from a Manuscript doc or returns empty string.
@@ -107,11 +106,7 @@ export async function checkPaperTitleDuplicate(
   excludeId?: string
 ): Promise<{ count: number; uniqueTitle: string }> {
   try {
-    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined' || !isLocalStorageEnabled()) {
-      return { count: 0, uniqueTitle: targetTitle.trim() || 'Bản thảo bài báo' };
-    }
-    const repo = new IndexedDbManuscriptRepo(defaultDatabase);
-    const records = await repo.listRecords();
+    const records = await getUnifiedStorage().listRecords();
     const count = countDuplicatePapers(targetTitle, records, excludeId);
     const allTitles = collectAllExistingTitles(records, excludeId);
     const uniqueTitle = getUniquePaperTitle(targetTitle, allTitles);
@@ -124,18 +119,14 @@ export async function checkPaperTitleDuplicate(
 
 /**
  * Validates whether a target display name conflicts with any existing paper (either its displayName or doc title)
- * in IndexedDB, excluding the paper with excludeId.
+ * in storage, excluding the paper with excludeId.
  */
 export async function validateDisplayNameUniqueness(
   excludeId: string,
   targetDisplayName: string
 ): Promise<{ isDuplicate: boolean; duplicateSubmissionId?: string }> {
   try {
-    if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined' || !isLocalStorageEnabled()) {
-      return { isDuplicate: false };
-    }
-    const repo = new IndexedDbManuscriptRepo(defaultDatabase);
-    const allRecords = await repo.listRecords();
+    const allRecords = await getUnifiedStorage().listRecords();
     const target = targetDisplayName.trim().toLowerCase();
     const duplicate = allRecords.find((r) => {
       if (r.info.id === excludeId || r.info.archived) return false;

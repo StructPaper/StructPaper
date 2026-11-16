@@ -20,7 +20,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -39,6 +39,7 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
   isCreateOpen = false,
   isLoading = false,
 }) => {
+  const storage = useStorage();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Take the most recently updated or opened 5 papers
@@ -226,7 +227,7 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
                     {paper.info.pinned && (
                       <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
                     )}
-                    {isLocalStorageEnabled() && paper.syncState !== 'synced' && (
+                    {storage.isLocalAvailable && paper.syncState !== 'synced' && (
                       <span
                         data-testid={`sync-badge-${paper.info.id}`}
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${syncBadgeConfig.classes}`}

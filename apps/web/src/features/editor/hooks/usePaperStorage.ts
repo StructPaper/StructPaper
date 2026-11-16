@@ -1,15 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CompletePaper } from '@/types/paper';
-import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
-import { isLocalStorageEnabled } from '@/config/storage.config';
-import {
-  createManuscript,
-  updateManuscript,
-  getManuscript,
-  isMockModeEnabled,
-} from '@structpaper/api-client';
-import { manuscriptToCompletePaper } from '@/features/papers';
+import { useStorage } from '@/context/StorageContext';
 
 export interface UsePaperStorageReturn {
   isSaving: boolean;
@@ -20,16 +12,15 @@ export interface UsePaperStorageReturn {
 }
 
 /**
- * Unified React hook for manuscript persistence & multi-tier synchronization:
- * - Local-First: Guarantees zero data loss by immediately caching to IndexedDB.
- * - Cloud-Sync: Automatically synchronizes with NestJS Backend (/api/v1/manuscripts).
- * - Conflict Detection: Uses optimistic version locking.
- * - Framework Agnostic: Safe to use across isolated components without requiring QueryClientProvider.
+ * Unified React hook for manuscript persistence:
+ * Uses the Composite ManuscriptStorage layer via useStorage().
+ * Clean, decoupled, and completely free of if-else storage configuration checks.
  */
 export function usePaperStorage(): UsePaperStorageReturn {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const storage = useStorage();
 
   let queryClient: any;
   try {
@@ -44,125 +35,53 @@ export function usePaperStorage(): UsePaperStorageReturn {
       setIsSaving(true);
       setError(null);
 
-      // 1. Local storage (only if enabled via config)
-      if (isLocalStorageEnabled()) {
-        try {
-          await savePaperToIndexedDb(paper);
-        } catch (idbErr) {
-          console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
-        }
-      }
-
-      // 2. Cloud Persistence: Always persist to Backend (/api/v1/manuscripts)
-      if (!isMockModeEnabled() && paper.id) {
-        try {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paper.id);
-          const title = paper.metadata?.title || paper.displayName || 'Bản thảo bài báo';
-
-          if (isUuid) {
-            await updateManuscript(
-              paper.id,
-              {
-                title,
-                abstract: paper.metadata?.abstract || '',
-                metadata: {
-                  ...paper.metadata,
-                  sections: paper.sections,
-                  references: paper.references,
-                  layoutSettings: paper.layoutSettings,
-                  templateId: paper.templateId,
-                },
-              },
-              (paper as any).version !== undefined
-                ? { headers: { 'If-Match': `"${(paper as any).version}"` } }
-                : undefined,
-            );
-          } else {
-            const created = await createManuscript({
-              title,
-              journalId: (paper.metadata as any)?.journalId,
-              metadata: {
-                ...paper.metadata,
-                sections: paper.sections,
-                references: paper.references,
-                layoutSettings: paper.layoutSettings,
-                templateId: paper.templateId,
-              },
-            });
-
-            if (created?.id) {
-              paper.id = created.id;
-              (paper as any).version = created.version ?? 1;
-              if (isLocalStorageEnabled()) {
-                try {
-                  await savePaperToIndexedDb(paper);
-                } catch (idbErr) {
-                  console.error('[usePaperStorage] IndexedDB save failed:', idbErr);
-                }
-              }
-            }
+      try {
+        const result = await storage.savePaper(paper);
+        if (result?.id) {
+          paper.id = result.id;
+          if (result.version !== undefined) {
+            (paper as any).version = result.version;
           }
-
-          if (queryClient) {
-            try {
-              queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
-              queryClient.invalidateQueries({ queryKey: ['manuscripts'] });
-            } catch (invalErr) {
-              console.warn('[usePaperStorage] Query invalidation failed:', invalErr);
-            }
-          }
-        } catch (syncErr: any) {
-          console.warn('[usePaperStorage] Server persistence failed:', syncErr);
-          setError(syncErr instanceof Error ? syncErr : new Error(String(syncErr)));
-          setIsSaving(false);
-          return false;
         }
-      }
 
-      setIsSaving(false);
-      return true;
+        if (queryClient) {
+          try {
+            queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
+            queryClient.invalidateQueries({ queryKey: ['manuscripts'] });
+          } catch {
+            // ignore
+          }
+        }
+
+        return true;
+      } catch (err: any) {
+        console.warn('[usePaperStorage] save error:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
     },
-    [queryClient],
+    [storage, queryClient]
   );
 
-  const loadPaper = useCallback(async (id: string): Promise<CompletePaper | null> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // 1. Try local cache only if enabled
-      if (isLocalStorageEnabled()) {
-        const local = await loadPaperFromIndexedDb(id);
-        if (local) {
-          return local;
-        }
+  const loadPaper = useCallback(
+    async (id: string): Promise<CompletePaper | null> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        return await storage.loadPaper(id);
+      } catch (err: any) {
+        const errObj = err instanceof Error ? err : new Error(String(err));
+        setError(errObj);
+        console.error('[usePaperStorage] load error:', errObj);
+        return null;
+      } finally {
+        setIsLoading(false);
       }
-
-      // 2. Fetch directly from server API
-      if (!isMockModeEnabled()) {
-        try {
-          const remote = await getManuscript(id);
-          if (remote) {
-            const paper = manuscriptToCompletePaper(remote);
-            if (isLocalStorageEnabled()) {
-              await savePaperToIndexedDb(paper);
-            }
-            return paper;
-          }
-        } catch (serverErr) {
-          console.warn('[usePaperStorage] Remote fetch failed:', serverErr);
-        }
-      }
-
-      return null;
-    } catch (err) {
-      const errObj = err instanceof Error ? err : new Error(String(err));
-      setError(errObj);
-      console.error('[usePaperStorage] load error:', errObj);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [storage]
+  );
 
   return {
     isSaving,

@@ -1,7 +1,6 @@
 import type { CompletePaper } from '@/types/paper';
 import { ApiError } from './document-api';
 import type { DocumentSync } from './document-sync';
-import { isLocalStorageEnabled } from '@/config/storage.config';
 
 /**
  * Auto-save state machine (framework-free so it is unit-testable).
@@ -23,6 +22,7 @@ export interface AutosaveOptions {
   saveLocal: (paper: CompletePaper) => Promise<boolean>;
   sync?: DocumentSync | null;
   onState?: (state: SaveState, info?: { error?: unknown; savedAt?: number; paper?: CompletePaper }) => void;
+  isLocalAvailable?: boolean;
 }
 
 export class AutosaveController {
@@ -163,7 +163,7 @@ export class AutosaveController {
       return;
     }
 
-    if (!isLocalStorageEnabled()) {
+    if (this.opts.isLocalAvailable === false) {
       // Server-Only Mode: saveLocal already persisted directly to the server API
       this.emit('saved', { savedAt: Date.now(), paper });
       return;

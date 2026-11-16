@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   defaultDatabase,
-  IndexedDbManuscriptRepo,
   IndexedDbAssetRepo,
   exportBackup,
 } from '@structpaper/storage';
@@ -18,7 +17,7 @@ import { normalizeJournalId } from '@structpaper/journal-profiles';
 import { manuscriptApi, getAccessToken } from '@structpaper/api-client';
 import { useAuthStore } from '@/lib/auth-store';
 import { manuscriptToCompletePaper } from './useLoadPaper';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 import { ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { SAMPLE_VNUHCM_RECORDS } from '@/lib/authoring/sample-records-seeder';
 import { getAuthoringPapers } from '@/lib/authoring/paper-storage';
@@ -93,8 +92,7 @@ export function usePapersHub() {
   const router = useRouter();
   const { setPaper, setCurrentJournal } = usePaper();
 
-  // Storage Repositories
-  const repo = useMemo(() => new IndexedDbManuscriptRepo(defaultDatabase), []);
+  const storage = useStorage();
   const assetRepo = useMemo(() => new IndexedDbAssetRepo(defaultDatabase), []);
 
   // Papers State
@@ -194,11 +192,11 @@ export function usePapersHub() {
             const oldId = draft.info.id;
             const newId = created.id;
 
-            // 1. Remove old local record from IndexedDB
+            // 1. Remove old local record from storage
             try {
-              await repo.delete(oldId);
+              await storage.delete(oldId);
             } catch (delErr) {
-              console.warn('[usePapersHub] repo.delete oldId failed:', delErr);
+              console.warn('[usePapersHub] storage.delete oldId failed:', delErr);
             }
 
             // 2. Prepare new document and info
@@ -213,8 +211,8 @@ export function usePapersHub() {
               updatedAt: (created as any).updatedAt || new Date().toISOString(),
             };
 
-            // 3. Save new record into IndexedDB
-            await repo.save(updatedDoc as any, updatedInfo);
+            // 3. Save new record into storage
+            await storage.saveRecord(updatedDoc as any, updatedInfo);
             try {
               await (defaultDatabase.manuscripts as any).update(newId, { syncState: 'synced' });
             } catch {
@@ -254,78 +252,23 @@ export function usePapersHub() {
         }
       }
     },
-    [repo]
+    [storage]
   );
 
   const loadRecords = useCallback(async () => {
     try {
-      const token = getAccessToken() || useAuthStore.getState()?.token;
-      const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
-      const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
-
-      if (!isLocalStorageEnabled()) {
-        // SERVER-ONLY MODE: Purge stale local drafts so no "Chỉ trên máy" cards duplicate
-        try {
-          const localRecords = await repo.listRecords();
-          for (const lr of localRecords) {
-            await repo.delete(lr.info.id);
-          }
-        } catch {
-          // ignore
-        }
-
-        let remoteRecords: ManuscriptRecord[] = [];
-        if (isAuth && isOnline) {
-          try {
-            const remoteRes = await manuscriptApi.list();
-            const remoteItems: any[] = Array.isArray(remoteRes)
-              ? remoteRes
-              : (remoteRes as any)?.items || (remoteRes as any)?.data || [];
-            remoteRecords = remoteItems.map(remoteManuscriptToRecord);
-          } catch (remoteErr) {
-            console.warn('[usePapersHub] Remote manuscript fetch failed:', remoteErr);
-          }
-        }
-
-        setRecords(remoteRecords);
-        setError(null);
-        return;
-      }
-
-      // LOCAL STORAGE ENABLED (Config fallback)
-      const loaded = await repo.listRecords();
-
-      let remoteRecords: ManuscriptRecord[] = [];
-      if (isAuth && isOnline) {
-        try {
-          const remoteRes = await manuscriptApi.list();
-          const remoteItems: any[] = Array.isArray(remoteRes)
-            ? remoteRes
-            : (remoteRes as any)?.items || (remoteRes as any)?.data || [];
-
-          const localIdSet = new Set(loaded.map((r) => r.info.id));
-          for (const item of remoteItems) {
-            if (item?.id && !localIdSet.has(item.id)) {
-              remoteRecords.push(remoteManuscriptToRecord(item));
-            }
-          }
-        } catch (remoteErr) {
-          console.warn('[usePapersHub] Remote manuscript fetch failed:', remoteErr);
-        }
-      }
-
-      const annotatedLocal: ManuscriptRecord[] = loaded.map((r) => ({
-        ...r,
-        syncState: (r as any).syncState || (isUuid(r.info.id) ? 'synced' : 'local'),
-      }));
-
-      const allRecords = [...annotatedLocal, ...remoteRecords];
+      const allRecords = await storage.listRecords();
       setRecords(allRecords);
       setError(null);
 
-      // Trigger background reconciliation for local-only drafts
-      if (isAuth && isOnline) {
-        reconcileLocalDrafts(annotatedLocal);
+      // Trigger background reconciliation for local-only drafts when local storage is active
+      if (storage.isLocalAvailable) {
+        const token = getAccessToken() || useAuthStore.getState()?.token;
+        const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
+        const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+        if (isAuth && isOnline) {
+          reconcileLocalDrafts(allRecords);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load manuscript records:', err);
@@ -337,7 +280,7 @@ export function usePapersHub() {
       }
       setIsLoading(false);
     }
-  }, [repo, isTestEnv, reconcileLocalDrafts]);
+  }, [storage, isTestEnv, reconcileLocalDrafts]);
 
   useEffect(() => {
     loadRecords();
@@ -431,9 +374,7 @@ export function usePapersHub() {
 
   const handleTogglePin = useCallback(async (id: string, currentPinned: boolean) => {
     try {
-      if (isLocalStorageEnabled()) {
-        await repo.updateInfo(id, { pinned: !currentPinned });
-      }
+      await storage.updateInfo(id, { pinned: !currentPinned });
       toast.success(
         !currentPinned ? 'Đã ghim bài báo lên đầu' : 'Đã bỏ ghim bài báo',
         'Danh sách đã được cập nhật thứ tự ưu tiên.'
@@ -442,27 +383,14 @@ export function usePapersHub() {
     } catch (err: any) {
       toast.error('Lỗi ghim bài báo', err?.message);
     }
-  }, [repo, loadRecords]);
+  }, [storage, loadRecords]);
 
   const handleSaveQuickEdit = useCallback(async (
     id: string,
     patch: Partial<ManuscriptInfo>
   ) => {
     try {
-      if (isLocalStorageEnabled()) {
-        await repo.updateInfo(id, patch);
-      }
-      if (isUuid(id)) {
-        await manuscriptApi.update(id, {
-          title: patch.displayName,
-          status: patch.workflowStatus,
-          metadata: {
-            submissionId: patch.submissionId,
-            note: patch.note,
-            tags: patch.tags,
-          },
-        });
-      }
+      await storage.updateInfo(id, patch);
       toast.success(
         'Cập nhật thành công',
         'Thông tin bài báo đã được cập nhật trực tiếp vào cơ sở dữ liệu.'
@@ -471,59 +399,19 @@ export function usePapersHub() {
     } catch (err: any) {
       toast.error('Lỗi cập nhật', err?.message);
     }
-  }, [repo, loadRecords]);
+  }, [storage, loadRecords]);
 
   const handleDuplicate = useCallback(async (paper: ManuscriptRecord) => {
     try {
       const rawTitle = paper.info.displayName || getManuscriptTitle(paper);
       const title = `${rawTitle} (Bản sao)`;
-      const journalId = paper.doc.journalId || 'VNUHCM-STD';
-
-      if (!isLocalStorageEnabled()) {
-        await manuscriptApi.create({
-          title,
-          journalId,
-          metadata: {
-            displayName: title,
-            authors: (paper.doc.meta as any)?.authors || [],
-            sections: (paper.doc as any)?.sections || [],
-            abstract: (paper.doc.meta as any)?.abstract || '',
-          },
-        });
-        toast.success('Đã nhân bản bài báo', `Bản sao "${title}" đã được tạo trên máy chủ.`);
-        await loadRecords();
-        return;
-      }
-
-      const newId = `paper_${Date.now()}`;
-      const newDoc = {
-        ...paper.doc,
-        id: newId,
-        meta: {
-          ...paper.doc.meta,
-          title: [{ t: 'text', v: title }],
-        },
-      };
-
-      const newInfo: Partial<ManuscriptInfo> = {
-        ...paper.info,
-        id: newId,
-        displayName: title,
-        submissionId: paper.info.submissionId
-          ? `${paper.info.submissionId}_copy`
-          : undefined,
-        pinned: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await repo.save(newDoc as any, newInfo);
-      toast.success('Đã nhân bản bài báo', `Bản sao "${newInfo.displayName}" đã sẵn sàng.`);
+      await storage.duplicate(paper);
+      toast.success('Đã nhân bản bài báo', `Bản sao "${title}" đã được tạo.`);
       await loadRecords();
     } catch (err: any) {
       toast.error('Lỗi nhân bản bài báo', err?.message);
     }
-  }, [repo, loadRecords]);
+  }, [storage, loadRecords]);
 
   const handleExportBackup = useCallback(async (paper: ManuscriptRecord) => {
     try {
@@ -550,28 +438,14 @@ export function usePapersHub() {
   }, [assetRepo]);
 
   const handleDelete = useCallback(async (id: string) => {
-    if (isLocalStorageEnabled()) {
-      try {
-        await repo.delete(id);
-      } catch {
-        // ignore
-      }
+    try {
+      await storage.delete(id);
+      toast.info('Đã xóa bài báo', 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.');
+      await loadRecords();
+    } catch (err: any) {
+      toast.error('Lỗi xóa bài báo', err?.message);
     }
-
-    const token = getAccessToken() || useAuthStore.getState()?.token;
-    const isAuth = Boolean(token || useAuthStore.getState()?.isAuthenticated || useAuthStore.getState()?.user);
-    const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
-    if (isUuid(id) && isAuth && isOnline) {
-      try {
-        await manuscriptApi.delete(id);
-      } catch (apiErr) {
-        console.warn('[usePapersHub] Remote delete failed:', apiErr);
-      }
-    }
-
-    toast.info('Đã xóa bài báo', 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.');
-    await loadRecords();
-  }, [repo, loadRecords]);
+  }, [storage, loadRecords]);
 
   // Status Counts
   const countsByStatus = useMemo(() => {

@@ -8,8 +8,7 @@ import {
   type UpdateManuscriptRequest,
   type Manuscript,
 } from '@structpaper/api-client';
-import { savePaperToIndexedDb, loadPaperFromIndexedDb } from '@/lib/storage/paper-sync';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 import { sileo } from '@/components/toast';
 import type { CompletePaper } from '@/types/paper';
 
@@ -22,6 +21,7 @@ export interface UseUpdatePaperOptions {
 export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
   const queryClient = useQueryClient();
   const mutation = useUpdateManuscript();
+  const storage = useStorage();
 
   const updatePaper = useCallback(
     async (params: {
@@ -32,10 +32,10 @@ export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
     }): Promise<Manuscript | null> => {
       const { id, data, version, localPaper } = params;
 
-      // 1. Mock Mode: Update in IndexedDB only
+      // 1. Mock Mode: Update via storage
       if (isMockModeEnabled()) {
         if (localPaper) {
-          await savePaperToIndexedDb(localPaper);
+          await storage.savePaper(localPaper);
         }
         queryClient.invalidateQueries({ queryKey: ['/api/v1/manuscripts'] });
         queryClient.invalidateQueries({ queryKey: [`/api/v1/manuscripts/${id}`] });
@@ -56,25 +56,23 @@ export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
           ...(version !== undefined ? { params: { ifMatch: `"${version}"` } } : {}),
         });
 
-        // Cache update only if local storage is enabled
-        if (isLocalStorageEnabled()) {
-          if (localPaper) {
-            await savePaperToIndexedDb(localPaper);
-          } else {
-            try {
-              const existing = await loadPaperFromIndexedDb(id);
-              if (existing) {
-                existing.metadata = {
-                  ...existing.metadata,
-                  title: result.title || existing.metadata?.title || '',
-                };
-                existing.version = result.version || existing.version;
-                existing.updatedAt = result.updatedAt || new Date().toISOString();
-                await savePaperToIndexedDb(existing);
-              }
-            } catch {
-              // ignore cache sync error
+        // Synchronize local cache via unified storage
+        if (localPaper) {
+          await storage.savePaper(localPaper);
+        } else {
+          try {
+            const existing = await storage.loadPaper(id);
+            if (existing) {
+              existing.metadata = {
+                ...existing.metadata,
+                title: result.title || existing.metadata?.title || '',
+              };
+              existing.version = result.version || existing.version;
+              existing.updatedAt = result.updatedAt || new Date().toISOString();
+              await storage.savePaper(existing);
             }
+          } catch {
+            // ignore cache sync error
           }
         }
 
@@ -93,8 +91,8 @@ export function useUpdatePaper(options: UseUpdatePaperOptions = {}) {
       } catch (err: any) {
         // Fallback to local if network down
         if (localPaper) {
-          console.warn('[useUpdatePaper] Network failed, saving to IndexedDB:', err);
-          await savePaperToIndexedDb(localPaper);
+          console.warn('[useUpdatePaper] Network failed, saving to storage:', err);
+          await storage.savePaper(localPaper);
           if (options.showToast) {
             sileo.info({
               title: 'Đã lưu cục bộ',

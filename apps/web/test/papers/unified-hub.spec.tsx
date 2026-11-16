@@ -228,11 +228,9 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
       expect(newRecord?.info.displayName).toBe('Nghiên Cứu Sinh Học Phân Tử Offline');
     });
 
-    // 7. Verify UI updates to show synced badge for the newly assigned UUID
+    // 7. Verify UI updates: the local-only badge disappears once synced
     await waitFor(() => {
-      const newBadges = screen.getAllByTestId(`sync-badge-${createdUuid}`);
-      expect(newBadges.length).toBeGreaterThan(0);
-      expect(newBadges[0].textContent).toContain('Đã đồng bộ');
+      expect(screen.queryByTestId(`sync-badge-${createdUuid}`)).toBeNull();
     });
   });
 
@@ -281,9 +279,7 @@ describe('Task 7: Unified Papers Hub & Background Auto-Sync Reconciler', () => {
       expect(screen.getAllByText('Bài Báo Nghiên Cứu Xã Hội Từ Thiết Bị Khác').length).toBeGreaterThan(0);
     });
 
-    // Remote paper should show cloud synced badge
-    const remoteBadges = screen.getAllByTestId(`sync-badge-${remoteId}`);
-    expect(remoteBadges.length).toBeGreaterThan(0);
-    expect(remoteBadges[0].textContent).toContain('Đã đồng bộ');
+    // Remote paper is synced: should not display redundant sync badge
+    expect(screen.queryByTestId(`sync-badge-${remoteId}`)).toBeNull();
   });
 });

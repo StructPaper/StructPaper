@@ -8,8 +8,7 @@ import {
   type CreateManuscriptRequest,
   type Manuscript,
 } from '@structpaper/api-client';
-import { savePaperToIndexedDb } from '@/lib/storage/paper-sync';
-import { isLocalStorageEnabled } from '@/config/storage.config';
+import { useStorage } from '@/context/StorageContext';
 import { sileo } from '@/components/toast';
 import { type CompletePaper, createEmptyPaper } from '@/types/paper';
 
@@ -22,6 +21,7 @@ export interface UseCreatePaperOptions {
 export function useCreatePaper(options: UseCreatePaperOptions = {}) {
   const queryClient = useQueryClient();
   const mutation = useCreateManuscript();
+  const storage = useStorage();
 
   const createPaper = useCallback(
     async (
@@ -51,11 +51,11 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
         },
       };
 
-      // 1. If Mock Mode is enabled, save locally to IndexedDB directly
+      // 1. If Mock Mode is enabled, save via storage
       if (isMockModeEnabled()) {
         try {
           if ('id' in paper && 'sections' in paper) {
-            await savePaperToIndexedDb(paper as CompletePaper);
+            await storage.savePaper(paper as CompletePaper);
           }
           if (options.showToast !== false) {
             sileo.success({
@@ -90,29 +90,27 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
       try {
         const result = await mutation.mutateAsync({ data: payload });
 
-        // Dual-write: Cache newly created manuscript in IndexedDB only if local storage is enabled
-        if (isLocalStorageEnabled()) {
-          try {
-            const emptyBase = createEmptyPaper(result.journalId);
-            const completePaperToCache: CompletePaper = 'sections' in paper ? {
-              ...(paper as CompletePaper),
-              id: result.id,
-            } : {
-              ...emptyBase,
-              id: result.id,
-              metadata: {
-                ...emptyBase.metadata,
-                title: result.title,
-                journalId: result.journalId,
-                ...(('metadata' in paper ? paper.metadata : {}) as any),
-              },
-              createdAt: result.createdAt,
-              updatedAt: result.updatedAt,
-            };
-            await savePaperToIndexedDb(completePaperToCache);
-          } catch (e) {
-            console.warn('[useCreatePaper] Local cache save failed:', e);
-          }
+        // Dual-write: Cache newly created manuscript via unified storage
+        try {
+          const emptyBase = createEmptyPaper(result.journalId);
+          const completePaperToCache: CompletePaper = 'sections' in paper ? {
+            ...(paper as CompletePaper),
+            id: result.id,
+          } : {
+            ...emptyBase,
+            id: result.id,
+            metadata: {
+              ...emptyBase.metadata,
+              title: result.title,
+              journalId: result.journalId,
+              ...(('metadata' in paper ? paper.metadata : {}) as any),
+            },
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt,
+          };
+          await storage.savePaper(completePaperToCache);
+        } catch (e) {
+          console.warn('[useCreatePaper] Cache save failed:', e);
         }
 
         // Invalidate manuscripts list cache so UI updates immediately
@@ -143,8 +141,8 @@ export function useCreatePaper(options: UseCreatePaperOptions = {}) {
         };
 
         try {
-          console.warn('[useCreatePaper] Network failed, falling back to IndexedDB:', err);
-          await savePaperToIndexedDb(offlinePaper);
+          console.warn('[useCreatePaper] Network failed, falling back to offline storage:', err);
+          await storage.savePaper(offlinePaper);
           if (options.showToast !== false) {
             sileo.info({
               title: 'Đã lưu ngoại tuyến (Offline)',
