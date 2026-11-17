@@ -8,7 +8,6 @@ import {
   Check,
   RotateCw,
   Clock,
-  UserPlus,
   Search,
   X,
   CheckCircle2,
@@ -164,19 +163,6 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
               </button>
             )}
           </div>
-
-          {/* Quick Invite Button */}
-          <motion.button
-            type="button"
-            onClick={onOpenInviteModal}
-            whileHover={isTest ? undefined : { scale: 1.02 }}
-            whileTap={isTest ? undefined : { scale: 0.98 }}
-            transition={isTest ? { duration: 0 } : undefined}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#78C841] hover:bg-[#68B436] text-white text-sm font-bold rounded-2xl shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Mời thành viên mới</span>
-          </motion.button>
         </div>
 
         {/* Subtitle / Expiry Status Notice */}
@@ -252,7 +238,7 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
                         <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span>Chờ kích hoạt (Pending)</span>
+                        <span>PENDING</span>
                       </span>
                     </td>
 

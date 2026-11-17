@@ -310,14 +310,11 @@ describe('Permissions & Role Management Page', () => {
     });
   });
 
-  it('InvitationsTab renders search bar, quick action button, table rows, and end-of-list divider', () => {
+  it('InvitationsTab renders search bar, table rows, and end-of-list divider', () => {
     renderWithClient(<InvitationsTab />);
 
     // Search input
     expect(screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i)).toBeDefined();
-
-    // Quick action button
-    expect(screen.getByRole('button', { name: /Mời thành viên mới/i })).toBeDefined();
 
     // Table rows
     expect(screen.getByText(/collaborator.guest@vnu.edu.vn/i)).toBeDefined();

@@ -39,7 +39,7 @@ export const ROLES = [
   { id: 'SuperAdmin', label: 'SuperAdmin', isSystem: true, color: 'text-purple-700 bg-purple-50 border-purple-200' },
   { id: 'JournalManager', label: 'JournalManager', isSystem: true, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
   { id: 'Editor', label: 'Editor', isSystem: true, color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  { id: 'Reviewer', label: 'Reviewer', isSystem: true, color: 'text-teal-700 bg-teal-50 border-teal-200' },
+  { id: 'Reviewer', label: 'Reviewer', isSystem: true, color: 'text-lime-700 bg-lime-50 border-lime-200' },
   { id: 'Author', label: 'Author', isSystem: true, color: 'text-amber-700 bg-amber-50 border-amber-200' },
   { id: 'Guest', label: 'Guest', isSystem: true, color: 'text-slate-700 bg-slate-100 border-slate-200' },
 ] as const;
