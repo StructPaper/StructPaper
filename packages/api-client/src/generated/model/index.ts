@@ -6,6 +6,8 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './accountProfile';
+export * from './accountProfileStatus';
 export * from './activateAccountRequest';
 export * from './addManuscriptMemberRequest';
 export * from './addManuscriptMemberRequestRole';

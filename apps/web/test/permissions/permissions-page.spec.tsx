@@ -25,7 +25,7 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 });
 
-import PermissionsPage from '../../src/app/permissions/page';
+import PermissionsPage from '@/app/(authenticate)/(main)/permissions/page';
 import {
   UserRoleAssignmentTab,
   PermissionMatrixTab,
@@ -253,7 +253,6 @@ describe('Permissions & Role Management Page', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Ma trận Phân quyền/i }));
     expect(screen.getAllByText(/Manuscript/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: /Lời mời tham gia/i }));
     expect(screen.getAllByText(/PENDING/).length).toBeGreaterThan(0);
@@ -313,7 +312,9 @@ describe('Permissions & Role Management Page', () => {
   it('shows loading and error states for the users table, and retry refetches', () => {
     h.state.usersLoading = true;
     const { unmount } = renderWithClient(<UserRoleAssignmentTab />);
-    expect(screen.getByTestId('users-loading')).toBeDefined();
+    // Shimmer rows (same look as the other pages) instead of a text line
+    expect(screen.getAllByTestId('users-loading-row').length).toBeGreaterThan(0);
+    expect(screen.queryByText('GS. TSKH. Nguyễn Hoàng Nam')).toBeNull();
     unmount();
 
     h.state.usersLoading = false;
@@ -455,7 +456,8 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getAllByText(/Journal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Asset/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/SuperAdmin/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
+    // The meaningless repeated "System Baseline" caption under every role was removed
+    expect(screen.queryByText(/System Baseline/i)).toBeNull();
   });
 
   it('PermissionMatrixTab renders subject filter chips, filters matrix rows, and shows end-of-list divider', () => {
@@ -669,7 +671,8 @@ describe('Permissions & Role Management Page', () => {
   it('shows loading and error states for invitations, and retry refetches', () => {
     h.state.invitationsLoading = true;
     const { unmount } = renderWithClient(<InvitationsTab />);
-    expect(screen.getByTestId('invitations-loading')).toBeDefined();
+    expect(screen.getAllByTestId('invitations-loading-row').length).toBeGreaterThan(0);
+    expect(screen.queryByText('reviewer.le@hcmus.edu.vn')).toBeNull();
     unmount();
 
     h.state.invitationsLoading = false;

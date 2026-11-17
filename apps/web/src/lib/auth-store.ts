@@ -10,7 +10,8 @@ export interface AuthUser {
   displayName?: string | null;
   avatarUrl?: string | null;
   status?: 'ACTIVE' | 'INVITED' | 'SUSPENDED' | string;
-  roles?: string[];
+  /** Roles held by the user (with the journal each one is scoped to; null = whole system) */
+  roles?: Array<{ roleName: string; scopeJournalId?: string | null; scopeJournalName?: string | null }>;
   permissionsVersion?: number;
 }
 

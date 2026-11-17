@@ -24,6 +24,7 @@ import {
 } from '@structpaper/api-client';
 import { sileo } from '@/components/toast';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { InvitationRowsShimmer } from './MemberTableShimmers';
 import {
   apiErrorMessage,
   copyToClipboard,
@@ -261,11 +262,7 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm" data-testid="invitations-loading">
-                    Đang tải danh sách lời mời...
-                  </td>
-                </tr>
+                <InvitationRowsShimmer />
               ) : loadError ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center" data-testid="invitations-error">

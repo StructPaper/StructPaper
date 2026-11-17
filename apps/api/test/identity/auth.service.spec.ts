@@ -425,13 +425,31 @@ describe('Identity & User Management', () => {
       );
     });
 
-    it('me returns user profile stripped of passwordHash', async () => {
+    it('me returns user profile stripped of passwordHash, with the roles the user holds', async () => {
       mockDb.query.users.findFirst.mockResolvedValue(usersStore[0]);
+      // role assignments query: select().from().innerJoin().leftJoin().where()
+      mockDb.select.mockReturnValue({
+        from: () => ({
+          innerJoin: () => ({
+            leftJoin: () => ({
+              where: () =>
+                Promise.resolve([
+                  { userId: 'user-active-1', roleName: 'JournalManager', scopeJournalId: 'j-std', journalName: 'Tạp chí STD' },
+                  { userId: 'user-active-1', roleName: 'Author', scopeJournalId: '00000000-0000-0000-0000-000000000000', journalName: null },
+                ]),
+            }),
+          }),
+        }),
+      });
 
       const profile = await authService.me('user-active-1');
       expect(profile.id).toBe('user-active-1');
       expect(profile.email).toBe('active@structpaper.org');
       expect(profile.passwordHash).toBeUndefined();
+      expect(profile.roles).toEqual([
+        { roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'Tạp chí STD' },
+        { roleName: 'Author', scopeJournalId: null, scopeJournalName: null },
+      ]);
     });
   });
 

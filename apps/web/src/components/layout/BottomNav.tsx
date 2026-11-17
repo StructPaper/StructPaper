@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FolderArchive, BookOpen, Settings } from 'lucide-react';
+import { FolderArchive, BookOpen, Settings, User } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();
@@ -12,6 +12,7 @@ export const BottomNav: React.FC = () => {
     { path: '/papers', label: 'Bài báo', icon: FolderArchive },
     { path: '/templates', label: 'Mẫu Tạp chí', icon: BookOpen },
     { path: '/settings', label: 'Cài đặt', icon: Settings },
+    { path: '/account', label: 'Tài khoản', icon: User },
   ];
 
   const isNavActive = (path: string) => {

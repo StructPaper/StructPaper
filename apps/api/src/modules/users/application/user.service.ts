@@ -30,6 +30,7 @@ import type { InviteUser } from '@structpaper/contracts';
 import { TokenService } from '../../identity/domain/token.service';
 import { MailService } from '../../identity/domain/mail.service';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
+import { loadUserRoleViews, type UserRoleView } from '../../access/domain/user-role-views';
 import {
   assertNotLastActiveSuperAdmin,
   assertNotSelf,
@@ -61,11 +62,7 @@ export interface InviteActor {
 /** Why a user's roles/status can not be edited by the current viewer (null = editable). */
 export type LockReason = 'SELF' | 'REQUIRES_SUPERADMIN';
 
-export interface UserRoleView {
-  roleName: string;
-  scopeJournalId: string | null;
-  scopeJournalName: string | null;
-}
+export type { UserRoleView };
 
 export interface InviteResult {
   user: Record<string, any>;
@@ -530,34 +527,8 @@ export class UserService {
   }
 
   /** Role assignments (with journal names) for a batch of users. */
-  private async loadRoles(userIds: string[]): Promise<Map<string, UserRoleView[]>> {
-    const result = new Map<string, UserRoleView[]>();
-    if (!this.db || userIds.length === 0) return result;
-
-    const rows: any[] = await this.db
-      .select({
-        userId: userRoles.userId,
-        roleName: roles.name,
-        scopeJournalId: userRoles.scopeJournalId,
-        journalName: journals.name,
-      })
-      .from(userRoles)
-      .innerJoin(roles, eq(userRoles.roleId, roles.id))
-      .leftJoin(journals, eq(userRoles.scopeJournalId, journals.id))
-      .where(inArray(userRoles.userId, userIds));
-
-    for (const row of rows) {
-      const isGlobal = !row.scopeJournalId || row.scopeJournalId === GLOBAL_SCOPE_ID;
-      const view: UserRoleView = {
-        roleName: row.roleName,
-        scopeJournalId: isGlobal ? null : row.scopeJournalId,
-        scopeJournalName: isGlobal ? null : row.journalName ?? null,
-      };
-      const list = result.get(row.userId);
-      if (list) list.push(view);
-      else result.set(row.userId, [view]);
-    }
-    return result;
+  private loadRoles(userIds: string[]): Promise<Map<string, UserRoleView[]>> {
+    return loadUserRoleViews(this.db, userIds);
   }
 
   private async findUserById(id: string): Promise<any> {

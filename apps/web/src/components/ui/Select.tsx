@@ -1,8 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, X } from 'lucide-react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  stripVietnameseDiacritics,
+  dropdownVariants,
+  listVariants,
+  itemVariants,
+} from './select-utils';
+import { useDropdownPlacement, LIST_MAX_HEIGHT, SEARCH_BOX_HEIGHT } from './useDropdownPlacement';
+
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
 export interface SelectOption<T = string> {
   value: T;
@@ -37,77 +47,6 @@ export interface SelectProps<T extends string | number = string> {
   renderOption?: (option: SelectOption<T>, isSelected: boolean) => React.ReactNode;
   renderTrigger?: (selectedOption: SelectOption<T> | undefined, isOpen: boolean) => React.ReactNode;
 }
-
-// Utility to remove Vietnamese diacritics for search matching
-function stripVietnameseDiacritics(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase();
-}
-
-// Framer motion variants for smooth dropdown animation
-const dropdownVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.97,
-    y: -8,
-    transition: {
-      duration: 0.18,
-      ease: 'easeOut',
-    },
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: {
-      duration: 0.22,
-      ease: 'easeOut',
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.97,
-    y: -8,
-    transition: {
-      duration: 0.18,
-      ease: 'easeIn',
-    },
-  },
-};
-
-const listVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.035,
-      delayChildren: 0.015,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: -8,
-    scale: 0.98,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 450,
-      damping: 28,
-      mass: 0.7,
-    },
-  },
-};
 
 export function Select<T extends string | number = string>({
   options,
@@ -162,12 +101,24 @@ export function Select<T extends string | number = string>({
     });
   }, [options, searchQuery]);
 
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const placement = useDropdownPlacement({
+    isOpen,
+    triggerRef,
+    align,
+    optionCount: filteredOptions.length,
+    searchable,
+  });
+
   // Handle outside click to close
   useEffect(() => {
     if (!isOpen) return;
 
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideTrigger = containerRef.current?.contains(target);
+      const insidePopover = popoverRef.current?.contains(target);
+      if (containerRef.current && !insideTrigger && !insidePopover) {
         setIsOpen(false);
         setSearchQuery('');
       }
@@ -372,7 +323,7 @@ export function Select<T extends string | number = string>({
         )}
 
         <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
+          animate={isTest ? undefined : { rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className="shrink-0 flex items-center justify-center text-zinc-400 group-hover:text-zinc-800"
         >
@@ -391,16 +342,28 @@ export function Select<T extends string | number = string>({
       ) : null}
 
       {/* Animated Dropdown Menu Popover with AnimatePresence */}
+      {typeof document !== 'undefined' &&
+        createPortal(
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && placement && (
           <motion.div
+            ref={popoverRef}
             key="dropdown-popover"
-            variants={dropdownVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`absolute z-[100] mt-1.5 w-full min-w-[180px] bg-white border border-slate-200/90 shadow-2xl shadow-black/15 rounded-xl overflow-hidden origin-top ${
-              align === 'right' ? 'right-0' : 'left-0'
+            custom={placement.openUp}
+            variants={isTest ? undefined : dropdownVariants}
+            initial={isTest ? undefined : 'hidden'}
+            animate={isTest ? undefined : 'visible'}
+            exit={isTest ? undefined : 'exit'}
+            data-placement={placement.openUp ? 'top' : 'bottom'}
+            style={{
+              position: 'fixed',
+              top: placement.top,
+              bottom: placement.bottom,
+              left: placement.left,
+              width: placement.width,
+            }}
+            className={`z-[10050] min-w-[180px] bg-white border border-slate-200/90 shadow-2xl shadow-black/15 rounded-xl overflow-hidden ${
+              placement.openUp ? 'origin-bottom' : 'origin-top'
             } ${dropdownClassName}`}
           >
             {/* Search box if enabled */}
@@ -437,17 +400,22 @@ export function Select<T extends string | number = string>({
             {/* Options Listbox with Staggered Cascading Children */}
             <motion.ul
               ref={listboxRef}
-              variants={listVariants}
-              initial="hidden"
-              animate="visible"
+              variants={isTest ? undefined : listVariants}
+              initial={isTest ? undefined : 'hidden'}
+              animate={isTest ? undefined : 'visible'}
               role="listbox"
               tabIndex={-1}
               aria-label={label || placeholder}
+              style={{
+                maxHeight: placement
+                  ? Math.max(Math.min(LIST_MAX_HEIGHT, placement.maxHeight - (searchable ? SEARCH_BOX_HEIGHT : 0)), 72)
+                  : undefined,
+              }}
               className="max-h-60 overflow-y-auto py-1 divide-y divide-transparent focus:outline-none"
             >
               {filteredOptions.length === 0 ? (
                 <motion.li
-                  variants={itemVariants}
+                  variants={isTest ? undefined : itemVariants}
                   className="px-3.5 py-3 text-xs text-zinc-400 text-center italic"
                 >
                   Không tìm thấy tùy chọn phù hợp
@@ -460,7 +428,7 @@ export function Select<T extends string | number = string>({
                   return (
                     <motion.li
                       key={String(opt.value)}
-                      variants={itemVariants}
+                      variants={isTest ? undefined : itemVariants}
                       role="option"
                       aria-selected={isSelected}
                       aria-disabled={opt.disabled}
@@ -517,9 +485,9 @@ export function Select<T extends string | number = string>({
 
                           {isSelected && (
                             <motion.span
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={{ scale: 0, opacity: 0 }}
+                              initial={isTest ? undefined : { scale: 0, opacity: 0 }}
+                              animate={isTest ? undefined : { scale: 1, opacity: 1 }}
+                              exit={isTest ? undefined : { scale: 0, opacity: 0 }}
                               transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                               className="shrink-0 flex items-center justify-center text-zinc-900 ml-1"
                             >
@@ -538,7 +506,9 @@ export function Select<T extends string | number = string>({
             </motion.ul>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }

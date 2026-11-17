@@ -142,11 +142,6 @@ export const PaperQuickEditModal: React.FC<PaperQuickEditModalProps> = ({
       setIsSaving(true);
       setError(null);
 
-      // Hiệu ứng kiểm tra mượt mà để nút xoay và hoàn tất thẩm định tính hợp lệ
-      if (!isTest) {
-        await new Promise((resolve) => setTimeout(resolve, 550));
-      }
-
       // Kiểm tra trùng lặp tên hiển thị và tiêu đề bài báo trong cơ sở dữ liệu IndexedDB
       const { isDuplicate, duplicateSubmissionId } = await validateDisplayNameUniqueness(
         info.id,

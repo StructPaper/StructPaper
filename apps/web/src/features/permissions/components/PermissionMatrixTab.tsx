@@ -310,9 +310,6 @@ export const PermissionMatrixTab: React.FC = () => {
                       <span className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color}`}>
                         {role.label}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        System Baseline
-                      </span>
                     </div>
                   </th>
                 ))}

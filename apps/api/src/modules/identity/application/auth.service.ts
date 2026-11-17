@@ -11,6 +11,7 @@ import type { LoginRequest, TokenResponse, ResetPassword } from '@structpaper/co
 import { PasswordService } from '../domain/password.service';
 import { TokenService } from '../domain/token.service';
 import { MailService } from '../domain/mail.service';
+import { loadUserRoleViews } from '../../access/domain/user-role-views';
 
 @Injectable()
 export class AuthService {
@@ -310,7 +311,8 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
     const { passwordHash, ...profile } = user;
-    return profile;
+    const roleViews = (await loadUserRoleViews(this.db, [userId])).get(userId) ?? [];
+    return { ...profile, roles: roleViews };
   }
 
   private async findUserByEmail(email: string): Promise<any> {

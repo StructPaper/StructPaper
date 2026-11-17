@@ -8,7 +8,6 @@ import {
   FolderArchive,
   User,
   Settings,
-  LogOut,
   ChevronRight,
   ChevronLeft,
   BookOpen,
@@ -17,7 +16,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
-import { authApi } from '@structpaper/api-client';
 
 const NAV_ITEMS = [
   {
@@ -182,10 +180,10 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
-  const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'TS. Nguyễn Hoàng Nam');
-  const userEmail = user?.email || 'nam.nh@vnuhcm.edu.vn';
+  const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Tài khoản');
+  const userEmail = user?.email || '';
   const userInitials =
     displayName
       .split(' ')
@@ -201,18 +199,6 @@ export const Sidebar: React.FC = () => {
     if (path === '/account' && pathname.startsWith('/account')) return true;
     if (path === '/settings' && pathname.startsWith('/settings')) return true;
     return pathname === path;
-  };
-
-  const handleLogout = async () => {
-    if (typeof window !== 'undefined') {
-      const confirmLogout = window.confirm('Bạn có chắc chắn muốn đăng xuất tài khoản?');
-      if (confirmLogout) {
-        try {
-          await authApi.logout();
-        } catch {}
-        logout();
-      }
-    }
   };
 
   return (
@@ -274,46 +260,30 @@ export const Sidebar: React.FC = () => {
           })}
         </div>
 
-        {/* BOTTOM SECTION: USER PROFILE & LOGOUT */}
+        {/* BOTTOM SECTION: ACCOUNT (profile, session and logout live on the account page) */}
         <div className="relative flex flex-col items-start gap-2 w-full">
-          {isExpanded ? (
-            <div className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-100/80 border border-zinc-200/70">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#78C841] to-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs flex-shrink-0">
+          <DockPillButton
+            href="/account"
+            isExpanded={isExpanded}
+            active={isNavActive('/account')}
+            icon={
+              isExpanded ? (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#78C841] to-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
                   {userInitials}
                 </div>
-                <div className="min-w-0">
-                  <span className="font-bold text-xs text-zinc-900 block truncate leading-tight">
-                    {displayName}
-                  </span>
-                  <span className="text-[10px] text-zinc-400 block truncate font-medium">
-                    {userEmail}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                title="Đăng xuất"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <DockPillButton
-              onClick={handleLogout}
-              isExpanded={isExpanded}
-              icon={
-                <LogOut
-                  className="w-4 h-4 text-zinc-600 group-hover:text-rose-600 transition-colors"
+              ) : (
+                <User
+                  className={`w-5 h-5 transition-colors ${
+                    isNavActive('/account') ? 'text-zinc-950' : 'text-zinc-700 group-hover:text-zinc-950'
+                  }`}
                   strokeWidth={2.8}
                 />
-              }
-              label="Đăng xuất"
-              description="Rời khỏi hệ thống"
-              tooltipText="Đăng xuất tài khoản"
-            />
-          )}
+              )
+            }
+            label={isExpanded ? displayName : 'Tài khoản'}
+            description={isExpanded ? userEmail || 'Hồ sơ & phiên đăng nhập' : undefined}
+            tooltipText={isExpanded ? undefined : 'Tài khoản'}
+          />
         </div>
       </aside>
 
@@ -337,13 +307,18 @@ export const Sidebar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleLogout}
-            className="p-2 text-zinc-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Đăng xuất"
+          <Link
+            href="/account"
+            className={`p-2 rounded-xl transition-colors ${
+              isNavActive('/account')
+                ? 'bg-[#78C841] text-zinc-950'
+                : 'text-zinc-500 hover:text-zinc-950 hover:bg-gray-100'
+            }`}
+            title="Tài khoản"
+            aria-label="Tài khoản"
           >
-            <LogOut className="w-4 h-4" />
-          </button>
+            <User className="w-4 h-4" strokeWidth={2.8} />
+          </Link>
         </div>
       </div>
 
@@ -411,17 +386,14 @@ export const Sidebar: React.FC = () => {
               })}
             </div>
             <div className="p-4 border-t border-zinc-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileOpen(false);
-                  handleLogout();
-                }}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer"
+              <Link
+                href="/account"
+                onClick={() => setMobileOpen(false)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 bg-zinc-100 hover:bg-zinc-200 transition-colors"
               >
-                <LogOut className="w-4 h-4" strokeWidth={2.8} />
-                <span>Đăng xuất tài khoản</span>
-              </button>
+                <User className="w-4 h-4" strokeWidth={2.8} />
+                <span>Tài khoản</span>
+              </Link>
             </div>
           </div>
         </div>

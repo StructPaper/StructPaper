@@ -1,5 +1,6 @@
 import { http } from '../http';
-import type { TokenResponse, UserSummary } from '@structpaper/contracts';
+import type { TokenResponse } from '@structpaper/contracts';
+import type { AccountProfile } from '../generated/model/accountProfile';
 
 export interface LoginParams {
   email?: string;
@@ -16,7 +17,7 @@ export const authApi = {
     return http.post<T>('/api/v1/auth/logout') as unknown as Promise<T>;
   },
 
-  getAccount: <T = UserSummary>() => {
+  getAccount: <T = AccountProfile>() => {
     return http.get<T>('/api/v1/auth/account') as unknown as Promise<T>;
   },
 

@@ -1,10 +1,10 @@
 {
   "$description": "Baseline allowlist for legacy files exceeding line limits. Lines may only decrease, never increase.",
   "allowlist": [
-    "apps/web/src/app/dev-persistence-test/page.tsx",
-    "apps/web/src/app/login/page.tsx",
-    "apps/web/src/app/test-render-html/page.tsx",
-    "apps/web/src/app/test-render-latex/page.tsx",
+    "apps/web/src/app/(authenticate)/(main)/(dev)/dev-persistence-test/page.tsx",
+    "apps/web/src/app/(public)/login/page.tsx",
+    "apps/web/src/app/(authenticate)/(main)/(dev)/test-render-html/page.tsx",
+    "apps/web/src/app/(authenticate)/(main)/(dev)/test-render-latex/page.tsx",
     "apps/web/src/features/papers/components/ExtractedContentView.tsx",
     "apps/web/src/components/layout/Sidebar.tsx",
     "apps/web/src/features/permissions/components/PermissionMatrixTab.tsx",
@@ -49,25 +49,25 @@
     "apps/web/src/types/template-builder.ts"
   ],
   "limits": {
-    "apps/web/src/app/dev-persistence-test/page.tsx": {
+    "apps/web/src/app/(authenticate)/(main)/(dev)/dev-persistence-test/page.tsx": {
       "totalLines": 442,
       "codeLines": 404,
       "maxAllowedTotal": 442,
       "maxAllowedCode": 404
     },
-    "apps/web/src/app/login/page.tsx": {
+    "apps/web/src/app/(public)/login/page.tsx": {
       "totalLines": 450,
       "codeLines": 405,
       "maxAllowedTotal": 450,
       "maxAllowedCode": 405
     },
-    "apps/web/src/app/test-render-html/page.tsx": {
+    "apps/web/src/app/(authenticate)/(main)/(dev)/test-render-html/page.tsx": {
       "totalLines": 837,
       "codeLines": 778,
       "maxAllowedTotal": 837,
       "maxAllowedCode": 778
     },
-    "apps/web/src/app/test-render-latex/page.tsx": {
+    "apps/web/src/app/(authenticate)/(main)/(dev)/test-render-latex/page.tsx": {
       "totalLines": 922,
       "codeLines": 839,
       "maxAllowedTotal": 922,

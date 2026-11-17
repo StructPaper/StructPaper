@@ -92,6 +92,22 @@ export function buildOpenApiSpec() {
           },
           required: ['email', 'role'],
         },
+        AccountProfile: {
+          type: 'object',
+          description: 'The logged-in user, with the roles they hold.',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            email: { type: 'string', format: 'email' },
+            displayName: { type: 'string', nullable: true },
+            avatarUrl: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['ACTIVE', 'INVITED', 'SUSPENDED'] },
+            permissionsVersion: { type: 'integer' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+            roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+          },
+          required: ['id', 'email', 'status', 'roles'],
+        },
         UserRoleAssignmentView: {
           type: 'object',
           description: 'A role held by a user, optionally scoped to one journal (null = global).',
@@ -678,7 +694,7 @@ export function buildOpenApiSpec() {
             '200': {
               description: 'Current user profile',
               content: {
-                'application/json': { schema: { $ref: '#/components/schemas/UserSummary' } },
+                'application/json': { schema: { $ref: '#/components/schemas/AccountProfile' } },
               },
             },
             '401': { $ref: '#/components/responses/ProblemResponse' },

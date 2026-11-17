@@ -22,6 +22,7 @@ import {
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { sileo } from '@/components/toast';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { UserRowsShimmer } from './MemberTableShimmers';
 import { apiErrorMessage, FALLBACK_ROLE_NAMES, GLOBAL_SCOPE_LABEL } from '../utils';
 
 export type UserStatus = 'ACTIVE' | 'INVITED' | 'SUSPENDED';
@@ -272,11 +273,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm" data-testid="users-loading">
-                    Đang tải danh sách thành viên...
-                  </td>
-                </tr>
+                <UserRowsShimmer />
               ) : loadError ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center" data-testid="users-error">

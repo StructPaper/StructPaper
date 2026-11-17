@@ -25,14 +25,14 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountProfile,
   ActivateAccountRequest,
   LoginRequest,
   ProblemResponseResponse,
   RefreshTokenBody,
   ResetPasswordRequest,
   SuccessMessageResponse,
-  TokenResponse,
-  UserSummary
+  TokenResponse
 } from '../../model';
 
 import { customInstance } from '../../../http';
@@ -307,7 +307,7 @@ export const getCurrentUser = (
 ) => {
       
       
-      return customInstance<UserSummary>(
+      return customInstance<AccountProfile>(
       {url: `/api/v1/auth/me`, method: 'GET', signal
     },
       options);

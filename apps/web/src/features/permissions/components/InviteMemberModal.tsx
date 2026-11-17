@@ -189,16 +189,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         {/* Header - Matching CreatePaperModal */}
         <div className="flex-shrink-0 px-7 sm:px-8 py-5 pb-0 flex items-center justify-between sticky top-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#78C841]/10 border border-[#78C841]/20 flex items-center justify-center text-[#78C841]">
-              <UserPlus className="w-5 h-5" />
-            </div>
             <div>
-              <h3 id="modal-title" className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+              <h3 id="modal-title" className="ml-2 text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                 Mời thành viên mới
               </h3>
-              <p className="text-xs text-slate-500 font-medium">
-                Tạo link kích hoạt và phân quyền biên tập / phản biện
-              </p>
             </div>
           </div>
 
@@ -307,8 +301,8 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               >
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label htmlFor="invite-email" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
-                    Email học thuật / Định danh <span className="text-red-500">*</span>
+                  <label htmlFor="invite-email" className="block text-sm font-bold text-slate-600 pl-1">
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -326,7 +320,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
                 {/* Display Name */}
                 <div className="space-y-1.5">
-                  <label htmlFor="invite-name" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
+                  <label htmlFor="invite-name" className="block text-sm font-bold text-slate-600 pl-1">
                     Họ và tên (Tùy chọn)
                   </label>
                   <input
@@ -341,7 +335,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
                 {/* Role Selection */}
                 <div className="space-y-1.5">
-                  <label htmlFor="invite-role" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
+                  <label htmlFor="invite-role" className="block text-sm font-bold text-slate-600 pl-1">
                     Vai trò / Phân quyền <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -373,7 +367,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
                 {/* Scoped Journal (optional) */}
                 <div className="space-y-1.5">
-                  <label htmlFor="invite-journal" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
+                  <label htmlFor="invite-journal" className="block text-sm font-bold text-slate-600 pl-1">
                     Phạm vi Tạp chí (Scoped Journal - Tùy chọn)
                   </label>
                   <Select
@@ -399,9 +393,6 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-slate-500 pl-1">
-                    Áp dụng phạm vi phân quyền Scoped RBAC/CASL. Nếu để trống, quyền sẽ có hiệu lực toàn hệ thống.
-                  </p>
                 </div>
 
                 {/* Actions */}

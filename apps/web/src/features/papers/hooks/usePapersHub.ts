@@ -108,35 +108,12 @@ export function usePapersHub() {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [editingPaper, setEditingPaper] = useState<ManuscriptRecord | null>(null);
 
-  const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-
-  const triggerFilterLoading = useCallback(() => {
-    if (isTestEnv) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-  }, [isTestEnv]);
-
-  const handleSearchChange = useCallback((q: string) => {
-    setSearchQuery(q);
-    triggerFilterLoading();
-  }, [triggerFilterLoading]);
-
-  const handleStatusFilterChange = useCallback((st: FilterWorkflowStatus) => {
-    setStatusFilter(st);
-    triggerFilterLoading();
-  }, [triggerFilterLoading]);
-
-  const handleJournalFilterChange = useCallback((jf: FilterJournal) => {
-    setJournalFilter(jf);
-    triggerFilterLoading();
-  }, [triggerFilterLoading]);
-
-  const handleSortChange = useCallback((sb: SortOption) => {
-    setSortBy(sb);
-    triggerFilterLoading();
-  }, [triggerFilterLoading]);
+  // Searching, filtering and sorting run on the records already in memory, so they apply
+  // instantly. The loading shimmer is reserved for REAL loading (fetching the records).
+  const handleSearchChange = useCallback((q: string) => setSearchQuery(q), []);
+  const handleStatusFilterChange = useCallback((st: FilterWorkflowStatus) => setStatusFilter(st), []);
+  const handleJournalFilterChange = useCallback((jf: FilterJournal) => setJournalFilter(jf), []);
+  const handleSortChange = useCallback((sb: SortOption) => setSortBy(sb), []);
 
   // Load records from IndexedDb and remote server
   const syncingIdsRef = useRef<Set<string>>(new Set());
@@ -272,12 +249,9 @@ export function usePapersHub() {
       setError(err instanceof Error ? err : new Error(String(err)));
       setRecords([]);
     } finally {
-      if (!isTestEnv) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-      }
       setIsLoading(false);
     }
-  }, [storage, isTestEnv, reconcileLocalDrafts]);
+  }, [storage, reconcileLocalDrafts]);
 
   useEffect(() => {
     loadRecords();
