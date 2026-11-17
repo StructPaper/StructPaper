@@ -7,7 +7,6 @@ import {
   Req,
   HttpCode,
   HttpStatus,
-  UseGuards,
   UsePipes,
   Inject,
 } from '@nestjs/common';
@@ -17,7 +16,6 @@ import {
   type UploadIntent,
   type UploadComplete,
 } from '@structpaper/contracts';
-import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { AssetService } from '../application/asset.service';
 
@@ -27,7 +25,6 @@ export class AssetController {
 
   @Post('upload-intent')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
   @UsePipes(new ZodValidationPipe(UploadIntentSchema))
   async createUploadIntent(@Body() body: UploadIntent, @Req() req: any) {
     const userId = req.user?.id;
@@ -36,7 +33,6 @@ export class AssetController {
 
   @Post('upload-complete')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(JwtAuthGuard)
   @UsePipes(new ZodValidationPipe(UploadCompleteSchema))
   async completeUpload(@Body() body: UploadComplete, @Req() req: any) {
     const userId = req.user?.id;

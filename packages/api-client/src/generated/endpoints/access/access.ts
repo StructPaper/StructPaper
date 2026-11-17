@@ -51,7 +51,7 @@ export const getRoles = (
       
       
       return customInstance<Role[]>(
-      {url: `/api/v1/access/roles`, method: 'GET', signal
+      {url: `/api/v1/roles`, method: 'GET', signal
     },
       options);
     }
@@ -61,7 +61,7 @@ export const getRoles = (
 
 export const getGetRolesQueryKey = () => {
     return [
-    `/api/v1/access/roles`
+    `/api/v1/roles`
     ] as const;
     }
 
@@ -143,7 +143,7 @@ export const getPermissions = (
       
       
       return customInstance<Permission[]>(
-      {url: `/api/v1/access/permissions`, method: 'GET', signal
+      {url: `/api/v1/permissions`, method: 'GET', signal
     },
       options);
     }
@@ -153,7 +153,7 @@ export const getPermissions = (
 
 export const getGetPermissionsQueryKey = () => {
     return [
-    `/api/v1/access/permissions`
+    `/api/v1/permissions`
     ] as const;
     }
 
@@ -235,7 +235,7 @@ export const assignRole = (
       
       
       return customInstance<AssignRole200>(
-      {url: `/api/v1/access/roles/assign`, method: 'POST',
+      {url: `/api/v1/roles/assign`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: assignRoleRequest, signal
     },
@@ -294,14 +294,13 @@ export const useAssignRole = <TError = ProblemResponseResponse,
  */
 export const revokeRole = (
     revokeRoleRequest: RevokeRoleRequest,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
+ options?: SecondParameter<typeof customInstance>,) => {
       
       
       return customInstance<RevokeRole200>(
-      {url: `/api/v1/access/roles/revoke`, method: 'POST',
+      {url: `/api/v1/roles/assign`, method: 'DELETE',
       headers: {'Content-Type': 'application/json', },
-      data: revokeRoleRequest, signal
+      data: revokeRoleRequest
     },
       options);
     }

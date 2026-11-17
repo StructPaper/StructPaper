@@ -44,7 +44,7 @@ export default function PermissionsPage() {
         <div className="flex items-center justify-between pt-2">
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <ShieldCheck className="w-7 h-7 text-[#78C841]" strokeWidth={2.5} />
-            <span>Quản lý Phân quyền &amp; Vai trò (RBAC / CASL)</span>
+            <span>Quản lý phân quyền</span>
           </h1>
         </div>
 

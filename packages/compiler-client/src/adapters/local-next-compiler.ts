@@ -16,6 +16,9 @@ export interface LocalNextCompilerOptions {
 
   /** Optional secondary compiler to fall back to when the HTTP endpoint is unreachable */
   fallbackCompiler?: CompilerPort;
+
+  /** Extra request headers resolved per request (e.g. the Authorization bearer token) */
+  getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
 /**
@@ -27,12 +30,14 @@ export class LocalNextCompilerAdapter implements CompilerPort {
   private readonly baseUrl: string;
   private readonly fetchFn?: typeof fetch;
   private readonly fallbackCompiler?: CompilerPort;
+  private readonly getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
 
   constructor(options: LocalNextCompilerOptions = {}) {
     this.endpoint = options.endpoint ?? '/api/compile-latex';
     this.baseUrl = options.baseUrl ?? '';
     this.fetchFn = options.fetchFn;
     this.fallbackCompiler = options.fallbackCompiler;
+    this.getHeaders = options.getHeaders;
   }
 
   public async compile(
@@ -60,6 +65,7 @@ export class LocalNextCompilerAdapter implements CompilerPort {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(this.getHeaders ? await this.getHeaders() : {}),
         },
         body: JSON.stringify({
           tex: request.tex,

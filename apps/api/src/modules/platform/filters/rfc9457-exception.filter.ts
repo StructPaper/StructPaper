@@ -91,6 +91,13 @@ export class Rfc9457ExceptionFilter implements ExceptionFilter {
         detail = exception.message;
         title = this.getDefaultTitleForStatus(status);
       }
+    } else if (exception instanceof Error && this.isClientError(exception)) {
+      // Errors raised by Fastify itself for bad requests (empty/invalid JSON body, payload too
+      // large, unsupported media type...) already carry the right 4xx status: never report 500.
+      status = (exception as any).statusCode;
+      title = this.getDefaultTitleForStatus(status);
+      detail = exception.message;
+      code = typeof (exception as any).code === 'string' ? (exception as any).code : undefined;
     } else if (exception instanceof Error) {
       this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
       status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -118,6 +125,11 @@ export class Rfc9457ExceptionFilter implements ExceptionFilter {
       .status(status)
       .header('content-type', 'application/problem+json')
       .send(problemDetails);
+  }
+
+  private isClientError(error: Error): boolean {
+    const statusCode = (error as any).statusCode;
+    return typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500;
   }
 
   private getDefaultTitleForStatus(status: number): string {

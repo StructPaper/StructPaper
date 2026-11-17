@@ -8,6 +8,9 @@
 
 export interface ResetPasswordRequest {
   token: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 8
+   * @maxLength 128
+   */
   newPassword: string;
 }

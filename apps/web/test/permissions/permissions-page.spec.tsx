@@ -1,14 +1,13 @@
 // @vitest-environment happy-dom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock next/navigation
-const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
+    push: vi.fn(),
     replace: vi.fn(),
     prefetch: vi.fn(),
   }),
@@ -26,33 +25,117 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 });
 
-// Import permissions page and components
 import PermissionsPage from '../../src/app/permissions/page';
-import { UserRoleAssignmentTab, PermissionMatrixTab, InviteMemberModal, InvitationsTab } from '@/features/permissions';
+import {
+  UserRoleAssignmentTab,
+  PermissionMatrixTab,
+  InviteMemberModal,
+  InvitationsTab,
+} from '@/features/permissions';
 import { sileo } from '@/components/toast';
+import { ProblemDetailsError } from '@structpaper/api-client';
 
-// Mock apiClient functions
-const mockAssignRoleMutate = vi.fn();
-const mockInviteUserMutate = vi.fn();
+// ---------------------------------------------------------------------------
+// Fixtures & API mocks (the components load everything through the generated hooks)
+// ---------------------------------------------------------------------------
+const h = vi.hoisted(() => {
+  const iso = (offsetHours: number) => new Date(Date.now() + offsetHours * 3_600_000).toISOString();
+  return {
+    assignRole: vi.fn(),
+    revokeRole: vi.fn(),
+    invite: vi.fn(),
+    resend: vi.fn(),
+    revokeInvitation: vi.fn(),
+    refetchUsers: vi.fn(),
+    refetchInvitations: vi.fn(),
+    state: {
+      usersLoading: false,
+      usersError: false,
+      invitationsLoading: false,
+      invitationsError: false,
+    },
+    users: [
+      {
+        id: 'u-admin',
+        email: 'admin@structpaper.org',
+        displayName: 'GS. TSKH. Nguyễn Hoàng Nam',
+        status: 'ACTIVE',
+        permissionsVersion: 5,
+        roles: [{ roleName: 'SuperAdmin', scopeJournalId: null, scopeJournalName: null }],
+      },
+      {
+        id: 'u-manager',
+        email: 'manager.stdj@vnuhcm.edu.vn',
+        displayName: 'PGS. TS. Trần Minh Tuấn',
+        status: 'ACTIVE',
+        permissionsVersion: 3,
+        roles: [
+          { roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'Tạp chí Phát triển KH&CN' },
+          { roleName: 'Reviewer', scopeJournalId: 'j-ssh', scopeJournalName: 'Tạp chí KHXH&NV' },
+        ],
+      },
+      {
+        id: 'u-guest',
+        email: 'collaborator.guest@vnu.edu.vn',
+        displayName: 'Cộng tác viên ĐHQG',
+        status: 'INVITED',
+        permissionsVersion: 1,
+        roles: [],
+      },
+    ],
+    invitations: [
+      {
+        id: 'inv-1',
+        email: 'collaborator.guest@vnu.edu.vn',
+        displayName: 'Độc giả / Cộng tác viên ĐHQG',
+        roles: [{ roleName: 'Reviewer', scopeJournalId: null, scopeJournalName: null }],
+        invitedAt: iso(-24),
+        expiresAt: iso(48),
+        status: 'PENDING',
+      },
+      {
+        id: 'inv-2',
+        email: 'reviewer.le@hcmus.edu.vn',
+        displayName: 'TS. Lê Hải Đăng',
+        roles: [{ roleName: 'Reviewer', scopeJournalId: 'j-nat', scopeJournalName: 'Tạp chí KHTN' }],
+        invitedAt: iso(-48),
+        expiresAt: iso(24),
+        status: 'PENDING',
+      },
+      {
+        id: 'inv-3',
+        email: 'editor.tran@medvnu.edu.vn',
+        displayName: 'ThS. Trần Thị Kim Cương',
+        roles: [{ roleName: 'Editor', scopeJournalId: 'j-med', scopeJournalName: 'Tạp chí Sức khỏe' }],
+        invitedAt: iso(-100),
+        expiresAt: iso(-2),
+        status: 'EXPIRED',
+      },
+    ],
+  };
+});
 
 vi.mock('@structpaper/api-client', async () => {
   const actual = await vi.importActual<any>('@structpaper/api-client');
   return {
     ...actual,
-    useAssignRole: () => ({
-      mutate: mockAssignRoleMutate,
-      mutateAsync: mockAssignRoleMutate.mockResolvedValue({ success: true, permissionsVersion: 6 }),
-      isPending: false,
+    useListUsers: () => ({
+      data: { items: h.users, total: h.users.length, limit: 100, offset: 0 },
+      isLoading: h.state.usersLoading,
+      isError: h.state.usersError,
+      refetch: h.refetchUsers,
     }),
-    useInviteUser: () => ({
-      mutate: mockInviteUserMutate,
-      mutateAsync: mockInviteUserMutate.mockResolvedValue({
-        user: { id: 'user-new', email: 'newmember@vnu.edu.vn', status: 'INVITED' },
-        token: 'mock-act-tok-12345',
-        activationUrl: 'http://localhost:3000/activate?token=mock-act-tok-12345',
-      }),
-      isPending: false,
+    useListInvitations: () => ({
+      data: h.invitations,
+      isLoading: h.state.invitationsLoading,
+      isError: h.state.invitationsError,
+      refetch: h.refetchInvitations,
     }),
+    useAssignRole: () => ({ mutateAsync: h.assignRole, isPending: false }),
+    useRevokeRole: () => ({ mutateAsync: h.revokeRole, isPending: false }),
+    useInviteUser: () => ({ mutateAsync: h.invite, isPending: false }),
+    useResendInvite: () => ({ mutateAsync: h.resend, isPending: false }),
+    useRevokeInvitation: () => ({ mutateAsync: h.revokeInvitation, isPending: false }),
     useGetRoles: () => ({
       data: [
         { id: 'role-superadmin', name: 'SuperAdmin', isSystem: true },
@@ -60,7 +143,13 @@ vi.mock('@structpaper/api-client', async () => {
         { id: 'role-editor', name: 'Editor', isSystem: true },
         { id: 'role-reviewer', name: 'Reviewer', isSystem: true },
         { id: 'role-author', name: 'Author', isSystem: true },
-        { id: 'role-guest', name: 'Guest', isSystem: true },
+      ],
+      isLoading: false,
+    }),
+    useListJournals: () => ({
+      data: [
+        { id: 'j-std', slug: 'vnuhcm-std', code: 'VNUHCM-STD', shortName: 'STD', name: 'Tạp chí Phát triển KH&CN' },
+        { id: 'j-ssh', slug: 'vnuhcm-ssh', code: 'VNUHCM-SSH', shortName: 'SSH', name: 'Tạp chí KHXH&NV' },
       ],
       isLoading: false,
     }),
@@ -86,32 +175,52 @@ function renderWithClient(ui: React.ReactElement) {
 describe('Permissions & Role Management Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWriteText.mockResolvedValue(undefined);
+    h.assignRole.mockResolvedValue({ success: true, permissionsVersion: 6 });
+    h.revokeRole.mockResolvedValue({ success: true, permissionsVersion: 7 });
+    h.invite.mockResolvedValue({
+      user: { id: 'user-new', email: 'newmember@vnu.edu.vn', status: 'INVITED' },
+      token: 'real-token-12345',
+      activationUrl: 'http://localhost:3000/activate#token=real-token-12345',
+      expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString(),
+    });
+    h.resend.mockResolvedValue({
+      user: { id: 'inv-1', email: 'collaborator.guest@vnu.edu.vn', status: 'INVITED' },
+      token: 'fresh-token-999',
+      activationUrl: 'http://localhost:3000/activate#token=fresh-token-999',
+      expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString(),
+    });
+    h.revokeInvitation.mockResolvedValue({ success: true, message: 'Invitation revoked' });
+    h.state.usersLoading = false;
+    h.state.usersError = false;
+    h.state.invitationsLoading = false;
+    h.state.invitationsError = false;
   });
 
   afterEach(() => {
     cleanup();
   });
 
+  // ------------------------------- page shell -------------------------------
   it('renders the header with title', () => {
     renderWithClient(<PermissionsPage />);
 
-    expect(screen.getByText(/Quản lý Phân quyền & Vai trò/i)).toBeDefined();
-    expect(screen.getByText(/RBAC \/ CASL/i)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Quản lý phân quyền' })).toBeDefined();
+    // The long subtitle (roles / RBAC / CASL) is gone: the header is just the short title
+    expect(screen.queryByText(/RBAC \/ CASL/i)).toBeNull();
     expect(screen.getAllByText(/permissions_version|pv/i).length).toBeGreaterThan(0);
   });
 
   it('renders the sticky navigation toolbar with mask and invite member action on the same row', () => {
     renderWithClient(<PermissionsPage />);
 
-    const toolbar = screen.getByTestId('permissions-sticky-toolbar');
-    expect(toolbar).toBeDefined();
+    expect(screen.getByTestId('permissions-sticky-toolbar')).toBeDefined();
     expect(screen.getByRole('button', { name: /Mời thành viên mới/i })).toBeDefined();
   });
 
   it('renders three tabs: User & Role Assignment, Permission Matrix, and Invitations', () => {
     renderWithClient(<PermissionsPage />);
 
-    // 3 Tab buttons
     expect(screen.getByRole('tab', { name: /Người dùng & Vai trò/i })).toBeDefined();
     expect(screen.getByRole('tab', { name: /Ma trận Phân quyền/i })).toBeDefined();
     expect(screen.getByRole('tab', { name: /Lời mời tham gia/i })).toBeDefined();
@@ -120,279 +229,387 @@ describe('Permissions & Role Management Page', () => {
   it('switches between tabs when clicking tab headers', () => {
     renderWithClient(<PermissionsPage />);
 
-    // Default tab is User & Role Assignment
     expect(screen.getAllByText(/Mời thành viên mới/i).length).toBeGreaterThan(0);
 
-    // Switch to Permission Matrix tab
-    const matrixTab = screen.getByRole('tab', { name: /Ma trận Phân quyền/i });
-    fireEvent.click(matrixTab);
-
-    // Permission Matrix should display subjects and system baseline badge
+    fireEvent.click(screen.getByRole('tab', { name: /Ma trận Phân quyền/i }));
     expect(screen.getAllByText(/Manuscript/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
 
-    // Switch to Invitations tab
-    const invitesTab = screen.getByRole('tab', { name: /Lời mời tham gia/i });
-    fireEvent.click(invitesTab);
-
-    // Invitations tab should display pending invitations
-    expect(screen.getAllByText(/Chờ kích hoạt|Pending/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('tab', { name: /Lời mời tham gia/i }));
+    expect(screen.getAllByText(/PENDING/).length).toBeGreaterThan(0);
   });
 
-  it('modifying a user role calls the role assignment mutation with instant feedback', async () => {
-    renderWithClient(<PermissionsPage />);
+  // --------------------------- users tab (real data) ---------------------------
+  it('UserRoleAssignmentTab shows the users returned by the API, with journal scope names', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
 
-    // Find role selects for users
-    const userRoleSelects = screen.getAllByLabelText(/phân vai trò cho/i);
-    expect(userRoleSelects.length).toBeGreaterThan(0);
-
-    // Change role of a user to Editor
-    fireEvent.change(userRoleSelects[0], { target: { value: 'Editor' } });
-
-    await waitFor(() => {
-      expect(mockAssignRoleMutate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            roleId: 'Editor',
-          }),
-        })
-      );
-    });
-  });
-
-  it('permission matrix correctly shows system roles as immutable baselines and displays actions/subjects', () => {
-    renderWithClient(<PermissionMatrixTab />);
-
-    // Actions & Subjects
-    expect(screen.getAllByText(/create/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/manage/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Manuscript/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Journal/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Asset/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/SuperAdmin/i).length).toBeGreaterThan(0);
-
-    // Baseline notice
-    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
-  });
-
-  it('PermissionMatrixTab renders subject filter chips, filters matrix rows, and shows end-of-list divider', () => {
-    renderWithClient(<PermissionMatrixTab />);
-
-    // Check subject filter pills
-    const allChip = screen.getByTestId('subject-filter-all');
-    const manuscriptChip = screen.getByTestId('subject-filter-manuscript');
-    const userChip = screen.getByTestId('subject-filter-user');
-    expect(allChip).toBeDefined();
-    expect(manuscriptChip).toBeDefined();
-    expect(userChip).toBeDefined();
-
-    // Verify all subjects visible initially
-    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
-    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
-    expect(screen.getByText(/Tạp chí \(Journal\)/i)).toBeDefined();
-
-    // Filter to only Manuscript
-    fireEvent.click(manuscriptChip);
-    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
-    expect(screen.queryByText(/Người dùng \(User\)/i)).toBeNull();
-
-    // Switch back to ALL
-    fireEvent.click(allChip);
-    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
-    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
-
-    // End-of-list divider
-    expect(screen.getByText(/Bạn đã xem hết ma trận phân quyền hệ thống/i)).toBeDefined();
-  });
-
-  it('opens InviteMemberModal, fills form, submits invitation, and displays activation link with copy button', async () => {
-    const handleClose = vi.fn();
-    renderWithClient(<InviteMemberModal isOpen={true} onClose={handleClose} />);
-
-    // Form fields
-    const emailInput = screen.getByLabelText(/email/i);
-    const roleSelect = screen.getByLabelText(/vai trò|role/i);
-    const submitBtn = screen.getByRole('button', { name: /gửi lời mời/i });
-
-    fireEvent.change(emailInput, { target: { value: 'newmember@vnu.edu.vn' } });
-    fireEvent.change(roleSelect, { target: { value: 'Reviewer' } });
-    fireEvent.click(submitBtn);
-
-    // Verification of mutation call
-    await waitFor(() => {
-      expect(mockInviteUserMutate).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          email: 'newmember@vnu.edu.vn',
-          role: 'Reviewer',
-        }),
-      });
-    });
-
-    // Activation link should be displayed in staging/dev mode
-    await waitFor(() => {
-      expect(screen.getByDisplayValue(/\/activate\?token=/i)).toBeDefined();
-    });
-
-    // Copy link button
-    const copyBtn = screen.getByRole('button', { name: /sao chép link/i });
-    fireEvent.click(copyBtn);
-    expect(mockWriteText).toHaveBeenCalled();
+    expect(screen.getByText('GS. TSKH. Nguyễn Hoàng Nam')).toBeDefined();
+    expect(screen.getByText('PGS. TS. Trần Minh Tuấn')).toBeDefined();
+    // Scope of the primary role comes from the API (journal name), not from hard-coded data
+    expect(screen.getByText('Tạp chí Phát triển KH&CN')).toBeDefined();
+    // The second role assignment is surfaced
+    expect(screen.getByText('+1 vai trò khác')).toBeDefined();
   });
 
   it('UserRoleAssignmentTab renders search bar, status chips, role filter, and end of list divider', () => {
     renderWithClient(<UserRoleAssignmentTab />);
 
-    // Search input
     expect(screen.getByPlaceholderText(/Tìm theo email hoặc họ tên/i)).toBeDefined();
-
-    // Status filter chips
     expect(screen.getByTestId('status-filter-all')).toBeDefined();
     expect(screen.getByTestId('status-filter-active')).toBeDefined();
     expect(screen.getByTestId('status-filter-invited')).toBeDefined();
     expect(screen.getByTestId('status-filter-suspended')).toBeDefined();
-
-    // End-of-list divider
     expect(screen.getByText(/Bạn đã xem hết danh sách thành viên/i)).toBeDefined();
   });
 
   it('filters users by search query and clear button resets search', () => {
     renderWithClient(<UserRoleAssignmentTab />);
 
-    const searchInput = screen.getByPlaceholderText(/Tìm theo email hoặc họ tên/i);
-    fireEvent.change(searchInput, { target: { value: 'GS. TSKH' } });
-
+    fireEvent.change(screen.getByPlaceholderText(/Tìm theo email hoặc họ tên/i), {
+      target: { value: 'GS. TSKH' },
+    });
     expect(screen.getByText(/GS. TSKH. Nguyễn Hoàng Nam/i)).toBeDefined();
     expect(screen.queryByText(/PGS. TS. Trần Minh Tuấn/i)).toBeNull();
 
-    // Clear search button
-    const clearBtn = screen.getByTitle('Xóa tìm kiếm');
-    fireEvent.click(clearBtn);
-
+    fireEvent.click(screen.getByTitle('Xóa tìm kiếm'));
     expect(screen.getByText(/PGS. TS. Trần Minh Tuấn/i)).toBeDefined();
   });
 
   it('filters users by status filter chips and role select', () => {
     renderWithClient(<UserRoleAssignmentTab />);
 
-    // Click INVITED chip
-    const invitedChip = screen.getByTestId('status-filter-invited');
-    fireEvent.click(invitedChip);
-
+    fireEvent.click(screen.getByTestId('status-filter-invited'));
     expect(screen.getByText(/collaborator.guest@vnu.edu.vn/i)).toBeDefined();
     expect(screen.queryByText(/admin@structpaper.org/i)).toBeNull();
 
-    // Back to ALL
     fireEvent.click(screen.getByTestId('status-filter-all'));
     expect(screen.getByText(/admin@structpaper.org/i)).toBeDefined();
 
-    // Filter by role
-    const roleSelect = screen.getByTestId('filter-role-select');
-    fireEvent.change(roleSelect, { target: { value: 'SuperAdmin' } });
-
+    fireEvent.change(screen.getByTestId('filter-role-select'), { target: { value: 'SuperAdmin' } });
     expect(screen.getByText(/admin@structpaper.org/i)).toBeDefined();
     expect(screen.queryByText(/PGS. TS. Trần Minh Tuấn/i)).toBeNull();
   });
 
-  it('changing a user role triggers sileo.success with instant revocation message', async () => {
-    const sileoSpy = vi.spyOn(sileo, 'success');
+  it('shows loading and error states for the users table, and retry refetches', () => {
+    h.state.usersLoading = true;
+    const { unmount } = renderWithClient(<UserRoleAssignmentTab />);
+    expect(screen.getByTestId('users-loading')).toBeDefined();
+    unmount();
+
+    h.state.usersLoading = false;
+    h.state.usersError = true;
+    renderWithClient(<UserRoleAssignmentTab />);
+    expect(screen.getByTestId('users-error')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /thử lại/i }));
+    expect(h.refetchUsers).toHaveBeenCalled();
+  });
+
+  it('changing a role assigns the new role by id, then revokes the old one, and reports success', async () => {
+    const successSpy = vi.spyOn(sileo, 'success');
     renderWithClient(<UserRoleAssignmentTab />);
 
-    const userRoleSelects = screen.getAllByLabelText(/phân vai trò cho/i);
-    fireEvent.change(userRoleSelects[0], { target: { value: 'Reviewer' } });
+    const selects = screen.getAllByLabelText(/phân vai trò cho/i);
+    fireEvent.change(selects[0], { target: { value: 'Editor' } }); // admin: SuperAdmin -> Editor
 
     await waitFor(() => {
-      expect(sileoSpy).toHaveBeenCalledWith(
+      expect(h.assignRole).toHaveBeenCalledWith({
+        data: { userId: 'u-admin', roleId: 'role-editor', journalId: null },
+      });
+      expect(h.revokeRole).toHaveBeenCalledWith({
+        data: { userId: 'u-admin', roleId: 'role-superadmin', journalId: null },
+      });
+      expect(successSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Cập nhật phân quyền tức thì',
-          description: expect.stringContaining('Đã phân vai trò "Reviewer"'),
-        })
+          description: expect.stringContaining('Đã phân vai trò "Editor"'),
+        }),
       );
     });
   });
 
-  it('InvitationsTab renders search bar, table rows, and end-of-list divider', () => {
+  it('keeps the journal scope of the primary role when changing it', async () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    const selects = screen.getAllByLabelText(/phân vai trò cho/i);
+    fireEvent.change(selects[1], { target: { value: 'Editor' } }); // manager: JournalManager@j-std -> Editor
+
+    await waitFor(() => {
+      expect(h.assignRole).toHaveBeenCalledWith({
+        data: { userId: 'u-manager', roleId: 'role-editor', journalId: 'j-std' },
+      });
+    });
+  });
+
+  it('a failed role change shows an error and NEVER pretends it succeeded', async () => {
+    h.assignRole.mockRejectedValueOnce(
+      new ProblemDetailsError({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Privilege escalation denied: Only SuperAdmin can assign the SuperAdmin role',
+      }),
+    );
+    const successSpy = vi.spyOn(sileo, 'success');
+    const errorSpy = vi.spyOn(sileo, 'error');
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    const selects = screen.getAllByLabelText(/phân vai trò cho/i);
+    fireEvent.change(selects[1], { target: { value: 'SuperAdmin' } });
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Không thể cập nhật vai trò',
+          description: expect.stringContaining('Privilege escalation denied'),
+        }),
+      );
+    });
+    expect(successSpy).not.toHaveBeenCalled();
+    expect(h.revokeRole).not.toHaveBeenCalled();
+  });
+
+  it('permission matrix correctly shows system roles as immutable baselines and displays actions/subjects', () => {
+    renderWithClient(<PermissionMatrixTab />);
+
+    expect(screen.getAllByText(/create/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/manage/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Manuscript/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Journal/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Asset/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/SuperAdmin/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
+  });
+
+  it('PermissionMatrixTab renders subject filter chips, filters matrix rows, and shows end-of-list divider', () => {
+    renderWithClient(<PermissionMatrixTab />);
+
+    const allChip = screen.getByTestId('subject-filter-all');
+    const manuscriptChip = screen.getByTestId('subject-filter-manuscript');
+    expect(allChip).toBeDefined();
+    expect(manuscriptChip).toBeDefined();
+    expect(screen.getByTestId('subject-filter-user')).toBeDefined();
+
+    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
+    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
+    expect(screen.getByText(/Tạp chí \(Journal\)/i)).toBeDefined();
+
+    fireEvent.click(manuscriptChip);
+    expect(screen.getByText(/Bản thảo \(Manuscript\)/i)).toBeDefined();
+    expect(screen.queryByText(/Người dùng \(User\)/i)).toBeNull();
+
+    fireEvent.click(allChip);
+    expect(screen.getByText(/Người dùng \(User\)/i)).toBeDefined();
+    expect(screen.getByText(/Bạn đã xem hết ma trận phân quyền hệ thống/i)).toBeDefined();
+  });
+
+  // ------------------------------ invite modal ------------------------------
+  it('InviteMemberModal sends the invitation and shows the REAL activation link from the server', async () => {
+    renderWithClient(<InviteMemberModal isOpen={true} onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'newmember@vnu.edu.vn' } });
+    fireEvent.change(screen.getByLabelText(/vai trò|role/i), { target: { value: 'Reviewer' } });
+    fireEvent.click(screen.getByRole('button', { name: /tạo lời mời/i }));
+
+    await waitFor(() => {
+      expect(h.invite).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          email: 'newmember@vnu.edu.vn',
+          role: 'Reviewer',
+          journalId: null,
+        }),
+      });
+    });
+
+    // The link is exactly what the server returned (token in the fragment), never a made-up one
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('http://localhost:3000/activate#token=real-token-12345')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /sao chép link/i }));
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith('http://localhost:3000/activate#token=real-token-12345');
+    });
+  });
+
+  it('InviteMemberModal offers the real journals and sends the chosen journal id', async () => {
+    renderWithClient(<InviteMemberModal isOpen={true} onClose={vi.fn()} />);
+
+    const journalSelect = screen.getByLabelText(/phạm vi tạp chí/i) as HTMLSelectElement;
+    const labels = Array.from(journalSelect.options).map((o) => o.textContent);
+    expect(labels.some((l) => l?.includes('STD - Tạp chí Phát triển KH&CN'))).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'scoped@vnu.edu.vn' } });
+    fireEvent.change(journalSelect, { target: { value: 'j-std' } });
+    fireEvent.click(screen.getByRole('button', { name: /tạo lời mời/i }));
+
+    await waitFor(() => {
+      expect(h.invite).toHaveBeenCalledWith({
+        data: expect.objectContaining({ email: 'scoped@vnu.edu.vn', journalId: 'j-std' }),
+      });
+    });
+  });
+
+  it('InviteMemberModal shows the server error and never invents a fake link when the invite fails', async () => {
+    h.invite.mockRejectedValueOnce(
+      new ProblemDetailsError({
+        title: 'Conflict',
+        status: 409,
+        detail: 'User with this email already exists and is active',
+      }),
+    );
+    renderWithClient(<InviteMemberModal isOpen={true} onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'taken@vnu.edu.vn' } });
+    fireEvent.click(screen.getByRole('button', { name: /tạo lời mời/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('invite-form-error').textContent).toContain(
+        'User with this email already exists and is active',
+      );
+    });
+    expect(screen.queryByLabelText(/link kích hoạt tài khoản/i)).toBeNull();
+    expect(screen.queryByDisplayValue(/activate/)).toBeNull();
+  });
+
+  it('InviteMemberModal validates the email before calling the API', async () => {
+    renderWithClient(<InviteMemberModal isOpen={true} onClose={vi.fn()} />);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+    // Submit the form directly: the browser's native email validation would otherwise stop the
+    // event before our own (second line of defence) validation runs.
+    fireEvent.submit(emailInput.closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('invite-form-error').textContent).toMatch(/không đúng định dạng/i);
+    });
+    expect(h.invite).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------- invitations tab ----------------------------
+  it('InvitationsTab lists the pending invitations returned by the API (no hard-coded rows)', () => {
     renderWithClient(<InvitationsTab />);
 
-    // Search input
-    expect(screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i)).toBeDefined();
-
-    // Table rows
-    expect(screen.getByText(/collaborator.guest@vnu.edu.vn/i)).toBeDefined();
-    expect(screen.getByText(/reviewer.le@hcmus.edu.vn/i)).toBeDefined();
-    expect(screen.getByText(/editor.tran@medvnu.edu.vn/i)).toBeDefined();
-
-    // End-of-list divider
+    expect(screen.getByPlaceholderText(/Tìm theo email, tên hoặc vai trò/i)).toBeDefined();
+    expect(screen.getByText('collaborator.guest@vnu.edu.vn')).toBeDefined();
+    expect(screen.getByText('reviewer.le@hcmus.edu.vn')).toBeDefined();
+    expect(screen.getByText('editor.tran@medvnu.edu.vn')).toBeDefined();
+    // Journal scope name comes from the API
+    expect(screen.getByText('Tạp chí KHTN')).toBeDefined();
     expect(screen.getByText(/Bạn đã xem hết danh sách lời mời/i)).toBeDefined();
+  });
+
+  it('InvitationsTab flags expired invitations', () => {
+    renderWithClient(<InvitationsTab />);
+
+    expect(screen.getAllByText('PENDING').length).toBe(2);
+    expect(screen.getAllByText('EXPIRED').length).toBe(1);
   });
 
   it('filters invitations by search query and clear button resets search', () => {
     renderWithClient(<InvitationsTab />);
 
-    const searchInput = screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i);
-    fireEvent.change(searchInput, { target: { value: 'reviewer.le' } });
-
+    fireEvent.change(screen.getByPlaceholderText(/Tìm theo email, tên hoặc vai trò/i), {
+      target: { value: 'reviewer.le' },
+    });
     expect(screen.getByText(/TS. Lê Hải Đăng/i)).toBeDefined();
     expect(screen.queryByText(/ThS. Trần Thị Kim Cương/i)).toBeNull();
 
-    // Clear search button
-    const clearBtn = screen.getByTitle('Xóa tìm kiếm');
-    fireEvent.click(clearBtn);
-
+    fireEvent.click(screen.getByTitle('Xóa tìm kiếm'));
     expect(screen.getByText(/ThS. Trần Thị Kim Cương/i)).toBeDefined();
   });
 
-  it('clicking copy link calls clipboard.writeText and triggers sileo.success feedback', async () => {
-    const sileoSpy = vi.spyOn(sileo, 'success');
+  it('"Tạo link mới & sao chép" issues a NEW link from the API and copies exactly that link', async () => {
+    const successSpy = vi.spyOn(sileo, 'success');
     renderWithClient(<InvitationsTab />);
 
-    const copyBtns = screen.getAllByTitle('Sao chép liên kết kích hoạt');
-    expect(copyBtns.length).toBeGreaterThan(0);
-
-    fireEvent.click(copyBtns[0]);
-
-    expect(mockWriteText).toHaveBeenCalledWith(
-      expect.stringContaining('/activate?token=tok_guest_vnuhcm_78901')
-    );
+    fireEvent.click(screen.getByTestId('copy-invite-link-inv-1'));
 
     await waitFor(() => {
-      expect(sileoSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Đã sao chép link kích hoạt',
-          description: expect.stringContaining('collaborator.guest@vnu.edu.vn'),
-        })
+      expect(h.resend).toHaveBeenCalledWith({ id: 'inv-1' });
+      expect(mockWriteText).toHaveBeenCalledWith('http://localhost:3000/activate#token=fresh-token-999');
+      expect(successSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Đã tạo link mới và sao chép' }),
       );
+    });
+
+    // The link is also shown, so it can be copied by hand
+    const panel = await screen.findByTestId('generated-link-panel');
+    expect(within(panel).getByDisplayValue('http://localhost:3000/activate#token=fresh-token-999')).toBeDefined();
+    expect(within(panel).getByText(/collaborator.guest@vnu.edu.vn/)).toBeDefined();
+  });
+
+  it('when the clipboard is unavailable it still shows the new link for manual copy', async () => {
+    mockWriteText.mockRejectedValueOnce(new Error('clipboard blocked'));
+    const successSpy = vi.spyOn(sileo, 'success');
+    renderWithClient(<InvitationsTab />);
+
+    fireEvent.click(screen.getByTestId('copy-invite-link-inv-2'));
+
+    const panel = await screen.findByTestId('generated-link-panel');
+    expect(within(panel).getByDisplayValue(/activate#token=fresh-token-999/)).toBeDefined();
+    expect(successSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Đã tạo link kích hoạt mới' }),
+    );
+  });
+
+  it('shows an error (and no link) when issuing a new link fails', async () => {
+    h.resend.mockRejectedValueOnce(
+      new ProblemDetailsError({ title: 'Conflict', status: 409, detail: 'This user is not pending activation' }),
+    );
+    const errorSpy = vi.spyOn(sileo, 'error');
+    renderWithClient(<InvitationsTab />);
+
+    fireEvent.click(screen.getByTestId('copy-invite-link-inv-1'));
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Không tạo được link kích hoạt',
+          description: expect.stringContaining('not pending activation'),
+        }),
+      );
+    });
+    expect(screen.queryByTestId('generated-link-panel')).toBeNull();
+    expect(mockWriteText).not.toHaveBeenCalled();
+  });
+
+  it('revoking an invitation needs a second click to confirm, then calls the API', async () => {
+    renderWithClient(<InvitationsTab />);
+
+    const revokeBtn = screen.getByTestId('revoke-invite-inv-3');
+    fireEvent.click(revokeBtn);
+    expect(h.revokeInvitation).not.toHaveBeenCalled();
+    expect(revokeBtn.textContent).toMatch(/bấm lần nữa/i);
+
+    fireEvent.click(revokeBtn);
+    await waitFor(() => {
+      expect(h.revokeInvitation).toHaveBeenCalledWith({ id: 'inv-3' });
     });
   });
 
-  it('clicking resend button triggers onResendInvite callback and triggers sileo.info feedback', async () => {
-    const sileoInfoSpy = vi.spyOn(sileo, 'info');
-    const mockOnResend = vi.fn();
-    renderWithClient(<InvitationsTab onResendInvite={mockOnResend} />);
+  it('shows loading and error states for invitations, and retry refetches', () => {
+    h.state.invitationsLoading = true;
+    const { unmount } = renderWithClient(<InvitationsTab />);
+    expect(screen.getByTestId('invitations-loading')).toBeDefined();
+    unmount();
 
-    const resendBtns = screen.getAllByTitle('Gửi lại email kích hoạt');
-    expect(resendBtns.length).toBeGreaterThan(0);
-
-    fireEvent.click(resendBtns[0]);
-
-    expect(mockOnResend).toHaveBeenCalledWith('inv-1');
-    await waitFor(() => {
-      expect(sileoInfoSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Đã gửi lại lời mời',
-          description: expect.stringContaining('collaborator.guest@vnu.edu.vn'),
-        })
-      );
-    });
+    h.state.invitationsLoading = false;
+    h.state.invitationsError = true;
+    renderWithClient(<InvitationsTab />);
+    expect(screen.getByTestId('invitations-error')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /thử lại/i }));
+    expect(h.refetchInvitations).toHaveBeenCalled();
   });
 
   it('shows graceful empty state when search query matches no invitations', () => {
     renderWithClient(<InvitationsTab />);
 
-    const searchInput = screen.getByPlaceholderText(/Tìm theo email, tên hoặc token/i);
-    fireEvent.change(searchInput, { target: { value: 'nonexistent-user-query' } });
+    fireEvent.change(screen.getByPlaceholderText(/Tìm theo email, tên hoặc vai trò/i), {
+      target: { value: 'nonexistent-user-query' },
+    });
 
     expect(
-      screen.getByText(/Không tìm thấy lời mời nào phù hợp với "nonexistent-user-query"/i)
+      screen.getByText(/Không tìm thấy lời mời nào phù hợp với "nonexistent-user-query"/i),
     ).toBeDefined();
     expect(screen.queryByText(/Bạn đã xem hết danh sách lời mời/i)).toBeNull();
   });

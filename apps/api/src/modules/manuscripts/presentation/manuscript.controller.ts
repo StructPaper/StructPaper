@@ -12,7 +12,6 @@ import {
   Res,
   HttpCode,
   HttpStatus,
-  UseGuards,
   UsePipes,
   Optional,
   Inject,
@@ -29,14 +28,12 @@ import {
   type ManuscriptQuery,
   type AddManuscriptMember,
 } from '@structpaper/contracts';
-import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
 import { AbilityFactory, type AppAbility } from '../../access/domain/ability.factory';
 import { AbilityCacheService } from '../../access/domain/ability-cache.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { ManuscriptService } from '../application/manuscript.service';
 
 @Controller('manuscripts')
-@UseGuards(JwtAuthGuard)
 export class ManuscriptController {
   constructor(
     @Inject(ManuscriptService)

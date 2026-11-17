@@ -26,7 +26,6 @@ import type {
 
 import type {
   ActivateAccountRequest,
-  InviteUserRequest,
   LoginRequest,
   ProblemResponseResponse,
   RefreshTokenBody,
@@ -168,70 +167,6 @@ export const useRefreshToken = <TError = ProblemResponseResponse,
       > => {
 
       const mutationOptions = getRefreshTokenMutationOptions(options);
-
-      return useMutation(mutationOptions, queryClient);
-    }
-    /**
- * @summary Invite new user
- */
-export const inviteUser = (
-    inviteUserRequest: InviteUserRequest,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-      
-      
-      return customInstance<UserSummary>(
-      {url: `/api/v1/auth/invite`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: inviteUserRequest, signal
-    },
-      options);
-    }
-  
-
-
-export const getInviteUserMutationOptions = <TError = ProblemResponseResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteUser>>, TError,{data: InviteUserRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof inviteUser>>, TError,{data: InviteUserRequest}, TContext> => {
-
-const mutationKey = ['inviteUser'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof inviteUser>>, {data: InviteUserRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  inviteUser(data,requestOptions)
-        }
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type InviteUserMutationResult = NonNullable<Awaited<ReturnType<typeof inviteUser>>>
-    export type InviteUserMutationBody = InviteUserRequest
-    export type InviteUserMutationError = ProblemResponseResponse
-
-    /**
- * @summary Invite new user
- */
-export const useInviteUser = <TError = ProblemResponseResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteUser>>, TError,{data: InviteUserRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof inviteUser>>,
-        TError,
-        {data: InviteUserRequest},
-        TContext
-      > => {
-
-      const mutationOptions = getInviteUserMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

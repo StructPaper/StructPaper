@@ -29,6 +29,7 @@ import {
 import { parseLatexDocument } from '@/lib/latex-parser';
 import { CompletePaper } from '@/types/paper';
 import { JournalHeader, JournalFirstPageMeta, JournalSectionRenderer, JournalReferences, JournalCitationFooter, CompileErrorModal } from '@/features/preview';
+import { getAuthHeaders } from '@/lib/auth-headers';
 
 // Sample presets
 const PRESET_MINIMAL = `% !TeX program = xelatex
@@ -166,7 +167,7 @@ export default function TestRenderLatexPage() {
 
       const res = await fetch('/api/compile-latex', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ tex: rawTex }),
       });
 

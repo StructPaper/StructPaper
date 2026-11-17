@@ -250,6 +250,12 @@ http.interceptors.response.use(
       }
     }
 
+    // A request aborted ON PURPOSE (React Query cancels in-flight queries when a tab unmounts or
+    // data is refetched) is not a failure: no error normalisation and no "lost connection" toast.
+    if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+
     // RFC 9457 Normalization & Error Data rejection
     const resData: any = error?.response?.data;
     const contentType = error?.response?.headers?.['content-type'] || '';

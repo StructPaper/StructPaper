@@ -14,6 +14,7 @@ import {
 } from '@structpaper/compiler-client';
 import { toast } from '@/components/toast';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
+import { getAuthHeaders } from '@/lib/auth-headers';
 import { CompileStats, CompileErrorInfo } from '../components/types';
 
 export interface UseEditorCompilationOptions {
@@ -79,7 +80,7 @@ export function useEditorCompilation({
       const localCompiler = isDesktop ? new TauriDesktopCompiler() : new WasmCompiler();
       routerRef.current = new CompilerRouter({
         local: localCompiler,
-        server: new RemoteCompiler({ endpoint: '/api/compile-latex' }),
+        server: new RemoteCompiler({ endpoint: '/api/compile-latex', getHeaders: getAuthHeaders }),
         getContext: () => {
           const monitor = monitorRef.current;
           return {

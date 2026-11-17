@@ -33,8 +33,21 @@ function ActivateForm() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    if (tokenParam) {
-      setToken(tokenParam);
+    // New links carry the token in the URL fragment (#token=...), which is never sent to a server,
+    // proxy or access log. Old links used ?token=..., still accepted.
+    const hashToken =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.hash.replace(/^#/, '')).get('token')
+        : null;
+    const found = hashToken || tokenParam;
+    if (found) {
+      setToken(found);
+      // Remove the secret from the address bar and browser history once it is in memory.
+      try {
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch {
+        // history API unavailable: harmless
+      }
     }
   }, [tokenParam]);
 
@@ -56,6 +69,11 @@ function ActivateForm() {
       return;
     }
 
+    if (password.length > 128) {
+      setErrorMessage('Mật khẩu quá dài (tối đa 128 ký tự).');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setErrorMessage('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.');
       return;
@@ -63,10 +81,15 @@ function ActivateForm() {
 
     setIsLoading(true);
     try {
-      await http.post('/api/v1/auth/activate', {
-        token: token.trim(),
-        password,
-      });
+      // This page explains failures itself: skip the generic network-error toast.
+      await http.post(
+        '/api/v1/auth/activate',
+        {
+          token: token.trim(),
+          password,
+        },
+        { skipGlobalToast: true },
+      );
 
       setIsSuccess(true);
       sileo.success({
@@ -79,12 +102,17 @@ function ActivateForm() {
         router.push('/login');
       }, 2000);
     } catch (err: any) {
-      const detail =
+      const rawDetail: string =
         err?.detail ||
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
         err?.message ||
-        'Kích hoạt tài khoản thất bại. Mã lời mời có thể đã hết hạn hoặc không hợp lệ.';
+        '';
+      // The backend deliberately answers with one generic message for a missing, expired or
+      // already used token. Explain it in plain language.
+      const detail = /activation token/i.test(rawDetail)
+        ? 'Liên kết kích hoạt không hợp lệ, đã hết hạn hoặc đã được sử dụng. Hãy liên hệ quản trị viên để nhận liên kết mới.'
+        : rawDetail || 'Kích hoạt tài khoản thất bại. Vui lòng thử lại.';
       setErrorMessage(detail);
       sileo.error({
         title: 'Kích hoạt không thành công',

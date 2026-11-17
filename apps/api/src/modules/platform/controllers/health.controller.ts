@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, Optional } from '@nestjs/common';
+import { Public } from '../../access/presentation/decorators/public.decorator';
 
 export interface HealthCheckResponse {
   status: 'ok' | 'error';
@@ -10,6 +11,7 @@ export interface HealthCheckResponse {
   };
 }
 
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(
