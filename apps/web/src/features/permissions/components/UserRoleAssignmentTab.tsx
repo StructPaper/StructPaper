@@ -39,6 +39,8 @@ export interface UserRoleItem {
   extraRoles?: number;
   status: UserStatus;
   permissionsVersion?: number;
+  /** Why the current viewer can not edit this row (null/undefined = editable). Decided by the API. */
+  lockReason?: 'SELF' | 'REQUIRES_SUPERADMIN' | null;
 }
 
 export interface UserRoleAssignmentTabProps {
@@ -71,8 +73,14 @@ function toItem(user: ManagedUser): UserRoleItem {
     extraRoles: rest.length,
     status: user.status as UserStatus,
     permissionsVersion: user.permissionsVersion,
+    lockReason: user.lockReason ?? null,
   };
 }
+
+const LOCK_NOTES: Record<'SELF' | 'REQUIRES_SUPERADMIN', string> = {
+  SELF: 'Không thể tự đổi vai trò của chính mình. Hãy nhờ quản trị viên khác.',
+  REQUIRES_SUPERADMIN: 'Chỉ SuperAdmin mới đổi được vai trò của SuperAdmin.',
+};
 
 export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
   users: usersOverride,
@@ -105,7 +113,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
   const roleNames: string[] = apiRoles.length > 0 ? apiRoles.map((r) => r.name) : [...FALLBACK_ROLE_NAMES];
 
   const handleRoleChange = async (user: UserRoleItem, newRole: string) => {
-    if (newRole === user.role) return;
+    if (newRole === user.role || user.lockReason) return;
 
     const target = apiRoles.find((r) => r.name === newRole);
     if (!target) {
@@ -317,8 +325,16 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                             {(user.displayName || user.email).charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900">
+                            <div className="font-bold text-slate-900 flex items-center gap-2">
                               {user.displayName || 'Chưa cập nhật tên'}
+                              {user.lockReason === 'SELF' && (
+                                <span
+                                  data-testid={`self-badge-${user.id}`}
+                                  className="px-2 py-0.5 rounded-full bg-[#78C841]/15 text-lime-700 border border-[#78C841]/30 text-[10px] font-black uppercase tracking-wide"
+                                >
+                                  Bạn
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs font-mono text-slate-400">{user.email}</div>
                           </div>
@@ -362,11 +378,12 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                       </td>
 
                       <td className="py-4 px-6">
-                        <div className={`w-44 ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className={`w-44 ${busy ? 'opacity-50 pointer-events-none' : ''}`} title={user.lockReason ? LOCK_NOTES[user.lockReason] : undefined}>
                           <Select
                             options={userRoleSelectOptions}
                             value={user.role}
                             placeholder="Chưa có vai trò"
+                            disabled={!!user.lockReason}
                             onChange={(newRole) => handleRoleChange(user, newRole)}
                             size="sm"
                             variant="clean"
@@ -377,7 +394,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                             aria-label={`Phân vai trò cho ${user.email}`}
                             data-testid={`user-role-select-${user.id}`}
                             value={user.role}
-                            disabled={busy}
+                            disabled={busy || !!user.lockReason}
                             onChange={(e) => handleRoleChange(user, e.target.value)}
                             className="sr-only"
                             aria-hidden="true"
@@ -390,6 +407,14 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                               </option>
                             ))}
                           </select>
+                          {user.lockReason && (
+                            <div
+                              data-testid={`lock-note-${user.id}`}
+                              className="mt-1 text-[11px] text-slate-500 font-medium leading-snug"
+                            >
+                              {LOCK_NOTES[user.lockReason]}
+                            </div>
+                          )}
                           {!!user.extraRoles && (
                             <div className="mt-1 text-[11px] text-slate-400 font-medium">
                               +{user.extraRoles} vai trò khác

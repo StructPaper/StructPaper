@@ -344,12 +344,61 @@ describe('UserService: invitations & user administration', () => {
       ).rejects.toThrow('Only SuperAdmin can modify a SuperAdmin account');
     });
 
-    it('nobody but SuperAdmin can change their own status', async () => {
+    it('a journal manager can not change their own status', async () => {
       findFirst.mockResolvedValue({ id: 'manager-1', status: 'ACTIVE', permissionsVersion: 1 });
 
       await expect(
         service.updateUser('manager-1', { status: 'SUSPENDED' }, undefined, await stdManager()),
       ).rejects.toThrow('You cannot change your own account status');
+    });
+
+    it('even a SuperAdmin can NOT change their own status', async () => {
+      findFirst.mockResolvedValue({ id: 'root-1', status: 'ACTIVE', permissionsVersion: 1 });
+      const actor = { user: { id: 'root-1' }, ...(await superAdmin()) };
+
+      await expect(service.updateUser('root-1', { status: 'SUSPENDED' }, undefined, actor)).rejects.toThrow(
+        /cannot change your own account status/i,
+      );
+    });
+
+    it('suspending the ONLY active SuperAdmin is refused (409) and nothing is updated', async () => {
+      findFirst.mockResolvedValue({ id: 'root-2', status: 'ACTIVE', permissionsVersion: 1 });
+      // the locked "active SuperAdmins" query: root-2 is the only one
+      selects.push([{ id: 'root-2' }]);
+      const updateSpy = vi.fn();
+      db.update = vi.fn(() => ({
+        set: (v: any) => {
+          updateSpy(v);
+          return { where: () => ({ returning: () => Promise.resolve([]) }) };
+        },
+      }));
+      const actor = { user: { id: 'root-1' }, ...(await superAdmin()) };
+
+      await expect(service.updateUser('root-2', { status: 'SUSPENDED' }, undefined, actor)).rejects.toThrow(
+        /At least one active SuperAdmin must remain/i,
+      );
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('suspending a SuperAdmin is allowed while another active SuperAdmin remains, inside one transaction', async () => {
+      findFirst.mockResolvedValue({ id: 'root-2', status: 'ACTIVE', permissionsVersion: 1 });
+      selects.push([{ id: 'root-2' }, { id: 'root-1' }]);
+      const actor = { user: { id: 'root-1' }, ...(await superAdmin()) };
+
+      const updated = await service.updateUser('root-2', { status: 'SUSPENDED' }, undefined, actor);
+
+      expect(updated.status).toBe('SUSPENDED');
+      expect(db.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('reactivating or renaming never triggers the last-SuperAdmin lock', async () => {
+      findFirst.mockResolvedValue({ id: 'u-9', status: 'SUSPENDED', permissionsVersion: 1 });
+      const actor = { user: { id: 'root-1' }, ...(await superAdmin()) };
+
+      await service.updateUser('u-9', { status: 'ACTIVE' }, undefined, actor);
+      await service.updateUser('u-9', { displayName: 'New' }, undefined, actor);
+
+      expect(db.transaction).not.toHaveBeenCalled();
     });
 
     it('a journal manager can still rename a normal user', async () => {
@@ -358,6 +407,65 @@ describe('UserService: invitations & user administration', () => {
 
       const updated = await service.updateUser('target', { displayName: 'Renamed' }, undefined, await stdManager());
       expect(updated.displayName).toBe('Renamed');
+    });
+  });
+
+  // ------------------------------ lockReason (UI hints) ------------------------------
+  describe('listUsers lockReason', () => {
+    const rowsFor = () => {
+      selects.push(
+        [
+          { id: 'me', email: 'me@x.org', status: 'ACTIVE', passwordHash: 'h' },
+          { id: 'boss', email: 'boss@x.org', status: 'ACTIVE', passwordHash: 'h' },
+          { id: 'plain', email: 'plain@x.org', status: 'ACTIVE', passwordHash: 'h' },
+        ],
+        [{ count: 3 }],
+        [
+          { userId: 'me', roleName: 'JournalManager', scopeJournalId: 'j-std', journalName: 'STD' },
+          { userId: 'boss', roleName: 'SuperAdmin', scopeJournalId: '00000000-0000-0000-0000-000000000000', journalName: null },
+          { userId: 'plain', roleName: 'Author', scopeJournalId: '00000000-0000-0000-0000-000000000000', journalName: null },
+        ],
+      );
+    };
+    const byId = (items: any[], id: string) => items.find((u) => u.id === id);
+
+    it('marks the viewer as SELF and SuperAdmin rows as REQUIRES_SUPERADMIN for a role manager', async () => {
+      rowsFor();
+      const manager = { user: { id: 'me' }, ability: (await stdManager()).ability };
+
+      const { items } = await service.listUsers({}, manager);
+
+      expect(byId(items, 'me').lockReason).toBe('SELF');
+      expect(byId(items, 'boss').lockReason).toBe('REQUIRES_SUPERADMIN');
+      expect(byId(items, 'plain').lockReason).toBeNull();
+    });
+
+    it('a SuperAdmin can edit everybody except themselves', async () => {
+      rowsFor();
+      const root = { user: { id: 'boss' }, ability: (await superAdmin()).ability };
+
+      const { items } = await service.listUsers({}, root);
+
+      expect(byId(items, 'boss').lockReason).toBe('SELF');
+      expect(byId(items, 'me').lockReason).toBeNull();
+      expect(byId(items, 'plain').lockReason).toBeNull();
+    });
+
+    it('SELF wins over REQUIRES_SUPERADMIN on the viewer own row', async () => {
+      rowsFor();
+      const manager = { user: { id: 'boss' }, ability: (await stdManager()).ability };
+
+      const { items } = await service.listUsers({}, manager);
+
+      expect(byId(items, 'boss').lockReason).toBe('SELF');
+    });
+
+    it('reports no lock when there is no viewer context (internal call)', async () => {
+      rowsFor();
+
+      const { items } = await service.listUsers({});
+
+      expect(items.every((u) => u.lockReason === null)).toBe(true);
     });
   });
 });

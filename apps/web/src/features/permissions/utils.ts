@@ -1,17 +1,33 @@
 import { ProblemDetailsError } from '@structpaper/api-client';
 
+/** Backend messages for the self-service / last-admin rules, explained in plain Vietnamese. */
+const FRIENDLY_MESSAGES: Array<[RegExp, string]> = [
+  [
+    /At least one active SuperAdmin must remain/i,
+    'Hệ thống phải luôn còn ít nhất một SuperAdmin đang hoạt động. Hãy cấp SuperAdmin cho người khác trước.',
+  ],
+  [
+    /cannot change your own/i,
+    'Bạn không thể tự thay đổi vai trò hoặc trạng thái của chính mình. Hãy nhờ quản trị viên khác.',
+  ],
+];
+
+function friendly(message: string): string {
+  return FRIENDLY_MESSAGES.find(([pattern]) => pattern.test(message))?.[1] ?? message;
+}
+
 /** Human readable message out of whatever an API call threw. */
 export function apiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof ProblemDetailsError) {
-    return err.detail || err.title || fallback;
+    return friendly(err.detail || err.title || fallback);
   }
   const anyErr = err as any;
-  return (
+  return friendly(
     anyErr?.detail ||
-    anyErr?.response?.data?.detail ||
-    anyErr?.response?.data?.message ||
-    anyErr?.message ||
-    fallback
+      anyErr?.response?.data?.detail ||
+      anyErr?.response?.data?.message ||
+      anyErr?.message ||
+      fallback,
   );
 }
 

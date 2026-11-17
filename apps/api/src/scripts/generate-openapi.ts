@@ -126,6 +126,13 @@ export function buildOpenApiSpec() {
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
             roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+            lockReason: {
+              type: 'string',
+              enum: ['SELF', 'REQUIRES_SUPERADMIN'],
+              nullable: true,
+              description:
+                'Why the current viewer can not edit this user (null = editable). SELF: nobody changes their own roles/status. REQUIRES_SUPERADMIN: only a SuperAdmin may modify a SuperAdmin.',
+            },
           },
           required: ['id', 'email', 'status', 'roles'],
         },

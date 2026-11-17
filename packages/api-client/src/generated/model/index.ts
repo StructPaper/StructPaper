@@ -27,6 +27,7 @@ export * from './listManuscriptsStatus';
 export * from './listUsersParams';
 export * from './loginRequest';
 export * from './managedUser';
+export * from './managedUserLockReason';
 export * from './managedUserStatus';
 export * from './manuscript';
 export * from './manuscriptMember';

@@ -49,15 +49,19 @@ export class UserController {
 
   @Get()
   async list(
+    @Req() req: any,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('search') search?: string,
   ) {
-    return this.userService.listUsers({
-      limit: toInt(limit),
-      offset: toInt(offset),
-      search,
-    });
+    return this.userService.listUsers(
+      {
+        limit: toInt(limit),
+        offset: toInt(offset),
+        search,
+      },
+      actorOf(req),
+    );
   }
 
   // NOTE: declared before ':id' so "invitations" is not parsed as a user id.

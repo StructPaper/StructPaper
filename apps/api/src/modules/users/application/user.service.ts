@@ -30,6 +30,12 @@ import type { InviteUser } from '@structpaper/contracts';
 import { TokenService } from '../../identity/domain/token.service';
 import { MailService } from '../../identity/domain/mail.service';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
+import {
+  assertNotLastActiveSuperAdmin,
+  assertNotSelf,
+  isSuperAdminRole,
+  SELF_CHANGE_STATUS_MESSAGE,
+} from '../../access/domain/super-admin-invariant';
 
 /** Invitation links stay valid for 72 hours (shorter window = smaller exposure of a leaked link). */
 export const INVITATION_TTL_HOURS = 72;
@@ -51,6 +57,9 @@ export interface InviteActor {
   user?: { id?: string } | null;
   ability?: AppAbility | null;
 }
+
+/** Why a user's roles/status can not be edited by the current viewer (null = editable). */
+export type LockReason = 'SELF' | 'REQUIRES_SUPERADMIN';
 
 export interface UserRoleView {
   roleName: string;
@@ -99,7 +108,7 @@ export class UserService {
   /**
    * Lists users (with their role assignments) using pagination and an optional search filter.
    */
-  async listUsers(options: UserQueryOptions = {}) {
+  async listUsers(options: UserQueryOptions = {}, actor?: InviteActor) {
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
     const offset = Math.max(options.offset ?? 0, 0);
 
@@ -130,7 +139,10 @@ export class UserService {
     const rolesByUser = await this.loadRoles(rows.map((r) => r.id));
 
     return {
-      items: rows.map(({ passwordHash, ...u }) => ({ ...u, roles: rolesByUser.get(u.id) ?? [] })),
+      items: rows.map(({ passwordHash, ...u }) => {
+        const userRolesView = rolesByUser.get(u.id) ?? [];
+        return { ...u, roles: userRolesView, lockReason: this.lockReasonFor(u.id, userRolesView, actor) };
+      }),
       total,
       limit,
       offset,
@@ -328,11 +340,18 @@ export class UserService {
     }
 
     if (this.db) {
-      const result = await this.db
-        .update(users)
-        .set(setFields)
-        .where(eq(users.id, userId))
-        .returning();
+      const persist = (executor: any) =>
+        executor.update(users).set(setFields).where(eq(users.id, userId)).returning();
+
+      // Deactivating an ACTIVE account must never remove the last active SuperAdmin: check and
+      // update in ONE transaction (SuperAdmin rows locked) so concurrent suspensions cannot race.
+      const deactivating = updates.status !== undefined && updates.status !== 'ACTIVE' && user.status === 'ACTIVE';
+      const result = deactivating
+        ? await this.db.transaction(async (tx: any) => {
+            await assertNotLastActiveSuperAdmin(tx, userId);
+            return persist(tx);
+          })
+        : await persist(this.db);
       const updated = result[0] || { ...user, ...setFields };
       const { passwordHash, ...cleanUser } = updated;
       return cleanUser;
@@ -467,20 +486,35 @@ export class UserService {
   }
 
   /**
+   * Single source of truth for the UI: can the viewer edit this user's roles/status?
+   * The same rules are enforced again by the write endpoints, this only lets the screen
+   * explain WHY a row is locked instead of failing after the click.
+   */
+  private lockReasonFor(userId: string, roleViews: UserRoleView[], actor?: InviteActor): LockReason | null {
+    if (!actor?.user?.id && !actor?.ability) return null;
+    if (actor.user?.id === userId) return 'SELF';
+    const holdsSuperAdmin = roleViews.some((r) => isSuperAdminRole(r.roleName));
+    if (holdsSuperAdmin && actor.ability && !actor.ability.can('manage', 'all')) return 'REQUIRES_SUPERADMIN';
+    return null;
+  }
+
+  /**
    * A role manager must not be able to take over or lock out accounts above their level:
-   * only SuperAdmin may change a SuperAdmin, and nobody (but SuperAdmin) changes their own status.
+   * only SuperAdmin may change a SuperAdmin, and nobody changes their own status.
    */
   private async assertCanModifyUser(
     actor: InviteActor | undefined,
     target: any,
     updates: UpdateUserDto,
   ): Promise<void> {
+    // Nobody (SuperAdmin included) changes their own account status.
+    if (updates.status !== undefined) {
+      assertNotSelf(actor?.user?.id, target.id, SELF_CHANGE_STATUS_MESSAGE);
+    }
+
     const ability = actor?.ability;
     if (!ability || ability.can('manage', 'all')) return;
 
-    if (updates.status !== undefined && actor?.user?.id === target.id) {
-      throw new ForbiddenException('You cannot change your own account status');
-    }
     const assigned = (await this.loadRoles([target.id])).get(target.id) ?? [];
     if (assigned.some((r) => r.roleName.toLowerCase() === 'superadmin')) {
       throw new ForbiddenException('Only SuperAdmin can modify a SuperAdmin account');

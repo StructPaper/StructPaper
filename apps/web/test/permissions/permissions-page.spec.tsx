@@ -82,6 +82,26 @@ const h = vi.hoisted(() => {
         permissionsVersion: 1,
         roles: [],
       },
+      {
+        // the logged-in viewer: the API marks the row as SELF
+        id: 'u-self',
+        email: 'me@structpaper.org',
+        displayName: 'Chính tôi',
+        status: 'ACTIVE',
+        permissionsVersion: 2,
+        lockReason: 'SELF',
+        roles: [{ roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'Tạp chí Phát triển KH&CN' }],
+      },
+      {
+        // a SuperAdmin seen by a non-SuperAdmin viewer
+        id: 'u-root',
+        email: 'root@structpaper.org',
+        displayName: 'Quản trị gốc',
+        status: 'ACTIVE',
+        permissionsVersion: 4,
+        lockReason: 'REQUIRES_SUPERADMIN',
+        roles: [{ roleName: 'SuperAdmin', scopeJournalId: null, scopeJournalName: null }],
+      },
     ],
     invitations: [
       {
@@ -246,7 +266,7 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getByText('GS. TSKH. Nguyễn Hoàng Nam')).toBeDefined();
     expect(screen.getByText('PGS. TS. Trần Minh Tuấn')).toBeDefined();
     // Scope of the primary role comes from the API (journal name), not from hard-coded data
-    expect(screen.getByText('Tạp chí Phát triển KH&CN')).toBeDefined();
+    expect(screen.getAllByText('Tạp chí Phát triển KH&CN').length).toBeGreaterThan(0);
     // The second role assignment is surfaced
     expect(screen.getByText('+1 vai trò khác')).toBeDefined();
   });
@@ -365,6 +385,65 @@ describe('Permissions & Role Management Page', () => {
     });
     expect(successSpy).not.toHaveBeenCalled();
     expect(h.revokeRole).not.toHaveBeenCalled();
+  });
+
+  // ----------------------- locked rows (self / SuperAdmin protection) -----------------------
+  it('your own row is labelled "Bạn", locked, and explains why', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    expect(screen.getByTestId('self-badge-u-self').textContent).toBe('Bạn');
+    expect((screen.getByTestId('user-role-select-u-self') as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByTestId('lock-note-u-self').textContent).toMatch(/Không thể tự đổi vai trò của chính mình/);
+    // only the viewer's own row carries the badge
+    expect(screen.queryByTestId('self-badge-u-admin')).toBeNull();
+  });
+
+  it('a SuperAdmin row is locked for a non-SuperAdmin viewer, with the reason shown', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    expect((screen.getByTestId('user-role-select-u-root') as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByTestId('lock-note-u-root').textContent).toMatch(/Chỉ SuperAdmin mới đổi được/);
+    expect(screen.queryByTestId('self-badge-u-root')).toBeNull();
+  });
+
+  it('editable rows stay editable and show no lock note', () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    expect((screen.getByTestId('user-role-select-u-manager') as HTMLSelectElement).disabled).toBe(false);
+    expect(screen.queryByTestId('lock-note-u-manager')).toBeNull();
+  });
+
+  it('never calls the API to change a locked row, even if the change is forced', async () => {
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    fireEvent.change(screen.getByTestId('user-role-select-u-self'), { target: { value: 'Author' } });
+    fireEvent.change(screen.getByTestId('user-role-select-u-root'), { target: { value: 'Author' } });
+
+    await new Promise((r) => setTimeout(r, 30));
+    expect(h.assignRole).not.toHaveBeenCalled();
+    expect(h.revokeRole).not.toHaveBeenCalled();
+  });
+
+  it('explains the last-SuperAdmin refusal from the server in plain Vietnamese', async () => {
+    h.assignRole.mockRejectedValueOnce(
+      new ProblemDetailsError({
+        title: 'Conflict',
+        status: 409,
+        detail: 'At least one active SuperAdmin must remain. Make another user SuperAdmin first.',
+      }),
+    );
+    const errorSpy = vi.spyOn(sileo, 'error');
+    renderWithClient(<UserRoleAssignmentTab />);
+
+    fireEvent.change(screen.getAllByLabelText(/phân vai trò cho/i)[0], { target: { value: 'Editor' } });
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: expect.stringContaining('luôn còn ít nhất một SuperAdmin'),
+        }),
+      );
+    });
   });
 
   it('permission matrix correctly shows system roles as immutable baselines and displays actions/subjects', () => {

@@ -7,6 +7,7 @@
  */
 import type { ManagedUserStatus } from './managedUserStatus';
 import type { UserRoleAssignmentView } from './userRoleAssignmentView';
+import type { ManagedUserLockReason } from './managedUserLockReason';
 
 export interface ManagedUser {
   id: string;
@@ -20,4 +21,9 @@ export interface ManagedUser {
   createdAt?: string;
   updatedAt?: string;
   roles: UserRoleAssignmentView[];
+  /**
+   * Why the current viewer can not edit this user (null = editable). SELF: nobody changes their own roles/status. REQUIRES_SUPERADMIN: only a SuperAdmin may modify a SuperAdmin.
+   * @nullable
+   */
+  lockReason?: ManagedUserLockReason;
 }
