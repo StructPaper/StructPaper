@@ -8,15 +8,13 @@ import {
   Copy,
   Check,
   X,
-  Shield,
-  BookOpen,
   AlertCircle,
   Sparkles,
-  ChevronDown,
 } from 'lucide-react';
 import { useInviteUser } from '@structpaper/api-client';
 import { ModalPortal } from '@/components/modals/ModalPortal';
 import { sileo } from '@/components/toast';
+import { Select, type SelectOption } from '@/components/ui/Select';
 
 export interface InviteMemberModalProps {
   isOpen: boolean;
@@ -164,6 +162,17 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     setCopied(false);
     onClose();
   };
+
+  const roleSelectOptions: SelectOption<string>[] = ROLE_OPTIONS.map((r) => ({
+    value: r.id,
+    label: r.name,
+    description: r.desc,
+  }));
+
+  const journalSelectOptions: SelectOption<string>[] = JOURNAL_OPTIONS.map((j) => ({
+    value: j.id,
+    label: j.name,
+  }));
 
   return (
     <ModalPortal
@@ -343,23 +352,30 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                   <label htmlFor="invite-role" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
                     Vai trò / Phân quyền <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <Shield className="absolute left-4 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
-                    <select
-                      id="invite-role"
-                      aria-label="Vai trò / Role"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full rounded-2xl bg-white border border-zinc-200 pl-11 pr-10 py-3 text-sm font-semibold text-zinc-900 outline-none focus:ring-2 focus:ring-lime-300 focus:border-[#78C841] transition-all appearance-none cursor-pointer"
-                    >
-                      {ROLE_OPTIONS.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} - {r.desc}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <Select
+                    options={roleSelectOptions}
+                    value={role}
+                    onChange={(val) => setRole(val)}
+                    size="lg"
+                    variant="clean"
+                    fullWidth
+                  />
+                  {/* Hidden select for accessibility & form testing */}
+                  <select
+                    id="invite-role"
+                    aria-label="Vai trò / Role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="sr-only"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  >
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} - {r.desc}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Scoped Journal (optional) */}
@@ -367,22 +383,29 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                   <label htmlFor="invite-journal" className="block text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">
                     Phạm vi Tạp chí (Scoped Journal - Tùy chọn)
                   </label>
-                  <div className="relative">
-                    <BookOpen className="absolute left-4 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
-                    <select
-                      id="invite-journal"
-                      value={journalId}
-                      onChange={(e) => setJournalId(e.target.value)}
-                      className="w-full rounded-2xl bg-white border border-zinc-200 pl-11 pr-10 py-3 text-sm font-semibold text-zinc-900 outline-none focus:ring-2 focus:ring-lime-300 focus:border-[#78C841] transition-all appearance-none cursor-pointer"
-                    >
-                      {JOURNAL_OPTIONS.map((j) => (
-                        <option key={j.id} value={j.id}>
-                          {j.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <Select
+                    options={journalSelectOptions}
+                    value={journalId}
+                    onChange={(val) => setJournalId(val)}
+                    size="lg"
+                    variant="clean"
+                    fullWidth
+                  />
+                  {/* Hidden select for accessibility & form testing */}
+                  <select
+                    id="invite-journal"
+                    value={journalId}
+                    onChange={(e) => setJournalId(e.target.value)}
+                    className="sr-only"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  >
+                    {JOURNAL_OPTIONS.map((j) => (
+                      <option key={j.id} value={j.id}>
+                        {j.name}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-[11px] text-slate-500 pl-1">
                     Áp dụng phạm vi phân quyền Scoped RBAC/CASL. Nếu để trống, quyền sẽ có hiệu lực toàn hệ thống.
                   </p>

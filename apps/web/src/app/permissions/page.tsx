@@ -11,8 +11,6 @@ import {
   Grid3X3,
   MailCheck,
   UserPlus,
-  Zap,
-  ChevronDown,
 } from 'lucide-react';
 import {
   UserRoleAssignmentTab,
@@ -20,6 +18,7 @@ import {
   InvitationsTab,
   InviteMemberModal,
 } from '@/features/permissions';
+import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -40,7 +39,6 @@ const TABS: TabItem[] = [
 export default function PermissionsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('users');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [isRevocationInfoOpen, setIsRevocationInfoOpen] = useState(true);
 
   const kpiCards = [
     {
@@ -75,81 +73,35 @@ export default function PermissionsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* Hero Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              <ShieldCheck className="w-7 h-7 text-[#78C841]" strokeWidth={2.5} />
-              <span>Quản lý Phân quyền &amp; Vai trò (RBAC / CASL)</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-              Phân quyền theo phạm vi Tạp chí (Scoped RBAC) và kiểm soát truy cập chi tiết (CASL)
-            </p>
-          </div>
-
-          {/* Quick Action Button */}
-          <div className="flex items-center gap-3">
-            <motion.button
-              type="button"
-              whileHover={isTest ? undefined : { scale: 1.02 }}
-              whileTap={isTest ? undefined : { scale: 0.98 }}
-              onClick={() => setIsInviteModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#78C841] hover:bg-[#68B436] text-white text-sm font-bold rounded-2xl shadow-sm transition-all cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Mời thành viên mới</span>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Instant Revocation Glass Banner */}
-        <div className="bg-indigo-50/50 backdrop-blur-sm border border-indigo-100 rounded-3xl p-4 sm:p-5 shadow-xs transition-all">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100/80 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shrink-0">
-                <Zap className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-bold text-indigo-950">
-                Thu hồi Quyền tức thì (Instant Revocation via pv)
-              </span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8">
+        {/* Sticky Hero Header matching Eatzy design system with backdrop blur & mask */}
+        <StickyHubToolbar data-testid="permissions-header" className="pt-2 pb-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                <ShieldCheck className="w-7 h-7 text-[#78C841]" strokeWidth={2.5} />
+                <span>Quản lý Phân quyền &amp; Vai trò (RBAC / CASL)</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                Phân quyền theo phạm vi Tạp chí (Scoped RBAC) và kiểm soát truy cập chi tiết (CASL)
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsRevocationInfoOpen((prev) => !prev)}
-              className="p-1.5 rounded-xl hover:bg-indigo-100/60 text-indigo-700 transition-colors cursor-pointer"
-              title={isRevocationInfoOpen ? 'Thu gọn thông tin' : 'Xem chi tiết'}
-              aria-expanded={isRevocationInfoOpen}
-            >
-              <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  isRevocationInfoOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-          </div>
 
-          <AnimatePresence initial={false}>
-            {isRevocationInfoOpen && (
-              <motion.div
-                initial={isTest ? undefined : { height: 0, opacity: 0 }}
-                animate={isTest ? undefined : { height: 'auto', opacity: 1 }}
-                exit={isTest ? undefined : { height: 0, opacity: 0 }}
-                transition={isTest ? { duration: 0 } : { duration: 0.18, ease: 'easeInOut' }}
-                className="overflow-hidden"
+            {/* Quick Action Button */}
+            <div className="flex items-center gap-3">
+              <motion.button
+                type="button"
+                whileHover={isTest ? undefined : { scale: 1.02 }}
+                whileTap={isTest ? undefined : { scale: 0.98 }}
+                onClick={() => setIsInviteModalOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#78C841] hover:bg-[#68B436] text-white text-sm font-bold rounded-2xl shadow-sm transition-all cursor-pointer"
               >
-                <p className="mt-3 text-xs sm:text-sm text-indigo-900/80 leading-relaxed font-normal">
-                  Mỗi khi thay đổi vai trò hoặc quyền của thành viên, trường{' '}
-                  <code className="font-mono font-bold bg-white px-2 py-0.5 rounded-lg text-indigo-800 border border-indigo-200">
-                    permissions_version (pv)
-                  </code>{' '}
-                  trong cơ sở dữ liệu sẽ tự động gia tăng. Access token và LRU ability cache cũ sẽ bị
-                  vô hiệu hóa ngay lập tức tại request tiếp theo mà không cần chờ JWT hết hạn.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                <UserPlus className="w-4 h-4" />
+                <span>Mời thành viên mới</span>
+              </motion.button>
+            </div>
+          </div>
+        </StickyHubToolbar>
 
         {/* Elevated KPI Metrics Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

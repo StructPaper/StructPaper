@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import {
   Check,
   X,
-  Lock,
   FileText,
   Users,
   BookOpen,
@@ -252,24 +251,6 @@ export const PermissionMatrixTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Immutable Baseline Banner */}
-      <div className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-5 shadow-xs backdrop-blur-sm flex items-start gap-3.5">
-        <div className="w-9 h-9 rounded-2xl bg-amber-100/90 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0 mt-0.5">
-          <Lock className="w-4 h-4" />
-        </div>
-        <div className="text-sm">
-          <div className="font-black text-amber-950 flex items-center gap-2 flex-wrap">
-            <span>Kiến trúc Bảo mật RBAC & CASL (Immutable System Roles)</span>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300/60">
-              Bất biến / Immutable Baseline
-            </span>
-          </div>
-          <p className="text-xs text-amber-800 mt-1 leading-relaxed font-medium">
-            Các vai trò hệ thống (<strong className="font-bold">SuperAdmin, JournalManager, Editor, Reviewer, Author, Guest</strong>) là các baseline quyền hạn bất biến theo đặc tả bảo mật StructPaper. Quản trị viên chỉ có thể gán người dùng vào vai trò hoặc mở rộng phạm vi tạp chí (<code className="font-mono text-amber-950 font-bold">scopeJournalId</code>), không thể tự ý vô hiệu hóa các quy tắc bảo mật cốt lõi.
-          </p>
-        </div>
-      </div>
-
       {/* Subject Filter Pills Toolbar */}
       <div className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs flex-wrap">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">

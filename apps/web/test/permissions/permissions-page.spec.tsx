@@ -113,22 +113,12 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getByText('Pending Invites')).toBeDefined();
   });
 
-  it('allows toggling the instant revocation information banner', () => {
+  it('renders the sticky header toolbar with mask and invite member action', () => {
     renderWithClient(<PermissionsPage />);
 
-    const toggleBtn = screen.getByTitle(/Thu gọn thông tin/i);
-    expect(toggleBtn).toBeDefined();
-
-    // Initially expanded
-    expect(screen.getByText(/Access token và LRU ability cache cũ/i)).toBeDefined();
-
-    // Click to collapse
-    fireEvent.click(toggleBtn);
-    expect(screen.queryByText(/Access token và LRU ability cache cũ/i)).toBeNull();
-
-    // Click to expand again
-    fireEvent.click(screen.getByTitle(/Xem chi tiết/i));
-    expect(screen.getByText(/Access token và LRU ability cache cũ/i)).toBeDefined();
+    const header = screen.getByTestId('permissions-header');
+    expect(header).toBeDefined();
+    expect(screen.getByRole('button', { name: /Mời thành viên mới/i })).toBeDefined();
   });
 
   it('renders three tabs: User & Role Assignment, Permission Matrix, and Invitations', () => {
@@ -152,7 +142,7 @@ describe('Permissions & Role Management Page', () => {
 
     // Permission Matrix should display subjects and system baseline badge
     expect(screen.getAllByText(/Manuscript/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/bất biến|immutable/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
 
     // Switch to Invitations tab
     const invitesTab = screen.getByRole('tab', { name: /Lời mời tham gia/i });
@@ -195,7 +185,7 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getAllByText(/SuperAdmin/i).length).toBeGreaterThan(0);
 
     // Baseline notice
-    expect(screen.getAllByText(/bất biến|immutable/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/System Baseline/i).length).toBeGreaterThan(0);
   });
 
   it('PermissionMatrixTab renders subject filter chips, filters matrix rows, and shows end-of-list divider', () => {

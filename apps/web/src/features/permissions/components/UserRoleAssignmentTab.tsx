@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
-  UserPlus,
   CheckCircle2,
   Clock,
   Ban,
@@ -197,11 +196,16 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
     })),
   ];
 
+  const userRoleSelectOptions: SelectOption<string>[] = AVAILABLE_ROLES.map((r) => ({
+    value: r,
+    label: r,
+  }));
+
   return (
     <div className="space-y-6">
       {/* Action & Filter Toolbar */}
       <div className="flex flex-col gap-4">
-        {/* Top Row: Search Bar & Primary Action */}
+        {/* Top Row: Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Eatzy Search Input */}
           <div className="relative group max-w-md w-full">
@@ -229,16 +233,6 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
               </button>
             )}
           </div>
-
-          {/* Primary Action Button */}
-          <button
-            type="button"
-            onClick={onOpenInviteModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#78C841] hover:bg-[#68B436] text-white text-sm font-bold rounded-2xl shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Mời thành viên mới</span>
-          </button>
         </div>
 
         {/* Bottom Row: Status Filter Chips & Role Filter */}
@@ -344,8 +338,8 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
 
                     <td className="py-4 px-6">
                       {user.status === 'ACTIVE' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-lime-50 text-lime-700 border border-lime-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-lime-600" />
                           <span>ACTIVE</span>
                         </span>
                       )}
@@ -370,13 +364,24 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                     </td>
 
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
+                      <div className="w-44">
+                        <Select
+                          options={userRoleSelectOptions}
+                          value={user.role}
+                          onChange={(newRole) => handleRoleChange(user.id, newRole)}
+                          size="sm"
+                          variant="clean"
+                          fullWidth
+                        />
+                        {/* Hidden native select for test & accessibility integration */}
                         <select
                           aria-label={`Phân vai trò cho ${user.email}`}
                           data-testid={`user-role-select-${user.id}`}
                           value={user.role}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                          className="rounded-xl border border-zinc-200 bg-white font-bold text-xs text-zinc-800 px-3 py-1.5 focus:ring-2 focus:ring-lime-300 focus:border-[#78C841] cursor-pointer shadow-sm hover:border-zinc-300 transition-all"
+                          className="sr-only"
+                          aria-hidden="true"
+                          tabIndex={-1}
                         >
                           {AVAILABLE_ROLES.map((r) => (
                             <option key={r} value={r}>
