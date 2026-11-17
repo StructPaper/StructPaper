@@ -3,20 +3,18 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UploadCloud, FolderArchive, BookOpen, User, Settings } from 'lucide-react';
+import { FolderArchive, BookOpen, Settings } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();
 
   const tabs = [
     { path: '/papers', label: 'Bài báo', icon: FolderArchive },
-    { path: '/upload', label: 'Tải bài', icon: UploadCloud },
     { path: '/templates', label: 'Mẫu Tạp chí', icon: BookOpen },
     { path: '/settings', label: 'Cài đặt', icon: Settings },
   ];
 
   const isNavActive = (path: string) => {
-    if (path === '/upload' && (pathname === '/' || pathname === '/upload')) return true;
     if (path === '/papers' && (pathname.startsWith('/papers') || pathname === '/history')) return true;
     if (path === '/templates' && pathname.startsWith('/templates')) return true;
     if (path === '/account' && pathname.startsWith('/account')) return true;

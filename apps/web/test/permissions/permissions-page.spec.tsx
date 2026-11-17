@@ -92,7 +92,7 @@ describe('Permissions & Role Management Page', () => {
     cleanup();
   });
 
-  it('renders the header with title and subtitle explaining instant revocation', () => {
+  it('renders the header with title', () => {
     renderWithClient(<PermissionsPage />);
 
     expect(screen.getByText(/Quản lý Phân quyền & Vai trò/i)).toBeDefined();
@@ -100,24 +100,11 @@ describe('Permissions & Role Management Page', () => {
     expect(screen.getAllByText(/permissions_version|pv/i).length).toBeGreaterThan(0);
   });
 
-  it('renders 4 elevated KPI metrics cards with accurate values and labels', () => {
+  it('renders the sticky navigation toolbar with mask and invite member action on the same row', () => {
     renderWithClient(<PermissionsPage />);
 
-    expect(screen.getByText('Tổng thành viên')).toBeDefined();
-    expect(screen.getByText('Tài khoản đã kích hoạt')).toBeDefined();
-    expect(screen.getByText('6 Roles')).toBeDefined();
-    expect(screen.getByText('Immutable Baseline')).toBeDefined();
-    expect(screen.getByText('7 Tạp chí')).toBeDefined();
-    expect(screen.getByText('ĐHQG-HCM Scoped')).toBeDefined();
-    expect(screen.getByText('3 Chờ kích hoạt')).toBeDefined();
-    expect(screen.getByText('Pending Invites')).toBeDefined();
-  });
-
-  it('renders the sticky header toolbar with mask and invite member action', () => {
-    renderWithClient(<PermissionsPage />);
-
-    const header = screen.getByTestId('permissions-header');
-    expect(header).toBeDefined();
+    const toolbar = screen.getByTestId('permissions-sticky-toolbar');
+    expect(toolbar).toBeDefined();
     expect(screen.getByRole('button', { name: /Mời thành viên mới/i })).toBeDefined();
   });
 

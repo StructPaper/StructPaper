@@ -247,15 +247,15 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                 className="space-y-4"
               >
                 {/* Celebration Card */}
-                <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0 mt-0.5">
+                <div className="p-5 bg-lime-500/10 border border-lime-500/20 rounded-3xl flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-lime-500/20 flex items-center justify-center text-lime-600 shrink-0 mt-0.5">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-emerald-900 mb-1">
+                    <h4 className="text-sm font-bold text-lime-900 mb-1">
                       Đã tạo lời mời thành công!
                     </h4>
-                    <p className="text-xs text-emerald-700/90 leading-relaxed">
+                    <p className="text-xs text-lime-700/90 leading-relaxed">
                       Lời mời đã được ghi nhận. Trong môi trường Dev / Staging, liên kết kích hoạt một lần (One-Time Activation Link) được tạo ngay bên dưới để thử nghiệm mà không cần máy chủ SMTP:
                     </p>
                   </div>

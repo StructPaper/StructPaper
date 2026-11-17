@@ -12,7 +12,6 @@ import {
   Search,
   X,
   CheckCircle2,
-  KeyRound,
 } from 'lucide-react';
 import { sileo } from '@/components/toast';
 
@@ -268,18 +267,6 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
                     {/* Actions Column */}
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Token Pill with copy hint */}
-                        <div
-                          onClick={() => handleCopyLink(inv)}
-                          className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-mono text-[11px] cursor-pointer transition-colors"
-                          title="Bấm để sao chép liên kết kích hoạt"
-                        >
-                          <KeyRound className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="font-semibold text-slate-700 truncate max-w-[120px]">
-                            {inv.activationToken}
-                          </span>
-                        </div>
-
                         {/* One-click Copy Link Button */}
                         <motion.button
                           type="button"
@@ -290,15 +277,15 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
                           transition={isTest ? { duration: 0 } : undefined}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm border ${
                             copiedId === inv.id
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              ? 'bg-lime-50 text-lime-700 border-lime-200'
                               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80 hover:border-zinc-300'
                           }`}
                           title="Sao chép liên kết kích hoạt"
                         >
                           {copiedId === inv.id ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-emerald-700">Đã sao chép</span>
+                              <Check className="w-3.5 h-3.5 text-lime-600" />
+                              <span className="text-lime-700">Đã sao chép</span>
                             </>
                           ) : (
                             <>
@@ -308,7 +295,7 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
                           )}
                         </motion.button>
 
-                        {/* Animated Resend Button */}
+                        {/* Animated Resend Button in sky blue */}
                         <motion.button
                           type="button"
                           onClick={() => handleResend(inv)}
@@ -317,11 +304,11 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
                           whileHover={isTest || resendingId === inv.id ? undefined : { scale: 1.02 }}
                           whileTap={isTest || resendingId === inv.id ? undefined : { scale: 0.98 }}
                           transition={isTest ? { duration: 0 } : undefined}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-sm"
                           title="Gửi lại email kích hoạt"
                         >
                           <RotateCw
-                            className={`w-3.5 h-3.5 text-indigo-600 ${
+                            className={`w-3.5 h-3.5 text-sky-600 ${
                               resendingId === inv.id ? 'animate-spin' : ''
                             }`}
                           />

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FileText,
   FolderArchive,
   User,
   Settings,
@@ -26,12 +25,6 @@ const NAV_ITEMS = [
     label: 'Quản lý Bài báo',
     description: 'Quản lý & lưu trữ bản thảo',
     icon: FolderArchive,
-  },
-  {
-    path: '/upload',
-    label: 'Tải file DOCX',
-    description: 'Nhập & bóc tách bản thảo',
-    icon: FileText,
   },
   {
     path: '/templates',

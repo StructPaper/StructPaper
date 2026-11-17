@@ -365,7 +365,7 @@ export const PermissionMatrixTab: React.FC = () => {
                               <div className="flex flex-col items-center justify-center gap-1">
                                 {perm.allowed ? (
                                   <div
-                                    className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center shadow-2xs"
+                                    className="w-7 h-7 rounded-full bg-lime-100 border border-lime-300 text-lime-700 flex items-center justify-center shadow-2xs"
                                     title="Cho phép (Allowed)"
                                   >
                                     <Check className="w-3.5 h-3.5 stroke-[2.5]" />
