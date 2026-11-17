@@ -157,7 +157,9 @@ startxref
         try {
           childProcess = spawn(executable, args, {
             cwd: tempDir,
-            timeout: 60000,
+            // Docker Desktop (bind mounts / named volumes) is much slower than native:
+            // a full article can take ~100s in-container vs ~20s on host.
+            timeout: Number(process.env.COMPILE_TIMEOUT_MS) || 300000,
             shell: false,
           });
         } catch (spawnErr: any) {

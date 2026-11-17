@@ -82,3 +82,7 @@ Desktop.ini
 
 # Downloaded JATS DTD (run scripts/jats/fetch-dtd.py)
 scripts/jats/dtd/
+
+# --- Fonts baked into API image (licensed, not committed) ---
+docker/fonts/*
+!docker/fonts/README.md

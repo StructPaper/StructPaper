@@ -31,6 +31,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STANDALONE=true
 ENV NODE_ENV=production
 
+# next.config rewrites() are resolved at BUILD time: bake the in-network API address.
+ARG INTERNAL_API_URL=http://api:3001
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
+
 RUN pnpm --filter @structpaper/web build
 
 # Stage 3: Production Runner (Next.js Standalone ~150MB)

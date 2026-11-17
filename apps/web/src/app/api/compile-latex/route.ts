@@ -1,38 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Minimal valid 1-page PDF buffer fallback so PDF viewer / preview never breaks.
- */
-function getFallbackPdfBuffer(): Buffer {
-  return Buffer.from(`%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources <<>> >>
-endobj
-xref
-0 4
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-trailer
-<< /Size 4 /Root 1 0 R >>
-startxref
-190
-%%EOF
-`, 'utf-8');
-}
+// A full article can take ~100s when Tectonic runs inside Docker.
+export const maxDuration = 300;
 
 /**
  * POST /api/compile-latex
- * Routes compilation requests to NestJS Backend via compileApi (/api/proxy/api/v1/compile/latex).
- * If backend returns PDF, pipes it to response.
- * If backend is unreachable or returns fallback, returns valid PDF buffer so preview never breaks.
+ * Forwards the LaTeX source to the NestJS backend (Tectonic) and pipes the PDF back.
+ * On failure it returns a JSON error (never a blank placeholder PDF) so the UI can show it.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -50,76 +24,82 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Forward compilation request to NestJS Backend via direct fetch
+    const backendBaseUrl = (
+      process.env.INTERNAL_API_URL ||
+      process.env.API_SERVER_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3001'
+    ).replace(/\/+$/, '');
+
+    let backendRes: Response;
     try {
-      const backendBaseUrl = (
-        process.env.INTERNAL_API_URL ||
-        process.env.API_SERVER_URL ||
-        process.env.NEXT_PUBLIC_API_URL ||
-        'http://localhost:3001'
-      ).replace(/\/+$/, '');
-
-      const compilePayload = {
-        tex,
-        texContent: tex,
-        jobName: jobName || 'article',
-        engine: engine || 'tectonic',
-        autoFontFallback: autoFontFallback !== false,
-        images: images || {},
-      };
-
-      const backendRes = await fetch(`${backendBaseUrl}/api/v1/compile/latex`, {
+      backendRes = await fetch(`${backendBaseUrl}/api/v1/compile/latex`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(compilePayload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tex,
+          texContent: tex,
+          jobName: jobName || 'article',
+          engine: engine || 'tectonic',
+          autoFontFallback: autoFontFallback !== false,
+          images: images || {},
+        }),
       });
-
-      if (backendRes.ok) {
-        const arrayBuf = await backendRes.arrayBuffer();
-        if (arrayBuf && arrayBuf.byteLength > 0) {
-          const engineHeader =
-            backendRes.headers.get('x-compiler-engine') || 'NestJS Compiler Engine (Tectonic)';
-          return new Response(new Uint8Array(arrayBuf), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/pdf',
-              'Content-Disposition': 'inline; filename="article.pdf"',
-              'X-Compiler-Engine': engineHeader,
-              'X-Compiled-Timestamp': new Date().toISOString(),
-            },
-          });
-        }
-      } else {
-        const errorText = await backendRes.text().catch(() => '');
-        console.warn(`[compile-latex] NestJS Backend returned status ${backendRes.status}:`, errorText);
-      }
     } catch (backendErr: any) {
-      console.warn('[compile-latex] NestJS Backend proxy failed or unreachable:', backendErr?.message || backendErr);
+      console.warn('[compile-latex] Backend unreachable:', backendErr?.message || backendErr);
+      return NextResponse.json(
+        {
+          error: 'Không kết nối được tới backend biên dịch',
+          details: `Kiểm tra container structpaper-api-dev (cổng 3001) và INTERNAL_API_URL. ${backendErr?.message || ''}`,
+          engine: 'Tectonic',
+        },
+        { status: 502 }
+      );
     }
 
-    // 2. Seamless fallback: Return valid 1-page minimal PDF buffer so preview never breaks
-    const fallbackBuffer = getFallbackPdfBuffer();
-    return new Response(new Uint8Array(fallbackBuffer), {
+    if (!backendRes.ok) {
+      const errorText = await backendRes.text().catch(() => '');
+      console.warn(`[compile-latex] Backend returned ${backendRes.status}:`, errorText);
+      return NextResponse.json(
+        {
+          error: `Backend biên dịch trả lỗi (${backendRes.status})`,
+          details: errorText.slice(0, 2000),
+          engine: 'Tectonic',
+        },
+        { status: 502 }
+      );
+    }
+
+    const arrayBuf = await backendRes.arrayBuffer();
+    const engineHeader = backendRes.headers.get('x-compiler-engine') || '';
+
+    // The backend answers 200 with a blank placeholder PDF (engine label without
+    // "Tectonic"/"Cached") when the compiler failed or timed out.
+    if (!/tectonic|cached/i.test(engineHeader) || arrayBuf.byteLength === 0) {
+      return NextResponse.json(
+        {
+          error: 'Tectonic trên backend biên dịch thất bại hoặc quá thời gian',
+          details: 'Xem log chi tiết: docker logs structpaper-api-dev',
+          engine: engineHeader || 'Tectonic',
+        },
+        { status: 502 }
+      );
+    }
+
+    return new Response(new Uint8Array(arrayBuf), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline; filename="article.pdf"',
-        'X-Compiler-Engine': 'NestJS Compiler Engine (Fallback)',
+        'X-Compiler-Engine': engineHeader,
         'X-Compiled-Timestamp': new Date().toISOString(),
       },
     });
   } catch (error: any) {
     console.error('API /api/compile-latex error:', error);
-    const fallbackBuffer = getFallbackPdfBuffer();
-    return new Response(new Uint8Array(fallbackBuffer), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'inline; filename="article.pdf"',
-        'X-Compiler-Engine': 'Fallback PDF Engine',
-      },
-    });
+    return NextResponse.json(
+      { error: 'Lỗi biên dịch nội bộ', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }

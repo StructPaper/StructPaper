@@ -33,7 +33,7 @@ Chỉ báo trạng thái ở góc phải thanh menu:
   * Hình ảnh được tải một lần theo **SHA-256** lên `/api/v1/assets/{sha256}`; JSON tài liệu chỉ giữ tham chiếu `asset:<sha256>` (không nhúng ảnh base64).
 * Khoá lạc quan: `baseRev` trong `PUT /documents/{id}`; sai phiên bản trả **412**.
 
-Khởi chạy MinIO: `docker compose -f docker-compose.minio.yml up -d`, rồi chạy API với các biến môi trường ghi trong tệp đó.
+MinIO: dùng service `minio` trong `docker-compose.dev.yml` (hoặc instance staging, xem `docker-compose.staging.yml`).
 
 ### API chính (`/api/v1/documents`)
 
@@ -178,7 +178,7 @@ Nếu có tiêu đề + tóm tắt tiếng Anh, bài PDF kết thúc bằng tran
 | XML xuất ra hợp lệ theo **DTD JATS 1.2 chính thức** | `python scripts/jats/fetch-dtd.py scripts/jats/dtd` (một lần) rồi `pnpm test` (cần python + lxml; không có thì bỏ qua) |
 | End-to-end trình duyệt (nhập Word → cổng kiểm tra → tự động lưu → xuất Word/XML/PDF → mở lại), cần API chạy ở :8080 | `pnpm exec playwright test e2e/document-workflow.spec.ts --project=chrome` |
 
-Chạy cả hệ thống thật: `docker compose -f docker-compose.minio.yml up -d`, API với `STRUCTPAPER_STORAGE_TYPE=minio` (xem docker-compose), rồi `pnpm dev:web`. (Image `minio/minio` chính thức đã bị gỡ khỏi Docker Hub nên compose dùng bản Bitnami cố định.)
+Chạy cả hệ thống thật: `docker compose -f docker-compose.dev.yml up -d` (hoặc `docker-compose.staging.yml` nếu dùng DB/MinIO staging), rồi `pnpm dev:web`.
 
 ## 11. Ứng dụng đóng gói (Windows / macOS)
 Bản desktop (Tauri) dùng bản xuất tĩnh của web: tự động lưu và lưu trữ chạy cục bộ (IndexedDB), biên dịch PDF dùng tectonic đi kèm; nếu cấu hình `NEXT_PUBLIC_API_BASE_URL` trỏ tới máy chủ thì đồng bộ DB + MinIO, nếu không thì chỉ hiện "Đã lưu trên máy". `node apps/web/scripts/export-desktop.mjs` vẫn build thành công với các thay đổi này (khâu đóng gói Tauri/Rust chưa chạy trong môi trường này).

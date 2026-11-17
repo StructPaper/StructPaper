@@ -1,0 +1,77 @@
+# Hybrid mode against STAGING infra (Postgres + MinIO on the VM, needs VPN).
+# Only api + worker run in Docker; run web on the host: pnpm --filter @structpaper/web dev
+#
+#   docker compose -f docker-compose.staging.yml up -d --build
+#
+# One command: db-init (extensions + migrate + seed, all idempotent) runs first, then api + worker.
+# Credentials live in .env.staging.local (git-ignored, see .env.staging.example).
+name: structpaper-staging
+
+x-env: &env-file
+  env_file: .env.staging.local
+
+services:
+  # One-shot on every `up`: extensions (best effort) + Drizzle migrate + idempotent seed.
+  db-init:
+    <<: *env-file
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: structpaper-staging-db-init
+    command: >
+      /bin/sh -c "
+      apk add --no-cache postgresql-client >/dev/null &&
+      (psql \"$$DATABASE_URL\" -c 'CREATE EXTENSION IF NOT EXISTS citext' -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm' -c 'CREATE EXTENSION IF NOT EXISTS unaccent' || echo 'WARN: could not create extensions (need superuser?)') &&
+      pnpm --filter @structpaper/db migrate &&
+      pnpm --filter @structpaper/db seed
+      "
+
+  api:
+    <<: *env-file
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: structpaper-api-staging
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/packages/contracts/node_modules
+      - /app/packages/db/node_modules
+      - tectonic_cache:/root/.cache/Tectonic
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *env-file
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: dev
+    container_name: structpaper-worker-staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/worker/node_modules
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+volumes:
+  tectonic_cache:
