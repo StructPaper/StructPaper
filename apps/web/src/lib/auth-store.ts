@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { setAccessToken, setOnTokenRefreshed } from '@structpaper/api-client';
+import type { Capability } from '@structpaper/contracts';
 
 export interface AuthUser {
   id: string;
@@ -12,6 +13,8 @@ export interface AuthUser {
   status?: 'ACTIVE' | 'INVITED' | 'SUSPENDED' | string;
   /** Roles held by the user (with the journal each one is scoped to; null = whole system) */
   roles?: Array<{ roleName: string; scopeJournalId?: string | null; scopeJournalName?: string | null }>;
+  /** What the user may do (decided by the server). Undefined until /auth/me has answered. */
+  capabilities?: Capability[];
   permissionsVersion?: number;
 }
 

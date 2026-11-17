@@ -94,7 +94,8 @@ export function buildOpenApiSpec() {
         },
         AccountProfile: {
           type: 'object',
-          description: 'The logged-in user, with the roles they hold.',
+          description:
+            'The logged-in user, with the roles they hold and the capabilities those roles grant (what the UI may show).',
           properties: {
             id: { type: 'string', format: 'uuid' },
             email: { type: 'string', format: 'email' },
@@ -105,8 +106,13 @@ export function buildOpenApiSpec() {
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
             roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+            capabilities: {
+              type: 'array',
+              items: { type: 'string', enum: ['member:manage', 'role:assign', 'role:grant_superadmin'] },
+              description: 'Effective capabilities of the user. The UI asks for these, never for role names.',
+            },
           },
-          required: ['id', 'email', 'status', 'roles'],
+          required: ['id', 'email', 'status', 'roles', 'capabilities'],
         },
         UserRoleAssignmentView: {
           type: 'object',

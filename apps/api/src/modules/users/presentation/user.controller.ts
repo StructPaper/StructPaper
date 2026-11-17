@@ -27,11 +27,8 @@ import { UserService, type InviteActor } from '../application/user.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { PoliciesGuard } from '../../access/presentation/guards/policies.guard';
 import { CheckPolicies } from '../../access/presentation/decorators/check-policies.decorator';
-import type { AppAbility } from '../../access/domain/ability.factory';
+import { canManageMembers } from '../../access/domain/capabilities';
 
-/** Member administration is reserved for people who can manage roles (SuperAdmin / JournalManager). */
-const canManageMembers = (ability: AppAbility) =>
-  ability.can('manage', 'all') || ability.can('manage', 'Role');
 
 const toInt = (value?: string): number | undefined => {
   if (value === undefined || value === '') return undefined;

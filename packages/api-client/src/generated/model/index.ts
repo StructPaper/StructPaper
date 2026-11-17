@@ -7,6 +7,7 @@
  */
 
 export * from './accountProfile';
+export * from './accountProfileCapabilitiesItem';
 export * from './accountProfileStatus';
 export * from './activateAccountRequest';
 export * from './addManuscriptMemberRequest';

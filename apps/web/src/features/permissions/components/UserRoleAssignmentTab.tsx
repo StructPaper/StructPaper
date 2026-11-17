@@ -22,6 +22,7 @@ import {
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { sileo } from '@/components/toast';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { usePermissionsPolicy } from '../access';
 import { UserRowsShimmer } from './MemberTableShimmers';
 import { apiErrorMessage, FALLBACK_ROLE_NAMES, GLOBAL_SCOPE_LABEL } from '../utils';
 
@@ -100,6 +101,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
   const assignRoleMutation = useAssignRole({ request: { skipGlobalToast: true } });
   const revokeRoleMutation = useRevokeRole({ request: { skipGlobalToast: true } });
   const invalidateMembers = useInvalidateMembers();
+  const policy = usePermissionsPolicy();
 
   const userList: UserRoleItem[] = useMemo(
     () => usersOverride ?? (usersQuery.data?.items ?? []).map(toItem),
@@ -166,10 +168,16 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
     ...roleNames.map((r) => ({ value: r, label: r })),
   ];
 
-  const userRoleSelectOptions: SelectOption<string>[] = roleNames.map((r) => ({
-    value: r,
-    label: r,
-  }));
+  // Only someone who may grant SuperAdmin is offered it (the server enforces this as well)
+  const userRoleSelectOptions: SelectOption<string>[] = roleNames.map((r) => {
+    const needsGrant = r === 'SuperAdmin' && !policy.canGrantSuperAdmin;
+    return {
+      value: r,
+      label: r,
+      disabled: needsGrant,
+      description: needsGrant ? 'Chỉ SuperAdmin mới cấp được' : undefined,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -380,7 +388,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                             options={userRoleSelectOptions}
                             value={user.role}
                             placeholder="Chưa có vai trò"
-                            disabled={!!user.lockReason}
+                            disabled={!!user.lockReason || !policy.canAssignRoles}
                             onChange={(newRole) => handleRoleChange(user, newRole)}
                             size="sm"
                             variant="clean"
@@ -391,7 +399,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                             aria-label={`Phân vai trò cho ${user.email}`}
                             data-testid={`user-role-select-${user.id}`}
                             value={user.role}
-                            disabled={busy || !!user.lockReason}
+                            disabled={busy || !!user.lockReason || !policy.canAssignRoles}
                             onChange={(e) => handleRoleChange(user, e.target.value)}
                             className="sr-only"
                             aria-hidden="true"
@@ -399,7 +407,7 @@ export const UserRoleAssignmentTab: React.FC<UserRoleAssignmentTabProps> = ({
                           >
                             {!user.role && <option value="">Chưa có vai trò</option>}
                             {roleNames.map((r) => (
-                              <option key={r} value={r}>
+                              <option key={r} value={r} disabled={r === 'SuperAdmin' && !policy.canGrantSuperAdmin}>
                                 {r}
                               </option>
                             ))}

@@ -4,45 +4,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FolderArchive,
-  User,
-  Settings,
-  ChevronRight,
-  ChevronLeft,
-  BookOpen,
-  Menu,
-  X,
-  ShieldCheck,
-} from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
-
-const NAV_ITEMS = [
-  {
-    path: '/papers',
-    label: 'Quản lý Bài báo',
-    description: 'Quản lý & lưu trữ bản thảo',
-    icon: FolderArchive,
-  },
-  {
-    path: '/templates',
-    label: 'Quản lý Mẫu & Tạp chí',
-    description: '7 Tạp chí ĐHQG & Quy định',
-    icon: BookOpen,
-  },
-  {
-    path: '/permissions',
-    label: 'Phân quyền & Vai trò',
-    description: 'Quản lý vai trò & thành viên',
-    icon: ShieldCheck,
-  },
-  {
-    path: '/settings',
-    label: 'Cài đặt',
-    description: 'Quy chuẩn & xuất bản',
-    icon: Settings,
-  },
-];
+import { useAccess } from '@/lib/access';
+import { MAIN_NAV, ACCOUNT_NAV, visibleNav, isNavItemActive } from './navigation';
 
 interface DockPillButtonProps {
   id?: string;
@@ -181,6 +146,9 @@ export const Sidebar: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const { user } = useAuthStore();
+  const access = useAccess();
+  const navItems = visibleNav(MAIN_NAV, access);
+  const accountActive = isNavItemActive(ACCOUNT_NAV, pathname);
 
   const displayName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Tài khoản');
   const userEmail = user?.email || '';
@@ -191,15 +159,6 @@ export const Sidebar: React.FC = () => {
       .slice(-2)
       .map((w) => w[0]?.toUpperCase())
       .join('') || 'SP';
-
-  const isNavActive = (path: string) => {
-    if (path === '/upload' && (pathname === '/' || pathname === '/upload')) return true;
-    if (path === '/papers' && (pathname.startsWith('/papers') || pathname === '/history')) return true;
-    if (path === '/templates' && pathname.startsWith('/templates')) return true;
-    if (path === '/account' && pathname.startsWith('/account')) return true;
-    if (path === '/settings' && pathname.startsWith('/settings')) return true;
-    return pathname === path;
-  };
 
   return (
     <>
@@ -235,9 +194,9 @@ export const Sidebar: React.FC = () => {
 
         {/* MIDDLE SECTION: MAIN FLOW NAVIGATION PILLS */}
         <div className={`relative flex flex-col items-start w-full transition-all duration-300 ${isExpanded ? 'space-y-1' : 'space-y-3'}`}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
-            const active = isNavActive(item.path);
+            const active = isNavItemActive(item, pathname);
 
             return (
               <DockPillButton
@@ -265,7 +224,7 @@ export const Sidebar: React.FC = () => {
           <DockPillButton
             href="/account"
             isExpanded={isExpanded}
-            active={isNavActive('/account')}
+            active={accountActive}
             icon={
               isExpanded ? (
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#78C841] to-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
@@ -274,7 +233,7 @@ export const Sidebar: React.FC = () => {
               ) : (
                 <User
                   className={`w-5 h-5 transition-colors ${
-                    isNavActive('/account') ? 'text-zinc-950' : 'text-zinc-700 group-hover:text-zinc-950'
+                    accountActive ? 'text-zinc-950' : 'text-zinc-700 group-hover:text-zinc-950'
                   }`}
                   strokeWidth={2.8}
                 />
@@ -310,7 +269,7 @@ export const Sidebar: React.FC = () => {
           <Link
             href="/account"
             className={`p-2 rounded-xl transition-colors ${
-              isNavActive('/account')
+              accountActive
                 ? 'bg-[#78C841] text-zinc-950'
                 : 'text-zinc-500 hover:text-zinc-950 hover:bg-gray-100'
             }`}
@@ -352,9 +311,9 @@ export const Sidebar: React.FC = () => {
               </button>
             </div>
             <div className="flex-1 py-3 px-2 space-y-1.5 overflow-y-auto">
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
-                const active = isNavActive(item.path);
+                const active = isNavItemActive(item, pathname);
                 return (
                   <Link
                     key={item.path}

@@ -1,6 +1,7 @@
 export * from './errors/problem-details';
 export * from './auth/auth.contract';
 export * from './access/access.contract';
+export * from './access/capabilities';
 export * from './manuscripts/manuscript.contract';
 export * from './sync/sync.contract';
 export * from './assets/asset.contract';

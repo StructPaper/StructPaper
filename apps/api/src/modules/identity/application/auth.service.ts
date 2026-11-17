@@ -12,6 +12,7 @@ import { PasswordService } from '../domain/password.service';
 import { TokenService } from '../domain/token.service';
 import { MailService } from '../domain/mail.service';
 import { loadUserRoleViews } from '../../access/domain/user-role-views';
+import { capabilitiesForRoles } from '../../access/domain/capabilities';
 
 @Injectable()
 export class AuthService {
@@ -312,7 +313,7 @@ export class AuthService {
     }
     const { passwordHash, ...profile } = user;
     const roleViews = (await loadUserRoleViews(this.db, [userId])).get(userId) ?? [];
-    return { ...profile, roles: roleViews };
+    return { ...profile, roles: roleViews, capabilities: await capabilitiesForRoles(roleViews) };
   }
 
   private async findUserByEmail(email: string): Promise<any> {

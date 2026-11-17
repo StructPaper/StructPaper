@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/lib/auth-store';
 import {
   Check,
   X,
@@ -242,6 +243,9 @@ export const PERMISSION_GRID: Record<SubjectType, Record<ActionType, Record<Role
 
 export const PermissionMatrixTab: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
+  // Role names are used here ONLY to point out the viewer's own column (display), never to decide access.
+  const myRoleNames = useAuthStore((s) => s.user?.roles);
+  const mine = new Set((myRoleNames ?? []).map((r) => r.roleName));
   const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
   const visibleSubjects =
@@ -301,18 +305,37 @@ export const PermissionMatrixTab: React.FC = () => {
                 <th className="px-6 py-4 text-xs uppercase font-extrabold text-slate-500 tracking-wider w-64 border-r border-slate-200">
                   Đối tượng & Hành động
                 </th>
-                {ROLES.map((role) => (
-                  <th
-                    key={role.id}
-                    className="px-4 py-4 text-center font-semibold text-xs tracking-wider border-r border-slate-200 last:border-r-0"
-                  >
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color}`}>
-                        {role.label}
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {ROLES.map((role) => {
+                  const isMine = mine.has(role.id);
+                  return (
+                    <th
+                      key={role.id}
+                      data-mine={isMine ? 'true' : undefined}
+                      className={`px-4 py-4 text-center font-semibold text-xs tracking-wider border-r border-slate-200 last:border-r-0 ${
+                        isMine ? 'bg-[#78C841]/[0.09]' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color} ${
+                            isMine ? 'ring-2 ring-[#78C841]/45' : ''
+                          }`}
+                        >
+                          {role.label}
+                        </span>
+                        {/* Same height for every column, so the header row stays aligned */}
+                        <span
+                          className={`text-[10px] leading-3 font-bold uppercase tracking-wider ${
+                            isMine ? 'text-lime-700' : 'invisible'
+                          }`}
+                          aria-hidden={!isMine}
+                        >
+                          Vai trò của bạn
+                        </span>
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -357,7 +380,10 @@ export const PermissionMatrixTab: React.FC = () => {
                           return (
                             <td
                               key={`${subj.id}-${act.id}-${role.id}`}
-                              className="px-3 py-3 text-center border-r border-slate-200 last:border-r-0 align-middle"
+                              data-mine={mine.has(role.id) ? 'true' : undefined}
+                              className={`px-3 py-3 text-center border-r border-slate-200 last:border-r-0 align-middle ${
+                                mine.has(role.id) ? 'bg-[#78C841]/[0.07]' : ''
+                              }`}
                             >
                               <div className="flex flex-col items-center justify-center gap-1">
                                 {perm.allowed ? (

@@ -16,6 +16,7 @@ import { ModalPortal } from '@/components/modals/ModalPortal';
 import { sileo } from '@/components/toast';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { usePermissionsPolicy } from '../access';
 import {
   apiErrorMessage,
   copyToClipboard,
@@ -65,6 +66,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   const rolesQuery = useGetRoles();
   const journalsQuery = useListJournals();
   const invalidateMembers = useInvalidateMembers();
+  const policy = usePermissionsPolicy();
 
   const roleNames: string[] =
     (rolesQuery.data ?? []).length > 0
@@ -148,11 +150,15 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     onClose();
   };
 
-  const roleSelectOptions: SelectOption<string>[] = roleNames.map((name) => ({
-    value: name,
-    label: name,
-    description: ROLE_DESCRIPTIONS[name],
-  }));
+  const roleSelectOptions: SelectOption<string>[] = roleNames.map((name) => {
+    const needsGrant = name === 'SuperAdmin' && !policy.canGrantSuperAdmin;
+    return {
+      value: name,
+      label: name,
+      disabled: needsGrant,
+      description: needsGrant ? 'Chỉ SuperAdmin mới cấp được' : ROLE_DESCRIPTIONS[name],
+    };
+  });
 
   const journalSelectOptions: SelectOption<string>[] = journalOptions.map((j) => ({
     value: j.id,
@@ -357,7 +363,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                     tabIndex={-1}
                   >
                     {roleNames.map((name) => (
-                      <option key={name} value={name}>
+                      <option key={name} value={name} disabled={name === 'SuperAdmin' && !policy.canGrantSuperAdmin}>
                         {name}
                         {ROLE_DESCRIPTIONS[name] ? ` - ${ROLE_DESCRIPTIONS[name]}` : ''}
                       </option>

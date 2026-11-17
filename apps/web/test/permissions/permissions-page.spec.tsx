@@ -34,6 +34,7 @@ import {
 } from '@/features/permissions';
 import { sileo } from '@/components/toast';
 import { ProblemDetailsError } from '@structpaper/api-client';
+import { useAuthStore } from '@/lib/auth-store';
 
 // ---------------------------------------------------------------------------
 // Fixtures & API mocks (the components load everything through the generated hooks)
@@ -195,6 +196,17 @@ function renderWithClient(ui: React.ReactElement) {
 describe('Permissions & Role Management Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // These tests exercise the management screens: the viewer is a SuperAdmin whose capabilities
+    // the server has already sent (who sees what per persona is covered in permissions-access.spec).
+    useAuthStore.setState({
+      user: {
+        id: 'u-viewer',
+        email: 'viewer@structpaper.org',
+        roles: [{ roleName: 'SuperAdmin', scopeJournalId: null, scopeJournalName: null }],
+        capabilities: ['member:manage', 'role:assign', 'role:grant_superadmin'],
+      },
+      isAuthenticated: true,
+    } as any);
     mockWriteText.mockResolvedValue(undefined);
     h.assignRole.mockResolvedValue({ success: true, permissionsVersion: 6 });
     h.revokeRole.mockResolvedValue({ success: true, permissionsVersion: 7 });

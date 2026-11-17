@@ -7,9 +7,10 @@
  */
 import type { AccountProfileStatus } from './accountProfileStatus';
 import type { UserRoleAssignmentView } from './userRoleAssignmentView';
+import type { AccountProfileCapabilitiesItem } from './accountProfileCapabilitiesItem';
 
 /**
- * The logged-in user, with the roles they hold.
+ * The logged-in user, with the roles they hold and the capabilities those roles grant (what the UI may show).
  */
 export interface AccountProfile {
   id: string;
@@ -23,4 +24,6 @@ export interface AccountProfile {
   createdAt?: string;
   updatedAt?: string;
   roles: UserRoleAssignmentView[];
+  /** Effective capabilities of the user. The UI asks for these, never for role names. */
+  capabilities: AccountProfileCapabilitiesItem[];
 }
