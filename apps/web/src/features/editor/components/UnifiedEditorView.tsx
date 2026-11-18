@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
 import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
-import { usePaperProfile, useArticleTypeSync, ProfileUpgradeBanner } from '@/features/journals';
+import { usePaperProfile, usePaperProfileSession, useArticleTypeSync } from '@/features/journals';
 import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
 import { getJournalTemplate } from '@/lib/templates';
@@ -130,6 +130,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   const profile = usePaperProfile(formData, { onLayoutChange: () => void compileLatexToPdf() });
   // the article type the author picks moves the paper to that type's rules on the server
   useArticleTypeSync(formData, setFormData);
+  // newer rules: a toast that stays until the author acts, and the title bar's "which rules apply" dialog
+  usePaperProfileSession(formData, {
+    isOutdated: profile.isOutdated,
+    latestPin: profile.latestPin,
+    onUpgraded: (pin, version) => setFormData((prev) => ({ ...prev, profilePin: pin, version })),
+  });
   /** Export in progress (covers the save + compile phase before the download starts). */
   const [pendingExport, setPendingExport] = useState<ExportFormat | null>(null);
 
@@ -514,11 +520,6 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
-        <ProfileUpgradeBanner
-          paper={formData}
-          isOutdated={profile.isOutdated}
-          onUpgraded={(pin, version) => setFormData((prev) => ({ ...prev, profilePin: pin, version }))}
-        />
         <EditorDocumentMenuBarSlot
           name={documentName}
           onRename={handleRename}

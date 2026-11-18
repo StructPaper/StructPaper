@@ -74,7 +74,6 @@ const DockIconButton: React.FC<DockIconButtonProps> = ({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        title={label}
         className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 select-none cursor-pointer relative ${
           active
             ? 'bg-white/90 text-zinc-950 font-bold shadow-[inset_0_0_14px_6px_rgba(255,255,255,0.95),0_0_16px_rgba(0,0,0,0.10),0_0_4px_rgba(0,0,0,0.06)] border border-white scale-105'
@@ -117,6 +116,8 @@ export interface JournalEditorDockProps {
   saveSuccess?: boolean;
   /** The caller may only look: saving, resetting and changing the status are off. */
   readOnly?: boolean;
+  /** Leaves the page; the editor asks first when there are unsaved edits. Defaults to going to the template list. */
+  onBack?: () => void;
 }
 
 export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
@@ -130,6 +131,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   isDirty = false,
   saveSuccess = false,
   readOnly = false,
+  onBack,
 }) => {
   let router: any = null;
   try {
@@ -149,7 +151,9 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   };
 
   const handleBack = () => {
-    if (router) {
+    if (onBack) {
+      onBack();
+    } else if (router) {
       router.push('/templates');
     } else if (typeof window !== 'undefined') {
       window.location.href = '/templates';

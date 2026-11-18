@@ -169,6 +169,12 @@ export const journalSchemas = {
     properties: { toVersion: { type: 'integer', minimum: 1 }, changeNote: { type: 'string' } },
     required: ['toVersion'],
   },
+  ApplyProfileToPapersRequest: { type: 'object', properties: { password: { type: 'string' } }, required: ['password'] },
+  ApplyProfileToPapersResult: {
+    type: 'object',
+    properties: { updated: { type: 'integer' }, unchanged: { type: 'integer' } },
+    required: ['updated', 'unchanged'],
+  },
   PublishedProfiles: {
     type: 'object',
     properties: {
@@ -210,6 +216,13 @@ export const journalPaths = {
     get: {
       tags: ['Journals'], summary: 'What the caller may do with a journal', operationId: 'getJournalAccess', security: auth,
       parameters: [idParam], responses: { '200': ok('Access', ref('JournalAccess')), '403': problem },
+    },
+  },
+  '/api/v1/journals/{id}/apply-profile-to-papers': {
+    post: {
+      tags: ['Journals'], summary: 'Move every paper of the journal to the rules published now (irreversible, asks for the password)',
+      operationId: 'applyProfileToPapers', security: auth, parameters: [idParam], requestBody: body('ApplyProfileToPapersRequest'),
+      responses: { '200': ok('Papers moved', ref('ApplyProfileToPapersResult')), '403': problem, '404': problem },
     },
   },
   '/api/v1/journals/{id}/article-types': {

@@ -3,13 +3,15 @@
  * Skipped unless TEST_DATABASE_URL points at a throwaway database on localhost (see journal-management.integration.spec.ts).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createDbClient, seedDatabase, journals, users, articleTypes, profileVersions, manuscripts, manuscriptProfileSnapshots, sql, eq, asc } from '@structpaper/db';
+import { createDbClient, seedDatabase, journals, users, articleTypes, profileVersions, manuscripts, manuscriptProfileSnapshots, auditLogs, sql, eq, asc } from '@structpaper/db';
 import { AbilityFactory } from '../../src/modules/access/domain/ability.factory';
 import { JournalService } from '../../src/modules/journals/application/journal.service';
 import { ProfileService } from '../../src/modules/journals/application/profile.service';
 import { ArticleTypeService } from '../../src/modules/journals/application/article-type.service';
 import { ProfileResolveService, parsePin } from '../../src/modules/journals/application/profile-resolve.service';
 import { ManuscriptService } from '../../src/modules/manuscripts/application/manuscript.service';
+import { ProfileBulkService } from '../../src/modules/journals/application/profile-bulk.service';
+import { PasswordService } from '../../src/modules/identity/domain/password.service';
 import { lockTestDatabase } from './db-lock';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -30,6 +32,8 @@ describe.skipIf(!url)('article types and profile pinning (real database)', () =>
   let types: ArticleTypeService;
   let resolver: ProfileResolveService;
   let papers: ManuscriptService;
+  let bulk: ProfileBulkService;
+  let adminId: string;
   let superAdmin: any;
   let author: any;
   let hsManager: any;
@@ -45,6 +49,8 @@ describe.skipIf(!url)('article types and profile pinning (real database)', () =>
     types = new ArticleTypeService(reads, profiles, db as any);
     resolver = new ProfileResolveService(reads, db as any);
     papers = new ManuscriptService(db as any, resolver);
+    const passwords = new PasswordService();
+    bulk = new ProfileBulkService(reads, resolver, passwords, db as any);
     await profiles.onModuleInit();
 
     const factory = new AbilityFactory();
@@ -54,6 +60,8 @@ describe.skipIf(!url)('article types and profile pinning (real database)', () =>
     hsManager = await factory.createForUser({ roles: [{ name: 'JournalManager', scopeJournalId: hs.id }] });
     const [owner] = await db.insert(users).values({ email: 'owner@test.dev', displayName: 'Owner', status: 'ACTIVE', passwordHash: 'x', permissionsVersion: 1 }).returning();
     ownerId = owner.id;
+    const [admin] = await db.insert(users).values({ email: 'admin@test.dev', displayName: 'Admin', status: 'ACTIVE', passwordHash: await passwords.hash('right-pass'), permissionsVersion: 1 }).returning();
+    adminId = admin.id;
   });
 
   afterAll(async () => {
@@ -288,6 +296,48 @@ describe.skipIf(!url)('article types and profile pinning (real database)', () =>
       expect((one as any).profilePin.journal).toBeGreaterThan(0);
       const list = await papers.listManuscripts({ limit: 50 } as any, superAdmin, ownerId);
       expect(list.items.find((i: any) => i.id === paper.id)).toMatchObject({ articleType: 'research', journal: { code: 'VNUHCM-HS' } });
+    });
+
+    describe('moving every paper of the journal to the rules in force', () => {
+      const hsPins = async () => (await db.select().from(manuscripts).where(sql`journal_id = (select id from journals where slug = 'vnuhcm-hs')`)).map((m) => ({ id: m.id, pin: m.profilePin as any, version: m.version }));
+
+      it('refuses a wrong password and someone who may not edit the journal, and changes nothing', async () => {
+        const old = await newPaper();
+        const current = (await profiles.listVersions('journal', 'hs')).find((v) => v.state === 'published')!;
+        const draft = await profiles.createDraft('journal', 'hs', { config: { ...current.config, layout: { ...(current.config.layout || {}), columns: 2 } }, changeNote: 'two columns again' }, superAdmin);
+        await profiles.validate('journal', 'hs', draft.version, superAdmin);
+        await profiles.publish('journal', 'hs', draft.version, {}, superAdmin);
+
+        const before = await hsPins();
+        await expect(bulk.applyToAllPapers('hs', 'wrong', superAdmin, adminId)).rejects.toMatchObject({ status: 403 });
+        await expect(bulk.applyToAllPapers('hs', 'right-pass', author, adminId)).rejects.toThrow(/may not change/);
+        await expect(bulk.applyToAllPapers('hs', 'right-pass', superAdmin, undefined)).rejects.toMatchObject({ status: 403 });
+        expect(await hsPins()).toEqual(before);
+        expect(before.find((p) => p.id === old.id)!.pin.journal).toBeLessThan(draft.version);
+      });
+
+      it('moves all of them with the right password, keeps a snapshot and an audit entry, and leaves the paper version alone', async () => {
+        const before = await hsPins();
+        const result = await bulk.applyToAllPapers('hs', 'right-pass', superAdmin, adminId);
+        expect(result.updated).toBeGreaterThan(0);
+        expect(result.updated + result.unchanged).toBe(before.length);
+
+        const published = (await profiles.listVersions('journal', 'hs')).find((v) => v.state === 'published')!;
+        const after = await hsPins();
+        for (const paper of after) expect(paper.pin.journal).toBe(published.version);
+        expect(after.map((p) => p.version)).toEqual(before.map((p) => p.version)); // a save in flight stays valid
+
+        const reasons = (await db.select().from(manuscriptProfileSnapshots)).map((s) => s.reason);
+        expect(reasons.filter((r) => r === 'profile_upgrade_all')).toHaveLength(result.updated);
+        const audit = await db.select().from(auditLogs).where(eq(auditLogs.action, 'journal.apply_profile_to_papers'));
+        expect(audit).toHaveLength(1);
+        expect(audit[0]).toMatchObject({ userId: adminId, payload: { updated: result.updated } });
+      });
+
+      it('does nothing the second time, and a manager of another journal may not do it', async () => {
+        expect(await bulk.applyToAllPapers('hs', 'right-pass', superAdmin, adminId)).toMatchObject({ updated: 0 });
+        await expect(bulk.applyToAllPapers('hs', 'right-pass', await new AbilityFactory().createForUser({ roles: [{ name: 'JournalManager', scopeJournalId: (await db.select().from(journals).where(eq(journals.slug, 'vnuhcm-et')))[0].id }] }), adminId)).rejects.toThrow(/may not change/);
+      });
     });
   });
 });

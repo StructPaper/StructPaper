@@ -167,7 +167,11 @@ export function useJournalEditorSave({
     setIsResetWarningOpen(false);
   }, []);
 
+  /** What the editor loaded, or what was last saved: the "before" of the changes shown when saving. */
+  const getBaseline = useCallback(() => baseline.current.managed, []);
+
   return {
+    getBaseline,
     isSaveWarningOpen,
     isResetWarningOpen,
     isSaving: publisher.isPending,

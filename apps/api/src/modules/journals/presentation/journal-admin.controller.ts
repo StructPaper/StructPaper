@@ -11,6 +11,7 @@ import {
   UpdateProfileDraftSchema,
   PublishProfileSchema,
   RollbackProfileSchema,
+  ApplyProfileToPapersSchema,
   ProfileScopeEnum,
   type CreateArticleType,
   type UpdateArticleType,
@@ -20,6 +21,7 @@ import {
   type UpdateProfileDraft,
   type PublishProfile,
   type RollbackProfile,
+  type ApplyProfileToPapers,
   type ProfileScopeValue,
 } from '@structpaper/contracts';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
@@ -30,6 +32,7 @@ import type { AppAbility } from '../../access/domain/ability.factory';
 import { JournalAdminService } from '../application/journal-admin.service';
 import { ProfileService } from '../application/profile.service';
 import { ArticleTypeService } from '../application/article-type.service';
+import { ProfileBulkService } from '../application/profile-bulk.service';
 
 const mayRead = (a: AppAbility) => a.can('read', 'Journal');
 const mayEdit = (a: AppAbility) => a.can('update', 'Journal');
@@ -47,6 +50,7 @@ export class JournalAdminController {
     @Inject(JournalAdminService) private readonly admin: JournalAdminService,
     @Inject(ProfileService) private readonly profiles: ProfileService,
     @Inject(ArticleTypeService) private readonly articleTypes: ArticleTypeService,
+    @Inject(ProfileBulkService) private readonly bulk: ProfileBulkService,
   ) {}
 
   @Post('journals')
@@ -91,6 +95,15 @@ export class JournalAdminController {
   @UsePipes(new ZodValidationPipe(UpdateArticleTypeSchema))
   async updateArticleType(@Param('id') id: string, @Param('code') code: string, @Body() body: UpdateArticleType, @Req() req: any) {
     return this.articleTypes.update(id, code, body, req.ability, req.user?.id);
+  }
+
+  /** Moves every paper of the journal to the rules published now. Irreversible, so it asks for the caller's password. */
+  @Post('journals/:id/apply-profile-to-papers')
+  @HttpCode(HttpStatus.OK)
+  @CheckPolicies(mayEdit)
+  @UsePipes(new ZodValidationPipe(ApplyProfileToPapersSchema))
+  async applyToPapers(@Param('id') id: string, @Body() body: ApplyProfileToPapers, @Req() req: any) {
+    return this.bulk.applyToAllPapers(id, body.password, req.ability, req.user?.id);
   }
 
   @Get('profiles/:scope/:id/versions')

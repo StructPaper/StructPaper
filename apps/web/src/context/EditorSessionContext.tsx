@@ -28,6 +28,32 @@ export interface EditorDocumentSession {
   readOnly?: boolean;
 }
 
+/** What the title bar shows while a journal's template is open (name, code, colour, and which version is on screen). */
+export interface JournalBarState {
+  names: { vi: string; en: string };
+  short: string;
+  color: string;
+  /** A past version is on screen: its number, and whether it is the one in force. */
+  viewing?: { version: number; isCurrent: boolean } | null;
+  /** Opens the version history; absent for a journal that has no history yet. */
+  onOpenHistory?: () => void;
+}
+
+/** The rules a paper is laid out under, for the title bar's "which rules apply" dialog. */
+export interface PaperProfileInfo {
+  paperId: string;
+  journalKey: string;
+  journalName: { vi: string; en: string };
+  journalShort: string;
+  journalColor: string;
+  articleType?: { vi: string; en: string } | null;
+  pin?: { base?: number; journal?: number; articleType?: number };
+  latestPin?: { base?: number; journal?: number; articleType?: number };
+  isOutdated: boolean;
+  isUpgrading: boolean;
+  onUpgrade: () => void;
+}
+
 export interface EditorSessionContextValue {
   autoSaveEnabled: boolean;
   setAutoSaveEnabled: (enabled: boolean) => void;
@@ -40,6 +66,10 @@ export interface EditorSessionContextValue {
   /** Language the PDF preview is laid out in (its closing page is the other language). */
   pdfLanguage: PageLanguage;
   setPdfLanguage: (language: PageLanguage) => void;
+  journalBar: JournalBarState | null;
+  setJournalBar: (state: JournalBarState | null) => void;
+  paperProfile: PaperProfileInfo | null;
+  setPaperProfile: (info: PaperProfileInfo | null) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -53,6 +83,10 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   togglePdfFocusMode: () => {},
   pdfLanguage: 'vi',
   setPdfLanguage: () => {},
+  journalBar: null,
+  setJournalBar: () => {},
+  paperProfile: null,
+  setPaperProfile: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -67,6 +101,8 @@ export function EditorSessionProvider({
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
   const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(false);
   const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
+  const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
+  const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
 
   useEffect(() => {
     try {
@@ -138,8 +174,12 @@ export function EditorSessionProvider({
       togglePdfFocusMode,
       pdfLanguage,
       setPdfLanguage,
+      journalBar,
+      setJournalBar,
+      paperProfile,
+      setPaperProfile,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile]
   );
 
   return (

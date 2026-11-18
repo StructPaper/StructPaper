@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ApplyProfileToPapersRequest,
+  ApplyProfileToPapersResult,
   ArticleType,
   CreateArticleTypeRequest,
   CreateJournalRequest,
@@ -448,6 +450,71 @@ export function useGetJournalAccess<TData = Awaited<ReturnType<typeof getJournal
 
 
 /**
+ * @summary Move every paper of the journal to the rules published now (irreversible, asks for the password)
+ */
+export const applyProfileToPapers = (
+    id: string,
+    applyProfileToPapersRequest: ApplyProfileToPapersRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ApplyProfileToPapersResult>(
+      {url: `/api/v1/journals/${id}/apply-profile-to-papers`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: applyProfileToPapersRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getApplyProfileToPapersMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext> => {
+
+const mutationKey = ['applyProfileToPapers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyProfileToPapers>>, {id: string;data: ApplyProfileToPapersRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  applyProfileToPapers(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyProfileToPapersMutationResult = NonNullable<Awaited<ReturnType<typeof applyProfileToPapers>>>
+    export type ApplyProfileToPapersMutationBody = ApplyProfileToPapersRequest
+    export type ApplyProfileToPapersMutationError = ProblemDetails
+
+    /**
+ * @summary Move every paper of the journal to the rules published now (irreversible, asks for the password)
+ */
+export const useApplyProfileToPapers = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof applyProfileToPapers>>,
+        TError,
+        {id: string;data: ApplyProfileToPapersRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getApplyProfileToPapersMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * @summary The article types a journal accepts
  */
 export const listArticleTypes = (

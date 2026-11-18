@@ -1742,6 +1742,32 @@
           "toVersion"
         ]
       },
+      "ApplyProfileToPapersRequest": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "ApplyProfileToPapersResult": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "integer"
+          },
+          "unchanged": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "updated",
+          "unchanged"
+        ]
+      },
       "PublishedProfiles": {
         "type": "object",
         "properties": {
@@ -3475,6 +3501,73 @@
             }
           },
           "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{id}/apply-profile-to-papers": {
+      "post": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Move every paper of the journal to the rules published now (irreversible, asks for the password)",
+        "operationId": "applyProfileToPapers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyProfileToPapersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Papers moved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyProfileToPapersResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Problem Details",
             "content": {
               "application/json": {

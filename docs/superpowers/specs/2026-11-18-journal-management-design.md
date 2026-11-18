@@ -37,6 +37,7 @@ một loại bài **không** tạo phiên bản quy tắc mới. Đổi quy tắ
 | `PATCH /journals/:id` | sửa danh tính, `If-Match` (412 khi cũ); quyền theo từng tạp chí |
 | `POST /journals/:id/article-types`, `PATCH …/:code` | thêm / đổi tên / sắp xếp / lưu trữ loại bài |
 | `GET /profiles/{base\|journal\|article_type}/:id/versions`, `POST …/drafts`, `PATCH …/drafts/:v`, `POST …/drafts/:v/validate`, `…/publish`, `…/rollback` | `update Journal` của tạp chí (phạm vi `base`: chỉ quản lý toàn hệ thống). Loại bài đánh địa chỉ `hs:research`. |
+| `POST /journals/:id/apply-profile-to-papers` `{password}` | `update Journal` của tạp chí **và** mật khẩu của người gọi (sai: 403 `Incorrect password`, không phải 401). Chuyển **mọi** bài của tạp chí sang các phiên bản đang xuất bản, ghi snapshot `profile_upgrade_all` + audit; không đổi `version` của bài; không hoàn tác được |
 | `POST /manuscripts/:id/profile/upgrade` | chủ bài / người sửa được bài |
 | `PUT /manuscripts/:id/article-type` `{articleType: code\|null}` | như trên; loại bài phải thuộc tạp chí (loại đã lưu trữ chỉ giữ được nếu bài đã có) |
 
@@ -58,10 +59,14 @@ Nhóm thuộc tính còn lại của quy tắc (lề, kiểu chữ chi tiết…
 ## 6. Web
 - `PublishedProfilesSync` (root) → `GET /profiles/published` → `registerRemoteProfiles` (base, tạp chí, loại bài): `resolveProfile` đồng bộ dùng dữ liệu server.
 - `lib/templates.ts`: `findJournalTemplate / getJournalTemplate / listJournalTemplates` ưu tiên dữ liệu đã xuất bản (tạp chí admin thêm cũng được parser/PDF nhận).
+- Thanh tiêu đề (title bar) ở trang một tạp chí: trái = mã + tên tạp chí (theo ngôn ngữ đang chọn), phải = chọn ngôn ngữ (dùng chung `pdfLanguage` nên bản xem trước PDF đổi theo: trang đầu ngôn ngữ chính, trang cuối ngôn ngữ kia) + nút **Lịch sử** kèm nhãn phiên bản đang xem (`v3 · bản cũ` / `v5 · hiện hành`).
+- Lịch sử phiên bản là một modal: xem một bản cũ (trình soạn chuyển sang chỉ đọc, banner "Đang xem v3", PDF dựng theo quy tắc bản đó), khôi phục (tạo bản mới từ bản cũ), và **Áp dụng cho mọi bài** (chỉ ở bản đang áp dụng): cảnh báo → cảnh báo không hoàn tác → nhập mật khẩu.
+- Bấm Lưu: modal so sánh kiểu diff (dòng − đỏ / + xanh) chia nhóm "Nhận diện" (lưu ngay) và các nhóm quy tắc (phiên bản mới). Rời trang khi chưa lưu: hộp thoại cảnh báo (liên kết nội bộ, nút quay lại; đóng/tải lại tab dùng cảnh báo của trình duyệt; nút Back của trình duyệt chưa chặn được).
+- Editor bài: thông báo quy tắc mới là toast không tự tắt (đóng = bỏ qua lần này, mở lại bài sẽ hiện lại); nút **?** cạnh Chia sẻ mở modal các phiên bản quy tắc đang áp dụng, nâng cấp, và liên kết sang trang tạp chí.
 - Trình soạn mẫu: lưu = cập nhật danh tính (`If-Match`) + xuất bản phiên bản mới nếu quy tắc đổi; tab **Loại bài** (thêm/đổi tên/sắp xếp/lưu trữ, bật tắt "phải có tóm tắt"
   = phiên bản mới của loại bài), **Thông tin in & trích dẫn**, **Lịch sử phiên bản**; chu trình trạng thái published → draft → archived; chỉ-đọc khi API nói không được sửa.
 - Trang `/templates/base`: xem/xuất bản quy tắc dùng chung (JSON, kiểm tra phía server) và lịch sử.
-- Editor bài: `usePaperProfile` lấy profile theo pin, báo "có quy tắc mới" + nút nâng cấp, dựng lại PDF khi dàn trang theo pin khác bản mới nhất.
+- Editor bài: `usePaperProfile` lấy profile theo pin, dựng lại PDF khi dàn trang theo pin khác bản mới nhất.
 - Ô loại bài chọn từ **danh sách loại bài của chính tạp chí** (lấy từ server, gồm cả loại admin vừa thêm); không gõ tay. Chọn một loại lưu `metadata.articleTypeCode` (kèm tên Việt/Anh của loại đó), `useArticleTypeSync` gọi `PUT /manuscripts/:id/article-type` và nhận pin mới: bài chuyển sang quy tắc của loại mới, giữ pin base/journal. Tên đã lưu không thuộc loại nào của tạp chí vẫn hiển thị cho tới khi chọn loại khác.
 
 ## 7. Kiểm thử

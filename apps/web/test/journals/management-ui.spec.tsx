@@ -23,7 +23,6 @@ vi.mock('next/link', () => ({ default: ({ children, href }: any) => <a href={hre
 
 import { JournalArticleTypesTab } from '@/features/templates/components/tabs/JournalArticleTypesTab';
 import { BaseRulesView } from '@/features/templates/components/BaseRulesView';
-import { ProfileUpgradeBanner } from '@/features/journals/components/ProfileUpgradeBanner';
 import { useJournalAccess } from '@/features/journals/hooks/useJournalAccess';
 import { formatPin, isPinBehind, latestPinOf } from '@/features/journals/hooks/usePaperProfile';
 import { resolveProfile } from '@structpaper/journal-profiles';
@@ -86,40 +85,6 @@ describe('pins and versions', () => {
   });
 });
 
-describe('the upgrade banner', () => {
-  const paper: any = { id: '37cdc2a3-736b-4bd8-a02f-753359e7caf1', metadata: { journalId: 'VNUHCM-HS' }, profilePin: { base: 1, journal: 1 } };
-
-  it('says nothing while the paper is up to date, or while it only exists on this machine', () => {
-    const { container, rerender } = renderWithClient(<ProfileUpgradeBanner paper={paper} isOutdated={false} onUpgraded={vi.fn()} />);
-    expect(container.querySelector('[data-testid="profile-upgrade-banner"]')).toBeNull();
-    rerender(
-      <QueryClientProvider client={new QueryClient()}>
-        <ProfileUpgradeBanner paper={{ ...paper, id: 'paper_123' }} isOutdated onUpgraded={vi.fn()} />
-      </QueryClientProvider>,
-    );
-    expect(container.querySelector('[data-testid="profile-upgrade-banner"]')).toBeNull();
-  });
-
-  it('offers the upgrade and hands back the new pin and version when the author accepts', async () => {
-    api.upgradeManuscriptProfile.mockResolvedValue({ upgraded: true, profilePin: { base: 1, journal: 2 }, version: 7 });
-    const onUpgraded = vi.fn();
-    renderWithClient(<ProfileUpgradeBanner paper={paper} isOutdated onUpgraded={onUpgraded} />);
-    expect(screen.getByTestId('profile-upgrade-banner').textContent).toContain('giữ quy tắc cũ');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Nâng cấp quy tắc' }));
-    await waitFor(() => expect(onUpgraded).toHaveBeenCalledWith({ base: 1, journal: 2 }, 7));
-    expect(api.upgradeManuscriptProfile).toHaveBeenCalledWith(paper.id);
-    expect(toast.success).toHaveBeenCalled();
-  });
-
-  it('says so when the server refuses', async () => {
-    api.upgradeManuscriptProfile.mockRejectedValue(new Error('Không có quyền'));
-    renderWithClient(<ProfileUpgradeBanner paper={paper} isOutdated onUpgraded={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Nâng cấp quy tắc' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Không thể nâng cấp', 'Không có quyền'));
-  });
-});
-
 describe('what the user may do with a journal', () => {
   it('asks the API, which knows who manages which journal', async () => {
     api.getJournalAccess.mockResolvedValue({ canEdit: true, canCreate: false });
@@ -149,6 +114,8 @@ describe('the article types tab', () => {
 
   it('adds a type only when its code is well formed and all names are given', async () => {
     renderWithClient(<JournalArticleTypesTab profile={profile} journalKey="hs" />);
+    // the form opens from the button level with the heading
+    fireEvent.click(await screen.findByTestId('toggle-add-article-type'));
     const form = await screen.findByTestId('add-article-type');
     const [code, vi, en] = within(form).getAllByRole('textbox') as HTMLInputElement[];
     const add = within(form).getByRole('button', { name: /Thêm/ }) as HTMLButtonElement;

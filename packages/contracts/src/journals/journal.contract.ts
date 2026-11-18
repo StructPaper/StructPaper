@@ -153,3 +153,16 @@ export const ChangeArticleTypeSchema = z.object({
   articleType: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9-]{1,49}$/, 'Article type code').nullable(),
 });
 export type ChangeArticleType = z.infer<typeof ChangeArticleTypeSchema>;
+
+/** Moving every paper of a journal to its newest rules cannot be undone, so the caller proves who they are first. */
+export const ApplyProfileToPapersSchema = z.object({
+  password: z.string().min(1).max(256),
+});
+export type ApplyProfileToPapers = z.infer<typeof ApplyProfileToPapersSchema>;
+
+export interface ApplyProfileToPapersResult {
+  /** Papers moved to the newest rules. */
+  updated: number;
+  /** Papers that were already on them. */
+  unchanged: number;
+}

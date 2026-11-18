@@ -12,6 +12,8 @@ export * from './accountProfileStatus';
 export * from './activateAccountRequest';
 export * from './addManuscriptMemberRequest';
 export * from './addManuscriptMemberRequestRole';
+export * from './applyProfileToPapersRequest';
+export * from './applyProfileToPapersResult';
 export * from './articleType';
 export * from './articleTypeChangeResult';
 export * from './articleTypeLabel';

@@ -12,3 +12,8 @@ export function isEditorTitleBarRoute(pathname?: string | null): boolean {
   // Matches /papers/:id (where pathname !== '/papers')
   return pathname.startsWith('/papers/') && pathname !== '/papers';
 }
+
+/** The template page of one journal (or the new-journal page): the title bar shows the journal instead of a paper. */
+export function isJournalDetailRoute(pathname?: string | null): boolean {
+  return !!pathname && /^\/templates\/journal\/[^/]+\/?$/.test(pathname);
+}
