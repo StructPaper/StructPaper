@@ -61,11 +61,12 @@ exit 0
 EOF
 chmod +x "$STUB_BIN"/*
 
-# flock is absent on some dev machines (e.g. Git Bash); locking itself is not under test here.
-if ! command -v flock >/dev/null 2>&1; then
-  printf '#!/bin/bash\nexit 0\n' > "$STUB_BIN/flock"
-  chmod +x "$STUB_BIN/flock"
-fi
+# flock: mock stub so tests never depend on util-linux vs busybox differences.
+cat > "$STUB_BIN/flock" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$STUB_BIN/flock"
 
 export PATH="$STUB_BIN:$PATH"
 export HEALTH_ATTEMPTS=1 HEALTH_INTERVAL_SECONDS=0 WORKER_STABILIZE_SECONDS=0

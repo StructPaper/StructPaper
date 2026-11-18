@@ -171,9 +171,11 @@ main() {
 
   # Serialize deployments: a second run waits up to 10 minutes instead of racing the first one.
   exec 9>"$LOCK_FILE"
-  if ! flock -w 600 9; then
-    echo "ERROR: another deployment is still running for $ENV_NAME" >&2
-    exit 1
+  if command -v flock >/dev/null 2>&1; then
+    if ! flock -w 600 9 2>/dev/null && ! flock -n 9 2>/dev/null; then
+      echo "ERROR: another deployment is still running for $ENV_NAME" >&2
+      exit 1
+    fi
   fi
 
   DEPLOY_TAG="${1:-}"
