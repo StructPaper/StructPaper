@@ -6,5 +6,11 @@
     "prefer-const": "warn",
     "@typescript-eslint/no-require-imports": "warn",
     "react/no-unescaped-entities": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*", "tests/**/*", "**/*.spec.tsx", "**/*.test.tsx"],
+      "rules": { "react/display-name": "off" }
+    }
+  ]
 }

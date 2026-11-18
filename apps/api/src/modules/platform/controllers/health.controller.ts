@@ -1,4 +1,10 @@
-import { Controller, Get, Inject, Optional } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Public } from '../../access/presentation/decorators/public.decorator';
 
 export interface HealthCheckResponse {
@@ -43,7 +49,7 @@ export class HealthController {
       dbStatus = 'unconfigured';
     }
 
-    return {
+    const response: HealthCheckResponse = {
       status: dbStatus === 'down' ? 'error' : 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -52,5 +58,12 @@ export class HealthController {
         ...(dbError ? { error: dbError } : {}),
       },
     };
+
+    // Why 503: load balancers, Docker healthchecks and deploy scripts rely on the HTTP status
+    // code, not on the body. Returning 200 for an unhealthy API would mark broken releases healthy.
+    if (response.status === 'error') {
+      throw new ServiceUnavailableException(response);
+    }
+    return response;
   }
 }
