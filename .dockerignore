@@ -1,15 +1,17 @@
-node_modules
+# Patterns without **/ only match the build-context ROOT, so nested app/package folders must be
+# listed recursively (otherwise host node_modules/dist/.next leak into COPY apps/... layers).
+**/node_modules
 .pnpm-store
 .git
 .gitignore
 .superpowers
 docs
-.next
-dist
-build
-.turbo
-*.log
-coverage
+**/.next
+**/dist
+**/build
+**/.turbo
+**/*.log
+**/coverage
 tmp
 .vscode
 .idea
@@ -17,3 +19,16 @@ tmp
 docker-compose*.yml
 README.md
 apps/api-deprecated
+
+# Secrets and non-runtime files must never enter the build context
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+.github
+.gitlab-ci.yml
+bin
+e2e
+temp_test_tex
+**/src-tauri/target
+
