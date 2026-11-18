@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     'Chuyển đổi bản thảo DOCX thành định dạng PDF & Word bài báo khoa học chuẩn Tạp chí Đại học Quốc gia TP.HCM (VNUHCM-HS, STDJ, SSH...)',
 };
 
-import { AppShell } from '@/components/layout/AppShell';
+import { RouteScrollUnlock } from '@/components/layout/RouteScrollUnlock';
 import { Toaster } from '@/components/toast';
 import { PlatformProvider } from '@/platform/provider';
 import { StorageProvider } from '@/context/StorageContext';
@@ -45,9 +45,8 @@ export default function RootLayout({
                   <DesktopChromeShell>
                     <Toaster />
                     <UpdateToastNotifier />
-                    <AppShell>
-                      {children}
-                    </AppShell>
+                    <RouteScrollUnlock />
+                    {children}
                   </DesktopChromeShell>
                 </PaperProvider>
               </EditorSessionProvider>

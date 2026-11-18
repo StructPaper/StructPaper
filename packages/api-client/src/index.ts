@@ -28,12 +28,17 @@ export * from './modules/manuscripts';
 export * from './modules/assets';
 export * from './modules/compile';
 
+// Generated request/response models (types only)
+export type * from './generated/model';
+
 // Mock Adapter
 export { handleMockRequest } from './mock-adapter';
 
 // Generated React Query Hooks & API Callers
 export * from './generated/endpoints/auth/auth';
 export * from './generated/endpoints/access/access';
+export * from './generated/endpoints/users/users';
+export * from './generated/endpoints/journals/journals';
 export * from './generated/endpoints/manuscripts/manuscripts';
 export * from './generated/endpoints/sync/sync';
 export * from './generated/endpoints/assets/assets';

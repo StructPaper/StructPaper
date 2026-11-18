@@ -14,6 +14,7 @@ import { AutoSaveToggle } from './AutoSaveToggle';
 import { DocumentStatusIndicator } from './DocumentStatusIndicator';
 import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
+import { ShareManuscriptButton } from '@/features/sharing';
 
 /**
  * Top-level application chrome bar.
@@ -33,8 +34,10 @@ export const DesktopTitleBar: React.FC = () => {
 
   const isDesktop = kind === 'desktop';
   const isEditorRoute = isEditorTitleBarRoute(pathname);
+  const readOnly = Boolean(documentSession?.readOnly);
+  const canEditHere = isEditorRoute && !readOnly;
   const isLocalOnly =
-    isEditorRoute &&
+    canEditHere &&
     storage.isLocalAvailable &&
     documentSession?.saveState === 'saved' &&
     documentSession?.rawSaveState === 'saved-local';
@@ -53,21 +56,24 @@ export const DesktopTitleBar: React.FC = () => {
 
         {isEditorRoute && (
           <>
-            <TitleBarFileMenu
+            {canEditHere && (
+              <TitleBarFileMenu
               onNew={documentSession?.onNew}
               onOpen={documentSession?.onOpen}
               onSave={documentSession?.onManualSave}
               onExport={documentSession?.onExport}
               exporting={documentSession?.exporting}
             />
-            <AutoSaveToggle enabled={autoSaveEnabled} onToggle={toggleAutoSave} />
+            )}
+            {canEditHere && <AutoSaveToggle enabled={autoSaveEnabled} onToggle={toggleAutoSave} />}
             <DocumentStatusIndicator
               title={documentSession?.title}
               saveState={documentSession?.saveState ?? 'saved'}
               rawSaveState={documentSession?.rawSaveState}
               savedAt={documentSession?.savedAt}
               onManualSave={documentSession?.onManualSave}
-              onRename={documentSession?.onRename}
+              onRename={readOnly ? undefined : documentSession?.onRename}
+              readOnly={readOnly}
               onKeepMine={documentSession?.onKeepMine}
             />
           </>
@@ -92,7 +98,7 @@ export const DesktopTitleBar: React.FC = () => {
           >
             <CloudOff className="w-3.5 h-3.5" strokeWidth={3.3} aria-hidden="true" />
           </span>
-        ) : storage.isLocalAvailable && isEditorRoute ? (
+        ) : storage.isLocalAvailable && canEditHere ? (
           <span
             data-testid="titlebar-cloud-icon"
             data-no-drag="true"
@@ -104,7 +110,9 @@ export const DesktopTitleBar: React.FC = () => {
           </span>
         ) : null}
 
-        {isEditorRoute && (
+        {isEditorRoute && <ShareManuscriptButton manuscriptId={documentSession?.paperId} />}
+
+        {canEditHere && (
           <button
             type="button"
             onClick={togglePdfFocusMode}

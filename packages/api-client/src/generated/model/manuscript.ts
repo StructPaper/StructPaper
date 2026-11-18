@@ -6,6 +6,8 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { ManuscriptStatus } from './manuscriptStatus';
+import type { GeneralAccess } from './generalAccess';
+import type { ManuscriptAccess } from './manuscriptAccess';
 import type { ManuscriptMetadata } from './manuscriptMetadata';
 
 export interface Manuscript {
@@ -15,6 +17,8 @@ export interface Manuscript {
   /** @nullable */
   abstract?: string | null;
   status: ManuscriptStatus;
+  generalAccess?: GeneralAccess;
+  access?: ManuscriptAccess;
   createdBy: string;
   currentServerRev: number;
   version: number;

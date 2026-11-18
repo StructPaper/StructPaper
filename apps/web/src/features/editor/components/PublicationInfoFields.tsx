@@ -29,13 +29,18 @@ const FIELDS: Array<{ key: PublicationKey; label: string; placeholder: string; m
 ];
 
 /**
- * Publication data assigned by the editorial office. A field never entered shows "?"; the editor can
- * type the value, or delete the "?" and leave it empty so nothing is printed.
+ * Publication data assigned by the editorial office. A field that was never entered is simply shown
+ * empty here (the "?" placeholder is a print/validation concern, not something to display in the form).
  */
 export const PublicationInfoFields: React.FC<Props> = ({ metadata, onChange }) => {
   const set = (key: PublicationKey | 'articleId', value: string) => {
     const publication: PublicationInfo = { ...(metadata.publication || {}), [key]: value };
     onChange({ ...metadata, publication });
+  };
+
+  const shown = (key: PublicationKey) => {
+    const v = publicationValue(metadata, key);
+    return v === UNKNOWN ? '' : v;
   };
 
   const volume = publicationValue(metadata, 'volume');
@@ -49,13 +54,10 @@ export const PublicationInfoFields: React.FC<Props> = ({ metadata, onChange }) =
 
   return (
     <div className="pt-2" data-testid="publication-info">
-      <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5 mb-1">
+      <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5 mb-2">
         <BookMarked className="w-3.5 h-3.5 text-zinc-500" />
         Thông tin xuất bản (do Tòa soạn cấp):
       </label>
-      <p className="text-[11px] text-zinc-500 mb-2">
-        Dấu <b>?</b> nghĩa là chưa nhập. Nhập giá trị vào, hoặc xóa dấu ? để bỏ trống (không in ra).
-      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {FIELDS.map((f) => (
@@ -66,15 +68,11 @@ export const PublicationInfoFields: React.FC<Props> = ({ metadata, onChange }) =
             <input
               id={`pub-${f.key}`}
               type="text"
-              value={publicationValue(metadata, f.key)}
+              value={shown(f.key)}
               placeholder={f.placeholder}
               spellCheck={false}
               autoCorrect="off"
               autoCapitalize="off"
-              onFocus={(e) => {
-                // typing replaces the "?" placeholder value in one go
-                if (e.target.value === UNKNOWN) e.target.select();
-              }}
               onChange={(e) => set(f.key, e.target.value)}
               onBlur={() => {
                 if (f.key === 'volume' || f.key === 'issue') {
@@ -87,7 +85,7 @@ export const PublicationInfoFields: React.FC<Props> = ({ metadata, onChange }) =
               }}
               className={`w-full p-2.5 rounded-2xl border text-xs text-zinc-900 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 shadow-2xs ${
                 f.mono ? 'font-mono' : ''
-              } ${publicationValue(metadata, f.key) === UNKNOWN ? 'border-amber-300 text-amber-700' : 'border-zinc-200'}`}
+              } border-zinc-200`}
             />
           </div>
         ))}

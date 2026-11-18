@@ -135,7 +135,7 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
             Nguồn / Ghi chú ảnh (Source):
           </label>
           {sec.figure.source && (
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onDetachFigureSource(idx)}
               className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline flex items-center gap-1 cursor-pointer"
@@ -214,7 +214,7 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
               để dán ảnh trực tiếp từ Clipboard, hoặc tải lên từ máy tính.
             </p>
             <div className="flex items-center gap-2 flex-wrap justify-center">
-              <button
+              <button data-edit-only
                 type="button"
                 onClick={() => onTriggerFileInput(idx)}
                 className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
@@ -222,7 +222,7 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
                 <Upload className="w-3.5 h-3.5" />
                 <span>Tải lên từ máy tính</span>
               </button>
-              <button
+              <button data-edit-only
                 type="button"
                 onClick={() => onPasteImageFromClipboardButton(idx)}
                 className="px-3 py-1.5 rounded-xl bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"

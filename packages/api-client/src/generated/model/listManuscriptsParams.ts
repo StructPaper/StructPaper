@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { ListManuscriptsStatus } from './listManuscriptsStatus';
+import type { ListManuscriptsScope } from './listManuscriptsScope';
 import type { ListManuscriptsSortOrder } from './listManuscriptsSortOrder';
 
 export type ListManuscriptsParams = {
@@ -14,6 +15,7 @@ limit?: number;
 search?: string;
 journalId?: string;
 status?: ListManuscriptsStatus;
+scope?: ListManuscriptsScope;
 sortBy?: string;
 sortOrder?: ListManuscriptsSortOrder;
 };

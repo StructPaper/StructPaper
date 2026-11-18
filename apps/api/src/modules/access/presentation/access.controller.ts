@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   UsePipes,
+  UseGuards,
   Inject,
   Optional,
 } from '@nestjs/common';
@@ -23,8 +24,14 @@ import { AccessService } from '../application/access.service';
 import { AbilityFactory, type AppAbility } from '../domain/ability.factory';
 import { AbilityCacheService } from '../domain/ability-cache.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
+import { PoliciesGuard } from './guards/policies.guard';
+import { CheckPolicies } from './decorators/check-policies.decorator';
+import { canAssignRoles } from '../domain/capabilities';
 
+
+// The global JwtAuthGuard authenticates every route; PoliciesGuard enforces the @CheckPolicies rules.
 @Controller()
+@UseGuards(PoliciesGuard)
 export class AccessController {
   constructor(
     @Inject(AccessService) private readonly accessService: AccessService,
@@ -48,6 +55,7 @@ export class AccessController {
 
   @Post('roles/assign')
   @HttpCode(HttpStatus.OK)
+  @CheckPolicies(canAssignRoles)
   @UsePipes(new ZodValidationPipe(AssignRoleSchema))
   async assignRole(@Body() body: AssignRole, @Req() req?: any) {
     const ability = await this.getAbility(req);
@@ -56,6 +64,7 @@ export class AccessController {
 
   @Delete('roles/assign')
   @HttpCode(HttpStatus.OK)
+  @CheckPolicies(canAssignRoles)
   @UsePipes(new ZodValidationPipe(RevokeRoleSchema))
   async revokeRoleBody(@Body() body: RevokeRole, @Req() req?: any) {
     const ability = await this.getAbility(req);
@@ -64,6 +73,7 @@ export class AccessController {
 
   @Delete('admin/users/:id/roles/:roleId')
   @HttpCode(HttpStatus.OK)
+  @CheckPolicies(canAssignRoles)
   async revokeRole(
     @Param('id') userId: string,
     @Param('roleId') roleId: string,

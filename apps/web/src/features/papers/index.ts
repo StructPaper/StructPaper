@@ -28,3 +28,6 @@ export * from './hooks/useBatchImport';
 export * from './hooks/usePaperUpload';
 export * from './hooks/useEditorQuickEdit';
 export * from './hooks/usePaperDuplicateWarning';
+export * from './access';
+export * from './components/PaperGate';
+export * from './hooks/useLibraryPapers';

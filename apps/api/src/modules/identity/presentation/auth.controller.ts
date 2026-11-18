@@ -16,10 +16,13 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
   LoginRequestSchema,
   ResetPasswordSchema,
+  ActivateAccountSchema,
   type LoginRequest,
   type TokenResponse,
   type ResetPassword,
+  type ActivateAccount,
 } from '@structpaper/contracts';
+import { Public } from '../../access/presentation/decorators/public.decorator';
 import { AuthService } from '../application/auth.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 
@@ -27,6 +30,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(LoginRequestSchema))
@@ -47,6 +51,7 @@ export class AuthController {
     return result;
   }
 
+  @Public()
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshGet(
@@ -70,6 +75,7 @@ export class AuthController {
     return result;
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshPost(
@@ -104,6 +110,7 @@ export class AuthController {
     return this.refreshPost(mockReq, body, mockRes);
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -116,14 +123,17 @@ export class AuthController {
     return this.authService.logout(token);
   }
 
+  @Public()
   @Post('activate')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(ActivateAccountSchema))
   async activate(
-    @Body() body: { token: string; password: string },
+    @Body() body: ActivateAccount,
   ): Promise<{ success: boolean; message: string }> {
     return this.authService.activate(body);
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(ResetPasswordSchema))

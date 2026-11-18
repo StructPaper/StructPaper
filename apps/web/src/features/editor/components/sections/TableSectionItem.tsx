@@ -68,7 +68,7 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
           <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">
             Tiêu đề bảng (Caption):
           </label>
-          <button
+          <button data-edit-only
             type="button"
             onClick={() => onOpenTableZoom(idx, table)}
             className="px-2 py-0.5 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 text-[10px] font-bold border border-lime-200 flex items-center gap-1 shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
@@ -115,7 +115,7 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
             để dán cấu trúc bảng từ Excel, Google Sheets, Word hoặc định dạng Tab / CSV vào đây. Hệ thống sẽ tự động ghi nhận!
           </p>
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onPasteTableFromClipboardButton(idx)}
               className="px-3.5 py-2 rounded-xl bg-lime-600 hover:bg-lime-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
@@ -123,7 +123,7 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
               <ClipboardPaste className="w-3.5 h-3.5" />
               <span>Dán từ Clipboard (Ctrl + V)</span>
             </button>
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onOpenTableZoom(idx, table)}
               className="px-3.5 py-2 rounded-xl bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
@@ -144,7 +144,7 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
 
       {/* Table Footer Controls */}
       <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
-        <button
+        <button data-edit-only
           type="button"
           onClick={() => onOpenTableZoom(idx, table)}
           className="px-2.5 py-1 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-lime-200 shadow-2xs hover:scale-105 active:scale-95"

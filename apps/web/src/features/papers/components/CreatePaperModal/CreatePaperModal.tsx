@@ -1,5 +1,6 @@
 'use client';
 
+import { notifyPaperCreated } from './creation-feedback';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -151,8 +152,9 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
     }
     (finalPaper.metadata as any).journalId = journalCode;
 
+    let saved: boolean | void = true;
     try {
-      await savePaper(finalPaper);
+      saved = await savePaper(finalPaper);
       setPaper({ ...finalPaper });
     } catch (saveErr) {
       console.warn('Background save error:', saveErr);
@@ -167,10 +169,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
       }
     }
 
-    toast.success(
-      'Khởi tạo bài báo thành công',
-      `Đã tạo bài báo mới theo chuẩn "${managed.profile.names?.short || managed.id.toUpperCase()}"`
-    );
+    if (!notifyPaperCreated(saved, finalPaper.id, managed.profile.names?.short || managed.id.toUpperCase())) return;
 
     const targetUrl = finalPaper.id ? `/papers/${encodeURIComponent(finalPaper.id)}` : '/papers';
     onClose();

@@ -1,107 +1,146 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { http, type InternalAxiosRequestConfig, type AxiosResponse } from '@structpaper/api-client';
 import { POST } from '@/app/api/compile-latex/route';
 
+const PDF_BYTES = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
+
+function backendReply(engine: string | null, status = 200, body: Buffer | string = PDF_BYTES) {
+  const headers: Record<string, string> = { 'content-type': 'application/pdf' };
+  if (engine) headers['x-compiler-engine'] = engine;
+  return new Response(new Uint8Array(Buffer.from(body)), { status, headers });
+}
+
 describe('LaTeX Compile Route (POST /api/compile-latex)', () => {
-  const originalAdapter = http.defaults.adapter;
-  let lastRequest: InternalAxiosRequestConfig | null = null;
-  let mockPdfBuffer: Buffer;
+  const fetchMock = vi.fn();
 
   beforeEach(() => {
-    lastRequest = null;
-    mockPdfBuffer = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
-
-    http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
-      lastRequest = config;
-      return {
-        data: mockPdfBuffer,
-        status: 200,
-        statusText: 'OK',
-        headers: {
-          'content-type': 'application/pdf',
-          'x-compiler-engine': 'NestJS Compiler Engine',
-        },
-        config,
-      } as AxiosResponse;
-    };
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    process.env.INTERNAL_API_URL = 'http://api:3001/';
   });
 
   afterEach(() => {
-    http.defaults.adapter = originalAdapter;
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    delete process.env.INTERNAL_API_URL;
   });
 
   function createRequest(body: Record<string, any>): NextRequest {
     return new NextRequest('http://localhost:3000/api/compile-latex', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
   }
 
-  it('forwards compilation request to /api/proxy/api/v1/compile/latex via http client and returns 200 application/pdf', async () => {
-    const req = createRequest({
-      tex: '\\documentclass{article}\\begin{document}Hello World\\end{document}',
-      jobName: 'article',
-      images: { 'fig1.png': 'base64data' },
-    });
+  it('forwards the LaTeX to the backend compile endpoint and returns the PDF', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply('NestJS Compiler Engine (Tectonic)'));
 
-    const response = await POST(req);
+    const response = await POST(
+      createRequest({
+        tex: '\\documentclass{article}\\begin{document}Hello World\\end{document}',
+        jobName: 'article',
+        images: { 'fig1.png': 'base64data' },
+      }),
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('application/pdf');
     expect(response.headers.get('content-disposition')).toBe('inline; filename="article.pdf"');
-    expect(response.headers.get('x-compiler-engine')).toBe('NestJS Compiler Engine');
+    expect(response.headers.get('x-compiler-engine')).toBe('NestJS Compiler Engine (Tectonic)');
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(PDF_BYTES);
 
-    // Verify request routed to /api/proxy/api/v1/compile/latex
-    expect(lastRequest).not.toBeNull();
-    expect(lastRequest?.baseURL).toBe('/api/proxy');
-    expect(lastRequest?.url).toBe('/api/v1/compile/latex');
-    const fullRequestedUrl = `${lastRequest?.baseURL}${lastRequest?.url}`;
-    expect(fullRequestedUrl).toBe('/api/proxy/api/v1/compile/latex');
-    expect(lastRequest?.method?.toLowerCase()).toBe('post');
+    // Trailing slash of INTERNAL_API_URL is normalised; payload carries tex + images
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://api:3001/api/v1/compile/latex');
+    const sent = JSON.parse(init.body);
+    expect(sent.tex).toContain('Hello World');
+    expect(sent.engine).toBe('tectonic');
+    expect(sent.images).toEqual({ 'fig1.png': 'base64data' });
+  });
 
-    const arrayBuf = await response.arrayBuffer();
-    expect(Buffer.from(arrayBuf)).toEqual(mockPdfBuffer);
+  it('forwards the bearer token of the caller to the backend (the compile route requires login)', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply('NestJS Compiler Engine (Tectonic)'));
+    const req = new NextRequest('http://localhost:3000/api/compile-latex', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer abc.def.ghi' },
+      body: JSON.stringify({ tex: '\documentclass{article}' }),
+    });
+
+    await POST(req);
+
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer abc.def.ghi');
+  });
+
+  it('does not invent an Authorization header when the caller has none', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply('NestJS Compiler Engine (Tectonic)'));
+
+    await POST(createRequest({ tex: '\documentclass{article}' }));
+
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
+  });
+
+  it('answers 401 / 403 from the backend with the same status and a clear login message', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply(null, 401, '{"detail":"Missing or invalid Authorization header"}'));
+    const unauthorized = await POST(createRequest({ tex: '\documentclass{article}' }));
+    expect(unauthorized.status).toBe(401);
+    expect((await unauthorized.json()).error).toMatch(/đăng nhập/i);
+
+    fetchMock.mockResolvedValueOnce(backendReply(null, 403, '{}'));
+    const forbidden = await POST(createRequest({ tex: '\documentclass{article}' }));
+    expect(forbidden.status).toBe(403);
+  });
+
+  it('accepts a cached compilation as a real PDF', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply('NestJS Compiler Engine (Cached)'));
+
+    const response = await POST(createRequest({ tex: '\\documentclass{article}' }));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/pdf');
   });
 
   it('returns 400 Bad Request if tex payload is missing or empty', async () => {
-    const req = createRequest({
-      images: {},
-    });
+    const response = await POST(createRequest({ images: {} }));
 
-    const response = await POST(req);
     expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toBeDefined();
+    expect((await response.json()).error).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('gracefully falls back to minimal PDF when backend is unreachable without 503 error', async () => {
-    http.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
-      lastRequest = config;
-      const error: any = new Error('connect ECONNREFUSED 127.0.0.1:3001');
-      error.isAxiosError = true;
-      error.config = config;
-      throw error;
-    };
+  /**
+   * Regression: a failed compilation used to come back as an empty one-page PDF, so users just
+   * saw a blank sheet. The route must surface an error instead.
+   */
+  it('reports the backend being unreachable as a 502 error, never as a blank PDF', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:3001'));
 
-    const req = createRequest({
-      tex: '\\documentclass{article}\\begin{document}Fallback Test\\end{document}',
-    });
+    const response = await POST(createRequest({ tex: '\\documentclass{article}' }));
 
-    const response = await POST(req);
+    expect(response.status).toBe(502);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    const data = await response.json();
+    expect(data.error).toMatch(/backend/i);
+    expect(data.details).toContain('ECONNREFUSED');
+  });
 
-    // Must never return 503 asking user to install MiKTeX
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('application/pdf');
-    expect(response.headers.get('content-disposition')).toBe('inline; filename="article.pdf"');
+  it('treats the backend placeholder PDF (compiler failed or timed out) as an error', async () => {
+    // The backend answers 200 with a blank PDF and an engine label WITHOUT "Tectonic"
+    fetchMock.mockResolvedValueOnce(backendReply('NestJS Compiler Engine'));
 
-    const arrayBuf = await response.arrayBuffer();
-    const pdfStr = Buffer.from(arrayBuf).toString('utf-8');
-    expect(pdfStr.startsWith('%PDF-1.4')).toBe(true);
-    expect(pdfStr).toContain('%%EOF');
+    const response = await POST(createRequest({ tex: '\\documentclass{article}' }));
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect((await response.json()).error).toMatch(/Tectonic/);
+  });
+
+  it('passes a backend HTTP error on as a 502 with the backend message', async () => {
+    fetchMock.mockResolvedValueOnce(backendReply(null, 500, 'compile exploded'));
+
+    const response = await POST(createRequest({ tex: '\\documentclass{article}' }));
+
+    expect(response.status).toBe(502);
+    const data = await response.json();
+    expect(data.error).toContain('500');
+    expect(data.details).toContain('compile exploded');
   });
 });

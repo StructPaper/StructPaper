@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/lib/auth-store';
 import {
   Check,
   X,
-  Lock,
   FileText,
   Users,
   BookOpen,
@@ -40,7 +40,7 @@ export const ROLES = [
   { id: 'SuperAdmin', label: 'SuperAdmin', isSystem: true, color: 'text-purple-700 bg-purple-50 border-purple-200' },
   { id: 'JournalManager', label: 'JournalManager', isSystem: true, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
   { id: 'Editor', label: 'Editor', isSystem: true, color: 'text-blue-700 bg-blue-50 border-blue-200' },
-  { id: 'Reviewer', label: 'Reviewer', isSystem: true, color: 'text-teal-700 bg-teal-50 border-teal-200' },
+  { id: 'Reviewer', label: 'Reviewer', isSystem: true, color: 'text-lime-700 bg-lime-50 border-lime-200' },
   { id: 'Author', label: 'Author', isSystem: true, color: 'text-amber-700 bg-amber-50 border-amber-200' },
   { id: 'Guest', label: 'Guest', isSystem: true, color: 'text-slate-700 bg-slate-100 border-slate-200' },
 ] as const;
@@ -243,6 +243,9 @@ export const PERMISSION_GRID: Record<SubjectType, Record<ActionType, Record<Role
 
 export const PermissionMatrixTab: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('ALL');
+  // Role names are used here ONLY to point out the viewer's own column (display), never to decide access.
+  const myRoleNames = useAuthStore((s) => s.user?.roles);
+  const mine = new Set((myRoleNames ?? []).map((r) => r.roleName));
   const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
   const visibleSubjects =
@@ -252,24 +255,6 @@ export const PermissionMatrixTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Immutable Baseline Banner */}
-      <div className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-5 shadow-xs backdrop-blur-sm flex items-start gap-3.5">
-        <div className="w-9 h-9 rounded-2xl bg-amber-100/90 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0 mt-0.5">
-          <Lock className="w-4 h-4" />
-        </div>
-        <div className="text-sm">
-          <div className="font-black text-amber-950 flex items-center gap-2 flex-wrap">
-            <span>Kiến trúc Bảo mật RBAC & CASL (Immutable System Roles)</span>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300/60">
-              Bất biến / Immutable Baseline
-            </span>
-          </div>
-          <p className="text-xs text-amber-800 mt-1 leading-relaxed font-medium">
-            Các vai trò hệ thống (<strong className="font-bold">SuperAdmin, JournalManager, Editor, Reviewer, Author, Guest</strong>) là các baseline quyền hạn bất biến theo đặc tả bảo mật StructPaper. Quản trị viên chỉ có thể gán người dùng vào vai trò hoặc mở rộng phạm vi tạp chí (<code className="font-mono text-amber-950 font-bold">scopeJournalId</code>), không thể tự ý vô hiệu hóa các quy tắc bảo mật cốt lõi.
-          </p>
-        </div>
-      </div>
-
       {/* Subject Filter Pills Toolbar */}
       <div className="flex items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs flex-wrap">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -320,21 +305,37 @@ export const PermissionMatrixTab: React.FC = () => {
                 <th className="px-6 py-4 text-xs uppercase font-extrabold text-slate-500 tracking-wider w-64 border-r border-slate-200">
                   Đối tượng & Hành động
                 </th>
-                {ROLES.map((role) => (
-                  <th
-                    key={role.id}
-                    className="px-4 py-4 text-center font-semibold text-xs tracking-wider border-r border-slate-200 last:border-r-0"
-                  >
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color}`}>
-                        {role.label}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        System Baseline
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {ROLES.map((role) => {
+                  const isMine = mine.has(role.id);
+                  return (
+                    <th
+                      key={role.id}
+                      data-mine={isMine ? 'true' : undefined}
+                      className={`px-4 py-4 text-center font-semibold text-xs tracking-wider border-r border-slate-200 last:border-r-0 ${
+                        isMine ? 'bg-[#78C841]/[0.09]' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`px-3 py-1 rounded-xl text-xs font-black border ${role.color} ${
+                            isMine ? 'ring-2 ring-[#78C841]/45' : ''
+                          }`}
+                        >
+                          {role.label}
+                        </span>
+                        {/* Same height for every column, so the header row stays aligned */}
+                        <span
+                          className={`text-[10px] leading-3 font-bold uppercase tracking-wider ${
+                            isMine ? 'text-lime-700' : 'invisible'
+                          }`}
+                          aria-hidden={!isMine}
+                        >
+                          Vai trò của bạn
+                        </span>
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -379,12 +380,15 @@ export const PermissionMatrixTab: React.FC = () => {
                           return (
                             <td
                               key={`${subj.id}-${act.id}-${role.id}`}
-                              className="px-3 py-3 text-center border-r border-slate-200 last:border-r-0 align-middle"
+                              data-mine={mine.has(role.id) ? 'true' : undefined}
+                              className={`px-3 py-3 text-center border-r border-slate-200 last:border-r-0 align-middle ${
+                                mine.has(role.id) ? 'bg-[#78C841]/[0.07]' : ''
+                              }`}
                             >
                               <div className="flex flex-col items-center justify-center gap-1">
                                 {perm.allowed ? (
                                   <div
-                                    className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center shadow-2xs"
+                                    className="w-7 h-7 rounded-full bg-lime-100 border border-lime-300 text-lime-700 flex items-center justify-center shadow-2xs"
                                     title="Cho phép (Allowed)"
                                   >
                                     <Check className="w-3.5 h-3.5 stroke-[2.5]" />

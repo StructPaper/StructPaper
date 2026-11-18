@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, X } from 'lucide-react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  stripVietnameseDiacritics,
+  dropdownVariants,
+  listVariants,
+  itemVariants,
+} from './select-utils';
+import { useReadOnly } from './read-only';
+import { useDropdownPlacement, LIST_MAX_HEIGHT, SEARCH_BOX_HEIGHT } from './useDropdownPlacement';
+
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
 export interface SelectOption<T = string> {
   value: T;
@@ -38,77 +49,6 @@ export interface SelectProps<T extends string | number = string> {
   renderTrigger?: (selectedOption: SelectOption<T> | undefined, isOpen: boolean) => React.ReactNode;
 }
 
-// Utility to remove Vietnamese diacritics for search matching
-function stripVietnameseDiacritics(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase();
-}
-
-// Framer motion variants for smooth dropdown animation
-const dropdownVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.97,
-    y: -8,
-    transition: {
-      duration: 0.18,
-      ease: 'easeOut',
-    },
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: {
-      duration: 0.22,
-      ease: 'easeOut',
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.97,
-    y: -8,
-    transition: {
-      duration: 0.18,
-      ease: 'easeIn',
-    },
-  },
-};
-
-const listVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.035,
-      delayChildren: 0.015,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: -8,
-    scale: 0.98,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 450,
-      damping: 28,
-      mass: 0.7,
-    },
-  },
-};
-
 export function Select<T extends string | number = string>({
   options,
   value,
@@ -122,7 +62,7 @@ export function Select<T extends string | number = string>({
   variant = 'default',
   align = 'left',
   fullWidth = true,
-  disabled = false,
+  disabled: disabledProp = false,
   searchable = false,
   searchPlaceholder = 'Tìm kiếm...',
   className = '',
@@ -132,6 +72,8 @@ export function Select<T extends string | number = string>({
   renderOption,
   renderTrigger,
 }: SelectProps<T>) {
+  const readOnly = useReadOnly();
+  const disabled = disabledProp || readOnly;
   const generatedId = useId();
   const selectId = id || generatedId;
   const [isOpen, setIsOpen] = useState(false);
@@ -162,12 +104,24 @@ export function Select<T extends string | number = string>({
     });
   }, [options, searchQuery]);
 
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const placement = useDropdownPlacement({
+    isOpen,
+    triggerRef,
+    align,
+    optionCount: filteredOptions.length,
+    searchable,
+  });
+
   // Handle outside click to close
   useEffect(() => {
     if (!isOpen) return;
 
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideTrigger = containerRef.current?.contains(target);
+      const insidePopover = popoverRef.current?.contains(target);
+      if (containerRef.current && !insideTrigger && !insidePopover) {
         setIsOpen(false);
         setSearchQuery('');
       }
@@ -279,15 +233,15 @@ export function Select<T extends string | number = string>({
 
   // Variant styling tokens
   const variantClasses = {
-    default: 'bg-white border-[#E8E8EE] hover:border-zinc-400 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-2xl shadow-xs',
-    pill: 'bg-white border-[#E8E8EE] hover:border-zinc-400 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-full shadow-xs',
-    subtle: 'bg-zinc-50 border-[#E8E8EE] hover:bg-white hover:border-zinc-400 focus:bg-white focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-2xl shadow-xs',
-    slate: 'bg-slate-50 hover:bg-white border-slate-200 hover:border-slate-300 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/20 rounded-xl shadow-2xs text-slate-800',
-    clean: 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/20 rounded-xl shadow-2xs text-slate-800',
-    'flat-white': 'bg-white hover:bg-slate-50/70 border-0 shadow-none focus:ring-2 focus:ring-[#78C841]/30 rounded-xl text-slate-800',
-    'white-shadow-4': 'bg-white hover:bg-slate-50/70 border-0 shadow-[0_0_12px_rgba(0,0,0,0.08),0_0_3px_rgba(0,0,0,0.04)] hover:shadow-[0_0_16px_rgba(0,0,0,0.12),0_0_4px_rgba(0,0,0,0.06)] focus:ring-2 focus:ring-[#78C841]/30 rounded-xl text-slate-800',
-    'liquid-glass': 'bg-white/45 hover:bg-white/75 backdrop-blur-md border border-white/60 shadow-[inset_0_0_14px_8px_rgba(255,255,255,0.85)] text-[#1A1A1A] rounded-2xl focus:border-[#78C841]/50 focus:ring-2 focus:ring-[#78C841]/20',
-    'eatzy-inner': 'bg-slate-50/50 backdrop-blur-sm border-2 border-white hover:border-zinc-200/80 focus:border-[#78C841]/20 rounded-2xl shadow-eatzy-inner hover:shadow-eatzy-inner-hover text-zinc-900',
+    default: 'bg-white border-[#E8E8EE] hover:border-zinc-400 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-2xl shadow-xs font-semibold',
+    pill: 'bg-white border-[#E8E8EE] hover:border-zinc-400 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-full shadow-xs font-semibold',
+    subtle: 'bg-zinc-50 border-[#E8E8EE] hover:bg-white hover:border-zinc-400 focus:bg-white focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/30 rounded-2xl shadow-xs font-semibold',
+    slate: 'bg-slate-50 hover:bg-white border-slate-200 hover:border-slate-300 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/20 rounded-xl shadow-2xs text-slate-900 font-semibold',
+    clean: 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 focus:border-[#78C841] focus:ring-2 focus:ring-[#78C841]/20 rounded-xl shadow-2xs text-slate-900 font-semibold',
+    'flat-white': 'bg-white hover:bg-slate-50/70 border-0 shadow-none focus:ring-2 focus:ring-[#78C841]/30 rounded-xl text-slate-900 font-semibold',
+    'white-shadow-4': 'bg-white hover:bg-slate-50/70 border-0 shadow-[0_0_12px_rgba(0,0,0,0.08),0_0_3px_rgba(0,0,0,0.04)] hover:shadow-[0_0_16px_rgba(0,0,0,0.12),0_0_4px_rgba(0,0,0,0.06)] focus:ring-2 focus:ring-[#78C841]/30 rounded-xl text-slate-900 font-semibold',
+    'liquid-glass': 'bg-white/45 hover:bg-white/75 backdrop-blur-md border border-white/60 shadow-[inset_0_0_14px_8px_rgba(255,255,255,0.85)] text-[#1A1A1A] rounded-2xl focus:border-[#78C841]/50 focus:ring-2 focus:ring-[#78C841]/20 font-semibold',
+    'eatzy-inner': 'bg-slate-50/50 backdrop-blur-sm border-2 border-white hover:border-zinc-200/80 focus:border-[#78C841]/20 rounded-2xl shadow-eatzy-inner hover:shadow-eatzy-inner-hover text-zinc-900 font-semibold',
     custom: '',
   }[variant];
 
@@ -325,14 +279,14 @@ export function Select<T extends string | number = string>({
         aria-expanded={isOpen}
         aria-disabled={disabled}
         style={variant === 'eatzy-inner' ? { boxShadow: 'inset 0 0 16px rgba(0, 0, 0, 0.08)' } : undefined}
-        className={`group relative flex items-center justify-between gap-1.5 transition-all text-left font-medium cursor-pointer ${
+        className={`group relative flex items-center justify-between gap-1.5 transition-all text-left font-semibold cursor-pointer ${
           hasBorder ? 'border' : 'border-0'
         } ${fullWidth ? 'w-full' : ''} ${
           variant === 'custom' ? '' : sizeClasses
         } ${variantClasses} ${
           disabled
             ? 'opacity-60 bg-gray-100 border-gray-200 cursor-not-allowed text-gray-400'
-            : 'text-slate-800'
+            : 'text-slate-900'
         } ${error ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : ''} ${className}`}
       >
         {renderTrigger ? (
@@ -348,9 +302,9 @@ export function Select<T extends string | number = string>({
                   />
                 )}
                 {selectedOption.icon && (
-                  <span className="shrink-0 text-zinc-400">{selectedOption.icon}</span>
+                  <span className="shrink-0 text-zinc-500">{selectedOption.icon}</span>
                 )}
-                <span className="truncate text-slate-800 font-medium text-xs">
+                <span className="truncate text-slate-900 font-semibold text-xs">
                   {selectedOption.label}
                 </span>
                 {selectedOption.badge && (
@@ -366,13 +320,13 @@ export function Select<T extends string | number = string>({
                 )}
               </>
             ) : (
-              <span className="text-zinc-400 font-normal text-xs truncate">{placeholder}</span>
+              <span className="text-zinc-500 font-medium text-xs truncate">{placeholder}</span>
             )}
           </div>
         )}
 
         <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
+          animate={isTest ? undefined : { rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className="shrink-0 flex items-center justify-center text-zinc-400 group-hover:text-zinc-800"
         >
@@ -391,16 +345,28 @@ export function Select<T extends string | number = string>({
       ) : null}
 
       {/* Animated Dropdown Menu Popover with AnimatePresence */}
+      {typeof document !== 'undefined' &&
+        createPortal(
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && placement && (
           <motion.div
+            ref={popoverRef}
             key="dropdown-popover"
-            variants={dropdownVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`absolute z-[100] mt-1.5 w-full min-w-[180px] bg-white border border-slate-200/90 shadow-2xl shadow-black/15 rounded-xl overflow-hidden origin-top ${
-              align === 'right' ? 'right-0' : 'left-0'
+            custom={placement.openUp}
+            variants={isTest ? undefined : dropdownVariants}
+            initial={isTest ? undefined : 'hidden'}
+            animate={isTest ? undefined : 'visible'}
+            exit={isTest ? undefined : 'exit'}
+            data-placement={placement.openUp ? 'top' : 'bottom'}
+            style={{
+              position: 'fixed',
+              top: placement.top,
+              bottom: placement.bottom,
+              left: placement.left,
+              width: placement.width,
+            }}
+            className={`z-[10050] min-w-[180px] bg-white border border-slate-200/90 shadow-2xl shadow-black/15 rounded-xl overflow-hidden ${
+              placement.openUp ? 'origin-bottom' : 'origin-top'
             } ${dropdownClassName}`}
           >
             {/* Search box if enabled */}
@@ -437,17 +403,22 @@ export function Select<T extends string | number = string>({
             {/* Options Listbox with Staggered Cascading Children */}
             <motion.ul
               ref={listboxRef}
-              variants={listVariants}
-              initial="hidden"
-              animate="visible"
+              variants={isTest ? undefined : listVariants}
+              initial={isTest ? undefined : 'hidden'}
+              animate={isTest ? undefined : 'visible'}
               role="listbox"
               tabIndex={-1}
               aria-label={label || placeholder}
+              style={{
+                maxHeight: placement
+                  ? Math.max(Math.min(LIST_MAX_HEIGHT, placement.maxHeight - (searchable ? SEARCH_BOX_HEIGHT : 0)), 72)
+                  : undefined,
+              }}
               className="max-h-60 overflow-y-auto py-1 divide-y divide-transparent focus:outline-none"
             >
               {filteredOptions.length === 0 ? (
                 <motion.li
-                  variants={itemVariants}
+                  variants={isTest ? undefined : itemVariants}
                   className="px-3.5 py-3 text-xs text-zinc-400 text-center italic"
                 >
                   Không tìm thấy tùy chọn phù hợp
@@ -460,7 +431,7 @@ export function Select<T extends string | number = string>({
                   return (
                     <motion.li
                       key={String(opt.value)}
-                      variants={itemVariants}
+                      variants={isTest ? undefined : itemVariants}
                       role="option"
                       aria-selected={isSelected}
                       aria-disabled={opt.disabled}
@@ -472,8 +443,8 @@ export function Select<T extends string | number = string>({
                           : isSelected
                           ? 'bg-[#78C841]/15 text-[#1A1A1A] font-bold'
                           : isHighlighted
-                          ? 'bg-slate-100/80 text-slate-900'
-                          : 'text-slate-700 hover:bg-slate-50'
+                          ? 'bg-slate-100/80 text-slate-900 font-semibold'
+                          : 'text-slate-800 font-semibold hover:bg-slate-50'
                       }`}
                     >
                       {renderOption ? (
@@ -488,11 +459,11 @@ export function Select<T extends string | number = string>({
                               />
                             )}
                             {opt.icon && (
-                              <span className="shrink-0 text-zinc-400">{opt.icon}</span>
+                              <span className="shrink-0 text-zinc-500">{opt.icon}</span>
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="truncate">{opt.label}</span>
+                                <span className="truncate font-semibold">{opt.label}</span>
                                 {opt.badge && (
                                   <span
                                     className={`shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded border ${
@@ -506,8 +477,8 @@ export function Select<T extends string | number = string>({
                                 )}
                               </div>
                               {opt.description && (
-                                <p className={`text-[10px] font-normal truncate mt-0.5 ${
-                                  isSelected ? 'text-zinc-700' : 'text-slate-400'
+                                <p className={`text-[10px] font-medium truncate mt-0.5 ${
+                                  isSelected ? 'text-zinc-700' : 'text-slate-500'
                                 }`}>
                                   {opt.description}
                                 </p>
@@ -517,9 +488,9 @@ export function Select<T extends string | number = string>({
 
                           {isSelected && (
                             <motion.span
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={{ scale: 0, opacity: 0 }}
+                              initial={isTest ? undefined : { scale: 0, opacity: 0 }}
+                              animate={isTest ? undefined : { scale: 1, opacity: 1 }}
+                              exit={isTest ? undefined : { scale: 0, opacity: 0 }}
                               transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                               className="shrink-0 flex items-center justify-center text-zinc-900 ml-1"
                             >
@@ -538,7 +509,9 @@ export function Select<T extends string | number = string>({
             </motion.ul>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }

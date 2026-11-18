@@ -18,6 +18,12 @@ import {
 import type { AssignRole, RevokeRole, Role, Permission } from '@structpaper/contracts';
 import { AbilityCacheService } from '../domain/ability-cache.service';
 import { subject, type AppAbility } from '../domain/ability.factory';
+import {
+  assertNotLastActiveSuperAdmin,
+  assertNotSelf,
+  isSuperAdminRole,
+  SELF_CHANGE_ROLE_MESSAGE,
+} from '../domain/super-admin-invariant';
 
 @Injectable()
 export class AccessService {
@@ -89,13 +95,8 @@ export class AccessService {
         );
       }
 
-      // Check self-escalation: users cannot assign elevated roles to themselves
-      const callerId = callerUser?.id || callerUser?.userId;
-      if (callerId && callerId === dto.userId && !callerAbility.can('manage', 'all')) {
-        throw new ForbiddenException(
-          'Privilege escalation denied: Users cannot assign elevated roles to themselves',
-        );
-      }
+      // Nobody (SuperAdmin included) changes their own roles: another administrator must do it.
+      assertNotSelf(callerUser?.id || callerUser?.userId, dto.userId, SELF_CHANGE_ROLE_MESSAGE);
 
       // Check journal scope constraint
       if (dto.journalId && !callerAbility.can('manage', 'all')) {
@@ -179,6 +180,9 @@ export class AccessService {
         );
       }
 
+      // Nobody (SuperAdmin included) changes their own roles: another administrator must do it.
+      assertNotSelf(callerUser?.id || callerUser?.userId, dto.userId, SELF_CHANGE_ROLE_MESSAGE);
+
       if (dto.journalId && !callerAbility.can('manage', 'all')) {
         if (!callerAbility.can('manage', subject('Role', { journalId: dto.journalId }))) {
           throw new ForbiddenException(
@@ -201,17 +205,29 @@ export class AccessService {
             eq(userRoles.roleId, targetRoleId),
           );
 
-      await this.db.delete(userRoles).where(whereClause);
+      const applyRevocation = async (executor: any) => {
+        await executor.delete(userRoles).where(whereClause);
 
-      // 4. Increment permissions_version for instant token revocation
-      const updatedUsers = await this.db
-        .update(users)
-        .set({
-          permissionsVersion: sql`${users.permissionsVersion} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, dto.userId))
-        .returning();
+        // 4. Increment permissions_version for instant token revocation
+        return executor
+          .update(users)
+          .set({
+            permissionsVersion: sql`${users.permissionsVersion} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, dto.userId))
+          .returning();
+      };
+
+      // Removing SuperAdmin must never leave the system without an active SuperAdmin. The check
+      // and the delete share one transaction (with the SuperAdmin rows locked) so concurrent
+      // demotions cannot both succeed.
+      const updatedUsers = isSuperAdminRole(targetRoleName)
+        ? await this.db.transaction(async (tx: any) => {
+            await assertNotLastActiveSuperAdmin(tx, dto.userId);
+            return applyRevocation(tx);
+          })
+        : await applyRevocation(this.db);
 
       // 5. Invalidate ability cache
       if (this.abilityCache) {

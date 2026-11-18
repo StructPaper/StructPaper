@@ -6,11 +6,13 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { users, refreshTokens, userTokens, eq, and, isNull, gt } from '@structpaper/db';
+import { users, refreshTokens, userTokens, eq, and, isNull, gt, sql } from '@structpaper/db';
 import type { LoginRequest, TokenResponse, ResetPassword } from '@structpaper/contracts';
 import { PasswordService } from '../domain/password.service';
 import { TokenService } from '../domain/token.service';
 import { MailService } from '../domain/mail.service';
+import { loadUserRoleViews } from '../../access/domain/user-role-views';
+import { capabilitiesForRoles } from '../../access/domain/capabilities';
 
 @Injectable()
 export class AuthService {
@@ -168,36 +170,36 @@ export class AuthService {
     }
 
     const tokenHash = this.tokenService.hashToken(dto.token);
+
+    // Cheap pre-check so junk tokens never trigger the (expensive) password hashing.
+    // Missing, already used and expired tokens share one message: no oracle for the caller.
     const tokenRecord = await this.findUserToken(tokenHash, 'INVITATION');
-
-    if (!tokenRecord) {
+    if (!tokenRecord || tokenRecord.consumedAt || new Date(tokenRecord.expiresAt).getTime() < Date.now()) {
       throw new BadRequestException('Invalid or expired activation token');
-    }
-
-    if (tokenRecord.consumedAt) {
-      throw new BadRequestException('Activation token has already been consumed');
-    }
-
-    if (new Date(tokenRecord.expiresAt).getTime() < Date.now()) {
-      throw new BadRequestException('Activation token has expired');
     }
 
     const passwordHash = await this.passwordService.hash(dto.password);
 
     if (this.db) {
-      await this.db
-        .update(userTokens)
-        .set({ consumedAt: new Date() })
-        .where(eq(userTokens.id, tokenRecord.id));
+      // Claim the token and activate the user in ONE transaction. The claim is a single
+      // conditional UPDATE, so two concurrent requests can never both consume the same token.
+      await this.db.transaction(async (tx: any) => {
+        const claimed = await this.claimToken(tx, tokenHash, 'INVITATION');
+        if (!claimed) {
+          throw new BadRequestException('Invalid or expired activation token');
+        }
 
-      await this.db
-        .update(users)
-        .set({
-          passwordHash,
-          status: 'ACTIVE',
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, tokenRecord.userId));
+        const activated = await tx
+          .update(users)
+          .set({ passwordHash, status: 'ACTIVE', updatedAt: new Date() })
+          .where(and(eq(users.id, claimed.userId), eq(users.status, 'INVITED')))
+          .returning({ id: users.id });
+
+        if (!activated?.length) {
+          // User is no longer INVITED (already active / suspended): roll the claim back.
+          throw new BadRequestException('Invalid or expired activation token');
+        }
+      });
     }
 
     return {
@@ -207,45 +209,70 @@ export class AuthService {
   }
 
   /**
+   * Atomically marks a one-time token as consumed. Returns the token row only if it was
+   * valid (right type, not consumed, not expired) at the moment of the UPDATE, else null.
+   */
+  private async claimToken(
+    executor: any,
+    tokenHash: string,
+    type: 'INVITATION' | 'PASSWORD_RESET',
+  ): Promise<any | null> {
+    const now = new Date();
+    const rows = await executor
+      .update(userTokens)
+      .set({ consumedAt: now })
+      .where(
+        and(
+          eq(userTokens.tokenHash, tokenHash),
+          eq(userTokens.type, type),
+          isNull(userTokens.consumedAt),
+          gt(userTokens.expiresAt, now),
+        ),
+      )
+      .returning();
+    return rows?.[0] ?? null;
+  }
+
+  /**
    * Resets password using a one-time reset token and increments permissions_version to revoke active sessions.
    */
   async resetPassword(dto: ResetPassword): Promise<{ success: boolean; message: string }> {
     const tokenHash = this.tokenService.hashToken(dto.token);
     const tokenRecord = await this.findUserToken(tokenHash, 'PASSWORD_RESET');
 
-    if (!tokenRecord) {
+    if (!tokenRecord || tokenRecord.consumedAt || new Date(tokenRecord.expiresAt).getTime() < Date.now()) {
       throw new BadRequestException('Invalid or expired password reset token');
-    }
-
-    if (tokenRecord.consumedAt) {
-      throw new BadRequestException('Password reset token has already been consumed');
-    }
-
-    if (new Date(tokenRecord.expiresAt).getTime() < Date.now()) {
-      throw new BadRequestException('Password reset token has expired');
     }
 
     const user = await this.findUserById(tokenRecord.userId);
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('Invalid or expired password reset token');
     }
 
     const passwordHash = await this.passwordService.hash(dto.newPassword);
 
     if (this.db) {
-      await this.db
-        .update(userTokens)
-        .set({ consumedAt: new Date() })
-        .where(eq(userTokens.id, tokenRecord.id));
+      await this.db.transaction(async (tx: any) => {
+        const claimed = await this.claimToken(tx, tokenHash, 'PASSWORD_RESET');
+        if (!claimed) {
+          throw new BadRequestException('Invalid or expired password reset token');
+        }
 
-      await this.db
-        .update(users)
-        .set({
-          passwordHash,
-          permissionsVersion: user.permissionsVersion + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, user.id));
+        await tx
+          .update(users)
+          .set({
+            passwordHash,
+            permissionsVersion: sql`${users.permissionsVersion} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, user.id));
+
+        // Sign the account out everywhere: revoke every refresh token still alive.
+        await tx
+          .update(refreshTokens)
+          .set({ revokedAt: new Date() })
+          .where(and(eq(refreshTokens.userId, user.id), isNull(refreshTokens.revokedAt)));
+      });
     }
 
     return {
@@ -285,7 +312,8 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
     const { passwordHash, ...profile } = user;
-    return profile;
+    const roleViews = (await loadUserRoleViews(this.db, [userId])).get(userId) ?? [];
+    return { ...profile, roles: roleViews, capabilities: await capabilitiesForRoles(roleViews) };
   }
 
   private async findUserByEmail(email: string): Promise<any> {

@@ -28,7 +28,7 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
   onAddEquation,
 }) => {
   return (
-    <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none group-hover:pointer-events-auto">
+    <div data-edit-only className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none group-hover:pointer-events-auto">
       <div className="overflow-hidden">
         <div className="pt-2.5 mt-1 border-t border-zinc-300/40 flex items-center justify-between gap-2 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-250 ease-out">
           <span className="text-[10px] font-semibold text-zinc-400 pl-1 select-none">

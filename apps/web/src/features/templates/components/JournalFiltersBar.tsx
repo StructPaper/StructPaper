@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, Plus, X } from 'lucide-react';
 import { JournalStatus } from '@/lib/templates/journal-storage';
+import { Gate } from '@/lib/access';
 
 interface JournalFiltersBarProps {
   searchQuery: string;
@@ -87,6 +88,7 @@ export const JournalFiltersBar: React.FC<JournalFiltersBarProps> = ({
         </div>
 
         {/* Right side: Add new journal button */}
+        <Gate capability="journal:manage">
         <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/templates/journal/new"
@@ -97,6 +99,7 @@ export const JournalFiltersBar: React.FC<JournalFiltersBarProps> = ({
             <span>Thêm Tạp chí Mới</span>
           </Link>
         </div>
+        </Gate>
       </div>
 
       {/* Row 2: Status filter chips */}

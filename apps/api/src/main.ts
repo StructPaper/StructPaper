@@ -25,9 +25,17 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
   const logger = new Logger('Bootstrap');
   const adapter = new FastifyAdapter({
     logger: process.env.NODE_ENV !== 'production',
+    // Compile requests carry the whole LaTeX source plus base64 images (Fastify's default is 1 MB).
+    bodyLimit: Number(process.env.BODY_LIMIT_BYTES) || 64 * 1024 * 1024,
   });
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter);
+
+  // The compiled PDF of a manuscript arrives as a raw application/pdf body.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser('application/pdf', { parseAs: 'buffer' }, (_req: any, body: Buffer, done: any) => done(null, body));
 
   await app.register(helmet as any, {
     contentSecurityPolicy: process.env.NODE_ENV === 'production',

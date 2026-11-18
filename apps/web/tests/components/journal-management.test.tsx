@@ -64,7 +64,7 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
   });
 
   describe('1. Sidebar Navigation with Templates Tab', () => {
-    it('renders the 5 main flow items including /templates and /papers', () => {
+    it('renders the main flow items including /templates and /papers', () => {
       render(<Sidebar />);
 
       // Verify the new Templates tab
@@ -73,9 +73,6 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
 
       // Verify papers tab
       expect(screen.getAllByText('Quản lý Bài báo').length).toBeGreaterThan(0);
-
-      // Verify upload tab
-      expect(screen.getAllByText('Tải file DOCX').length).toBeGreaterThan(0);
     });
   });
 

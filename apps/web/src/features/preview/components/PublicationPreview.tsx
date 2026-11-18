@@ -19,6 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { CompileErrorModal } from './CompileErrorModal';
+import { getAuthHeaders } from '@/lib/auth-headers';
 
 export interface PublicationPreviewProps {
   paper: CompletePaper;
@@ -112,7 +113,7 @@ export const PublicationPreview: React.FC<PublicationPreviewProps> = ({
 
       const response = await fetch('/api/compile-latex', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({
           tex: texContent,
           paperId: paper.id,

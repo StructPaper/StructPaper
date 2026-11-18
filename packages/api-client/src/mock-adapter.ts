@@ -78,13 +78,56 @@ export async function handleMockRequest(
     return { success: true, message: 'Password reset successful' };
   }
 
-  if (cleanUrl.includes('/auth/invite')) {
-    return { success: true, id: '00000000-0000-0000-0000-000000000002', email: data?.email };
+  // Users & invitations (same shapes as the real API)
+  if (/\/users\/invite$/.test(cleanUrl)) {
+    const mockToken = 'mock-activation-token';
+    return {
+      user: {
+        id: '00000000-0000-0000-0000-000000000002',
+        email: data?.email,
+        displayName: data?.displayName ?? null,
+        status: 'INVITED',
+      },
+      activationUrl: `http://localhost:3000/activate#token=${mockToken}`,
+      token: mockToken,
+      expiresAt: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+    };
+  }
+
+  if (/\/users\/invitations$/.test(cleanUrl)) {
+    return [];
+  }
+
+  if (/\/users\/[^/]+\/resend-invite$/.test(cleanUrl)) {
+    const mockToken = 'mock-activation-token';
+    return {
+      user: { id: cleanUrl.split('/').slice(-2)[0], email: 'mock@structpaper.org', status: 'INVITED' },
+      activationUrl: `http://localhost:3000/activate#token=${mockToken}`,
+      token: mockToken,
+      expiresAt: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+    };
+  }
+
+  if (/\/users\/[^/]+\/invitation$/.test(cleanUrl)) {
+    return { success: true, message: 'Invitation revoked' };
+  }
+
+  if (/\/users$/.test(cleanUrl)) {
+    return { items: [], total: 0, limit: 20, offset: 0 };
+  }
+
+  if (/\/journals$/.test(cleanUrl)) {
+    return [];
   }
 
   // Access
-  if (cleanUrl.includes('/access/roles') || cleanUrl.endsWith('/roles')) {
-    if (normalizedMethod === 'POST' && cleanUrl.includes('/assign')) {
+  if (
+    cleanUrl.includes('/access/roles') ||
+    cleanUrl.endsWith('/roles') ||
+    cleanUrl.endsWith('/roles/assign')
+  ) {
+    // POST /roles/assign grants a role, DELETE /roles/assign revokes it (same path, real API shape)
+    if (cleanUrl.includes('/assign') && (normalizedMethod === 'POST' || normalizedMethod === 'DELETE')) {
       return { success: true, permissionsVersion: 2 };
     }
     if (normalizedMethod === 'POST' && cleanUrl.includes('/revoke')) {

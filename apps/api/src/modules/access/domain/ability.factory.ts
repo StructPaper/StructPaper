@@ -5,6 +5,7 @@ import {
   MongoAbility,
   subject,
 } from '@casl/ability';
+import { NON_DELETABLE_STATUSES } from '@structpaper/contracts';
 import {
   userRoles,
   roles,
@@ -112,14 +113,15 @@ export class AbilityFactory {
         }
       }
 
+      // Editors only get journal visibility; manuscripts are reached through
+      // ownership / sharing (manuscript_members, general access), never by role alone.
       if (r.name === 'Editor') {
         if (!scopeJournalId || scopeJournalId === GLOBAL_SCOPE_ID) {
-          can(['read', 'update'], 'Manuscript');
           can('read', 'Journal');
         } else {
-          can(['read', 'update'], 'Manuscript', { journalId: scopeJournalId });
           can('read', 'Journal', { id: scopeJournalId });
         }
+        can('create', 'Manuscript');
       }
 
       if (r.name === 'Author') {
@@ -128,25 +130,30 @@ export class AbilityFactory {
     }
 
     // 3. Manuscript ACL (Author & Reviewer evaluated via manuscript_members)
-    const authorManuscriptIds = memberships
-      .filter((m) => m.role === 'OWNER' || m.role === 'COAUTHOR')
-      .map((m) => m.manuscriptId);
+    const idsFor = (...roles: string[]) =>
+      memberships.filter((m) => roles.includes(m.role)).map((m) => m.manuscriptId);
 
-    if (authorManuscriptIds.length > 0) {
-      can(['read', 'update'], 'Manuscript', {
-        id: { $in: authorManuscriptIds },
-      });
+    const ownerIds = idsFor('OWNER');
+    const writerIds = idsFor('OWNER', 'COAUTHOR', 'EDITOR');
+    const readerIds = idsFor('OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER');
+
+    if (readerIds.length > 0) can('read', 'Manuscript', { id: { $in: readerIds } });
+    if (writerIds.length > 0) can('update', 'Manuscript', { id: { $in: writerIds } });
+    if (ownerIds.length > 0) {
+      can('share', 'Manuscript', { id: { $in: ownerIds } });
+      can('delete', 'Manuscript', { id: { $in: ownerIds }, status: { $nin: NON_DELETABLE_STATUSES } });
     }
 
-    const reviewerManuscriptIds = memberships
-      .filter((m) => m.role === 'REVIEWER')
-      .map((m) => m.manuscriptId);
-
-    if (reviewerManuscriptIds.length > 0) {
-      can('read', 'Manuscript', {
-        id: { $in: reviewerManuscriptIds },
-      });
+    // Whoever created a manuscript owns it, even before the membership row is in their cached ability.
+    if (context.userId) {
+      can(['read', 'update', 'share'], 'Manuscript', { createdBy: context.userId });
+      can('delete', 'Manuscript', { createdBy: context.userId, status: { $nin: NON_DELETABLE_STATUSES } });
     }
+
+    // General access ("anyone in the system"): evaluated on the manuscript row itself.
+    // Not used by the list query, so shared-with-everyone papers do not flood everybody's list.
+    can('read', 'Manuscript', { generalAccess: { $in: ['VIEWER', 'EDITOR'] } });
+    if (context.userId) can('update', 'Manuscript', { generalAccess: 'EDITOR' }); // guests only read
 
     // Custom Permissions (from DB or matrix if provided)
     if (context.permissions) {

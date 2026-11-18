@@ -93,7 +93,7 @@ export const AffiliationItemCard: React.FC<AffiliationItemCardProps> = ({
             <span className="text-[10px] font-semibold text-zinc-500">
               {authorUsageCount > 0 ? `${authorUsageCount} tác giả chọn` : 'Chưa gán tác giả'}
             </span>
-            <button
+            <button data-edit-only
               type="button"
               disabled={isDeleting}
               onClick={onRemoveAff}

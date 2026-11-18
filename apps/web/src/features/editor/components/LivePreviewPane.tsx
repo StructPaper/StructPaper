@@ -3,19 +3,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LivePreviewPaneProps } from './types';
 import {
-  CompileErrorModal,
   PdfInteractiveViewer,
   type PdfFillIssue,
   type PdfPickContext,
   type PdfRotateContext,
 } from '@/features/preview';
-import { exportToLatex } from '@/lib/exporters';
-import { RefreshCw, AlertTriangle, Check, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw, AlertTriangle, Check, Loader2, X } from 'lucide-react';
 import { useEditorSession } from '@/context/EditorSessionContext';
 import type { PaperSection, SectionPageLayout } from '@/types/paper';
 import { rotatePageAt } from '@/lib/editor/page-turn';
 import { equationIndex, extendRotatedRange, resolveClick } from '@/lib/editor/pdf-click-target';
 import { buildFrontIndex, buildSectionIndex, firstNewSectionOnPage, matchLineToFrontTab } from '@/lib/editor/pdf-section-map';
+
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
 /** Every section's page-layout marker by id (undefined where it has none). */
 const markersOf = (sections: PaperSection[]) => new Map(sections.map((s) => [s.id, s.pageLayout] as [string, SectionPageLayout | undefined]));
@@ -128,95 +129,126 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
       const timer = setTimeout(() => {
         setIsOverlayActive(false);
         setJustFinished(false);
-      }, 300);
+      }, 900);
       return () => clearTimeout(timer);
     }
   }, [isCompilingPdf, isOverlayActive]);
 
-  return (
-    <div className="h-full flex flex-col min-h-0 space-y-2">
-      {/* Compilation Error notification */}
-      {compileErrorInfo && !isCompilingPdf && (
-        <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-xs space-y-2 flex-shrink-0">
-          <div className="flex items-start gap-2 text-red-800 font-bold">
-            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p>Biên dịch thất bại: {compileErrorInfo.error}</p>
-              {compileErrorInfo.engine && (
-                <p className="text-[11px] font-normal text-red-600">
-                  Engine: {compileErrorInfo.engine}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onRecompile}
-              className="px-2.5 py-1 bg-white border border-red-200 text-red-700 rounded-lg text-xs font-bold hover:bg-red-100/50 cursor-pointer"
-            >
-              Thử lại
-            </button>
-            <button
-              type="button"
-              onClick={onClearError}
-              className="px-2.5 py-1 text-zinc-500 hover:text-zinc-800 text-xs cursor-pointer"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
+  const showError = Boolean(compileErrorInfo) && !isCompilingPdf;
+  const stripState: 'compiling' | 'done' | 'error' = isCompilingPdf ? 'compiling' : showError ? 'error' : justFinished ? 'done' : 'compiling';
+  const errorTitle = compileErrorInfo?.error || 'Không rõ nguyên nhân';
+  const errorDetails = compileErrorInfo?.details || compileErrorInfo?.rawLog || '';
+  const [showDetails, setShowDetails] = useState(false);
+  useEffect(() => {
+    if (!compileErrorInfo) setShowDetails(false);
+  }, [compileErrorInfo]);
 
-      {/* PDF View Container - Fits 100% of the height */}
-      <div className="soft-card p-2 sm:p-2.5 bg-white border border-[#E8E8EE] rounded-3xl overflow-hidden shadow-xs relative h-full flex flex-col min-h-0 flex-1">
-        {/* Subtle Blur Loading Overlay with Liquid Glass Badge */}
-        <div
-          className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center transition-all duration-500 ease-out ${
-            isOverlayActive
-              ? `opacity-100 backdrop-blur-[2px] ${compiledPdfUrl ? 'bg-white/40' : 'bg-white/70'} pointer-events-auto`
-              : 'opacity-0 backdrop-blur-none bg-transparent pointer-events-none'
-          }`}
-        >
-          <div
-            role="status"
-            aria-live="polite"
-            aria-busy={isCompilingPdf}
-            data-testid="compile-status"
-            className="liquid-glass-pill px-5 py-2.5 rounded-2xl flex flex-col items-center gap-1 shadow-lg transition-all duration-300"
-          >
-            <div className="flex items-center gap-2.5">
-            {justFinished ? (
-              <>
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+  return (
+    <div className="h-full flex flex-col min-h-0">
+      {/* PDF View Container: the frame stays (room for future tools) but the PDF sits flush to its edges */}
+      <div className="soft-card bg-white border border-[#E8E8EE] rounded-3xl overflow-hidden shadow-xs relative h-full flex flex-col min-h-0 flex-1">
+        {/* Status strip: grows out of the frame's top edge while compiling, then folds away */}
+        <AnimatePresence initial={false}>
+          {(isOverlayActive || showError) && (
+            <motion.div
+              key="compile-strip"
+              initial={isTest ? false : { height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={isTest ? undefined : { height: 0, opacity: 0 }}
+              transition={isTest ? { duration: 0 } : { duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+              className="overflow-hidden shrink-0"
+            >
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy={isCompilingPdf}
+                data-testid="compile-status"
+                data-state={stripState}
+                className={`border-b transition-colors duration-500 ${
+                  stripState === 'error'
+                    ? 'bg-red-100 border-red-200 text-red-900'
+                    : stripState === 'done'
+                      ? 'bg-lime-100 border-lime-200 text-lime-900'
+                      : 'bg-amber-100 border-amber-200 text-amber-900'
+                }`}
+              >
+                <div className="px-4 py-2 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {stripState === 'error' ? (
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" strokeWidth={2.75} />
+                    ) : stripState === 'done' ? (
+                      <span className="w-5 h-5 rounded-full bg-lime-200 text-lime-800 flex items-center justify-center shrink-0">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                    ) : (
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-700 shrink-0" strokeWidth={2.75} />
+                    )}
+                    <span className="font-extrabold text-xs tracking-tight truncate" title={stripState === 'error' ? errorTitle : undefined}>
+                      {stripState === 'error'
+                        ? `Biên dịch thất bại: ${errorTitle}`
+                        : stripState === 'done'
+                          ? 'Đã hoàn tất biên dịch PDF'
+                          : `${busyLabel || 'Đang biên dịch PDF XeLaTeX…'} ${elapsed > 0 ? `${elapsed}s` : ''}`}
+                    </span>
+                  </div>
+                  {stripState === 'compiling' && elapsed >= 5 && (
+                    <span className="hidden sm:block text-[11px] text-amber-800/80 shrink-0">
+                      Thường mất 15–40 giây, vui lòng đợi…
+                    </span>
+                  )}
+                  {stripState === 'error' && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {errorDetails && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDetails((v) => !v)}
+                          aria-expanded={showDetails}
+                          className="px-2.5 py-1 text-red-700 hover:bg-red-200/60 rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
+                        >
+                          {showDetails ? 'Ẩn chi tiết' : 'Chi tiết'}
+                        </button>
+                      )}
+                      {onRecompile && (
+                        <button
+                          type="button"
+                          onClick={onRecompile}
+                          className="px-2.5 py-1 bg-white border border-red-200 text-red-700 rounded-lg text-[11px] font-bold hover:bg-red-50 cursor-pointer transition-colors"
+                        >
+                          Thử lại
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onClearError}
+                        aria-label="Đóng thông báo lỗi"
+                        className="w-6 h-6 rounded-full text-red-500 hover:bg-red-200/60 flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <span className="font-extrabold text-xs text-zinc-900 tracking-tight">
-                  Đã hoàn tất biên dịch PDF
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#78C841] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#78C841]"></span>
-                </span>
-                <span className="font-extrabold text-xs text-zinc-900 tracking-tight">
-                  {busyLabel || 'Đang biên dịch PDF XeLaTeX…'} {elapsed > 0 ? `${elapsed}s` : ''}
-                </span>
-              </>
-            )}
-            </div>
-            {!justFinished && elapsed >= 5 && (
-              <span className="text-[11px] text-zinc-600">
-                Bản PDF dàn trang thường mất 15–40 giây, vui lòng đợi…
-              </span>
-            )}
-          </div>
-        </div>
+                <AnimatePresence initial={false}>
+                  {stripState === 'error' && showDetails && errorDetails && (
+                    <motion.pre
+                      key="compile-error-details"
+                      initial={isTest ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={isTest ? undefined : { height: 0, opacity: 0 }}
+                      transition={isTest ? { duration: 0 } : { duration: 0.25, ease: 'easeOut' }}
+                      className="mx-4 mb-2 overflow-auto max-h-40 whitespace-pre-wrap break-words rounded-xl bg-white/70 border border-red-200 p-2.5 font-mono text-[11px] leading-relaxed text-red-950"
+                    >
+                      {errorDetails}
+                    </motion.pre>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* The PDF Viewport Wrapper - 100% full height */}
-        <div className="w-full flex-1 min-h-0 h-full rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200">
+        <div className="w-full flex-1 min-h-0 overflow-hidden bg-zinc-100">
           {compiledPdfUrl && interactiveMode && !viewerFailed ? (
             <PdfInteractiveViewer
               url={compiledPdfUrl}
@@ -260,15 +292,6 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
           )}
         </div>
       </div>
-
-      {/* Compile Error Modal if error exists */}
-      {compileErrorInfo && (
-        <CompileErrorModal
-          errorInfo={compileErrorInfo}
-          onClose={onClearError}
-          latexCode={exportToLatex(paper)}
-        />
-      )}
     </div>
   );
 };

@@ -23,6 +23,8 @@ export interface EditorDocumentSession {
   onOpen?: () => void;
   onExport?: (format: ExportFormat) => void;
   onKeepMine?: () => Promise<void> | void;
+  /** View-only access: the title bar hides every editing control. */
+  readOnly?: boolean;
 }
 
 export interface EditorSessionContextValue {

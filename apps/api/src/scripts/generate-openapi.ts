@@ -92,11 +92,115 @@ export function buildOpenApiSpec() {
           },
           required: ['email', 'role'],
         },
+        AccountProfile: {
+          type: 'object',
+          description:
+            'The logged-in user, with the roles they hold and the capabilities those roles grant (what the UI may show).',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            email: { type: 'string', format: 'email' },
+            displayName: { type: 'string', nullable: true },
+            avatarUrl: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['ACTIVE', 'INVITED', 'SUSPENDED'] },
+            permissionsVersion: { type: 'integer' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+            roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+            capabilities: {
+              type: 'array',
+              items: { type: 'string', enum: ['member:manage', 'role:assign', 'role:grant_superadmin', 'journal:manage', 'manuscript:read_all'] },
+              description: 'Effective capabilities of the user. The UI asks for these, never for role names.',
+            },
+          },
+          required: ['id', 'email', 'status', 'roles', 'capabilities'],
+        },
+        UserRoleAssignmentView: {
+          type: 'object',
+          description: 'A role held by a user, optionally scoped to one journal (null = global).',
+          properties: {
+            roleName: { type: 'string' },
+            scopeJournalId: { type: 'string', format: 'uuid', nullable: true },
+            scopeJournalName: { type: 'string', nullable: true },
+          },
+          required: ['roleName'],
+        },
+        InviteUserResponse: {
+          type: 'object',
+          description:
+            'Result of issuing an invitation link. The raw token/link is only ever returned here (never stored).',
+          properties: {
+            user: { $ref: '#/components/schemas/UserSummary' },
+            activationUrl: { type: 'string' },
+            token: { type: 'string' },
+            expiresAt: { type: 'string', format: 'date-time' },
+          },
+          required: ['user', 'activationUrl', 'token', 'expiresAt'],
+        },
+        ManagedUser: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            email: { type: 'string', format: 'email' },
+            displayName: { type: 'string', nullable: true },
+            avatarUrl: { type: 'string', nullable: true },
+            status: { type: 'string', enum: ['ACTIVE', 'INVITED', 'SUSPENDED'] },
+            permissionsVersion: { type: 'integer' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+            roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+            lockReason: {
+              type: 'string',
+              enum: ['SELF', 'REQUIRES_SUPERADMIN'],
+              nullable: true,
+              description:
+                'Why the current viewer can not edit this user (null = editable). SELF: nobody changes their own roles/status. REQUIRES_SUPERADMIN: only a SuperAdmin may modify a SuperAdmin.',
+            },
+          },
+          required: ['id', 'email', 'status', 'roles'],
+        },
+        UserListResponse: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { $ref: '#/components/schemas/ManagedUser' } },
+            total: { type: 'integer' },
+            limit: { type: 'integer' },
+            offset: { type: 'integer' },
+          },
+          required: ['items', 'total', 'limit', 'offset'],
+        },
+        PendingInvitation: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', description: 'Id of the invited user' },
+            email: { type: 'string', format: 'email' },
+            displayName: { type: 'string', nullable: true },
+            roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
+            invitedAt: { type: 'string', format: 'date-time' },
+            expiresAt: { type: 'string', format: 'date-time' },
+            status: { type: 'string', enum: ['PENDING', 'EXPIRED'] },
+          },
+          required: ['id', 'email', 'roles', 'invitedAt', 'expiresAt', 'status'],
+        },
+        Journal: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            slug: { type: 'string' },
+            code: { type: 'string' },
+            name: { type: 'string' },
+            shortName: { type: 'string' },
+            issn: { type: 'string', nullable: true },
+            color: { type: 'string' },
+            status: { type: 'string' },
+            articleTypes: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['id', 'slug', 'name'],
+        },
         ActivateAccountRequest: {
           type: 'object',
           properties: {
             token: { type: 'string' },
-            password: { type: 'string', minLength: 8 },
+            password: { type: 'string', minLength: 8, maxLength: 128 },
           },
           required: ['token', 'password'],
         },
@@ -104,7 +208,7 @@ export function buildOpenApiSpec() {
           type: 'object',
           properties: {
             token: { type: 'string' },
-            newPassword: { type: 'string', minLength: 8 },
+            newPassword: { type: 'string', minLength: 8, maxLength: 128 },
           },
           required: ['token', 'newPassword'],
         },
@@ -162,6 +266,8 @@ export function buildOpenApiSpec() {
               type: 'string',
               enum: ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'ACCEPTED', 'REJECTED', 'PUBLISHED'],
             },
+            generalAccess: { $ref: '#/components/schemas/GeneralAccess' },
+            access: { $ref: '#/components/schemas/ManuscriptAccess' },
             createdBy: { type: 'string', format: 'uuid' },
             currentServerRev: { type: 'integer' },
             version: { type: 'integer' },
@@ -198,16 +304,61 @@ export function buildOpenApiSpec() {
           properties: {
             manuscriptId: { type: 'string', format: 'uuid' },
             userId: { type: 'string', format: 'uuid' },
-            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER'] },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
             createdAt: { type: 'string', format: 'date-time' },
           },
           required: ['manuscriptId', 'userId', 'role'],
+        },
+        GeneralAccess: { type: 'string', enum: ['RESTRICTED', 'VIEWER', 'EDITOR'] },
+        ManuscriptAccess: {
+          type: 'object',
+          description: 'What the current user may do with this manuscript (computed by the API rules).',
+          properties: {
+            canEdit: { type: 'boolean' },
+            canShare: { type: 'boolean' },
+            canDelete: { type: 'boolean' },
+          },
+          required: ['canEdit', 'canShare', 'canDelete'],
+        },
+        ManuscriptMemberDetail: {
+          type: 'object',
+          properties: {
+            manuscriptId: { type: 'string', format: 'uuid' },
+            userId: { type: 'string', format: 'uuid' },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
+            createdAt: { type: 'string', format: 'date-time' },
+            email: { type: 'string', nullable: true },
+            displayName: { type: 'string', nullable: true },
+          },
+          required: ['manuscriptId', 'userId', 'role'],
+        },
+        ManuscriptSharing: {
+          type: 'object',
+          properties: {
+            generalAccess: { $ref: '#/components/schemas/GeneralAccess' },
+            members: { type: 'array', items: { $ref: '#/components/schemas/ManuscriptMemberDetail' } },
+          },
+          required: ['generalAccess', 'members'],
+        },
+        UpdateGeneralAccessRequest: {
+          type: 'object',
+          properties: { generalAccess: { $ref: '#/components/schemas/GeneralAccess' } },
+          required: ['generalAccess'],
+        },
+        PersonResult: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            email: { type: 'string' },
+            displayName: { type: 'string', nullable: true },
+          },
+          required: ['id', 'email'],
         },
         AddManuscriptMemberRequest: {
           type: 'object',
           properties: {
             userId: { type: 'string', format: 'uuid' },
-            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER'] },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
           },
           required: ['userId', 'role'],
         },
@@ -414,10 +565,33 @@ export function buildOpenApiSpec() {
           },
         },
       },
-      '/api/v1/auth/invite': {
+      '/api/v1/users': {
+        get: {
+          tags: ['Users'],
+          summary: 'List users with their role assignments',
+          operationId: 'listUsers',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Paginated users',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/UserListResponse' } },
+              },
+            },
+            '401': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/users/invite': {
         post: {
-          tags: ['Auth'],
-          summary: 'Invite new user',
+          tags: ['Users'],
+          summary: 'Invite new user (returns a one-time activation link)',
           operationId: 'inviteUser',
           security: [{ bearerAuth: [] }],
           requestBody: {
@@ -430,11 +604,92 @@ export function buildOpenApiSpec() {
             '201': {
               description: 'User invited successfully',
               content: {
-                'application/json': { schema: { $ref: '#/components/schemas/UserSummary' } },
+                'application/json': { schema: { $ref: '#/components/schemas/InviteUserResponse' } },
               },
             },
             '400': { $ref: '#/components/responses/ProblemResponse' },
             '401': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+            '409': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/users/invitations': {
+        get: {
+          tags: ['Users'],
+          summary: 'List pending invitations',
+          operationId: 'listInvitations',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Pending invitations (raw tokens are never included)',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/PendingInvitation' } },
+                },
+              },
+            },
+            '401': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/users/{id}/resend-invite': {
+        post: {
+          tags: ['Users'],
+          summary: 'Issue a new activation link (the previous link stops working)',
+          operationId: 'resendInvite',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '200': {
+              description: 'New activation link',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/InviteUserResponse' } },
+              },
+            },
+            '401': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+            '404': { $ref: '#/components/responses/ProblemResponse' },
+            '409': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/users/{id}/invitation': {
+        delete: {
+          tags: ['Users'],
+          summary: 'Revoke a pending invitation',
+          operationId: 'revokeInvitation',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '200': {
+              description: 'Invitation revoked',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/SuccessMessageResponse' } },
+              },
+            },
+            '401': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+            '404': { $ref: '#/components/responses/ProblemResponse' },
+            '409': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/journals': {
+        get: {
+          tags: ['Journals'],
+          summary: 'List journals',
+          operationId: 'listJournals',
+          responses: {
+            '200': {
+              description: 'Journals',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/Journal' } },
+                },
+              },
+            },
           },
         },
       },
@@ -492,14 +747,14 @@ export function buildOpenApiSpec() {
             '200': {
               description: 'Current user profile',
               content: {
-                'application/json': { schema: { $ref: '#/components/schemas/UserSummary' } },
+                'application/json': { schema: { $ref: '#/components/schemas/AccountProfile' } },
               },
             },
             '401': { $ref: '#/components/responses/ProblemResponse' },
           },
         },
       },
-      '/api/v1/access/roles': {
+      '/api/v1/roles': {
         get: {
           tags: ['Access'],
           summary: 'List available roles',
@@ -521,7 +776,7 @@ export function buildOpenApiSpec() {
           },
         },
       },
-      '/api/v1/access/permissions': {
+      '/api/v1/permissions': {
         get: {
           tags: ['Access'],
           summary: 'List available permissions',
@@ -543,7 +798,7 @@ export function buildOpenApiSpec() {
           },
         },
       },
-      '/api/v1/access/roles/assign': {
+      '/api/v1/roles/assign': {
         post: {
           tags: ['Access'],
           summary: 'Assign role to user',
@@ -575,9 +830,7 @@ export function buildOpenApiSpec() {
             '401': { $ref: '#/components/responses/ProblemResponse' },
           },
         },
-      },
-      '/api/v1/access/roles/revoke': {
-        post: {
+        delete: {
           tags: ['Access'],
           summary: 'Revoke role from user',
           operationId: 'revokeRole',
@@ -628,6 +881,7 @@ export function buildOpenApiSpec() {
                 enum: ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'ACCEPTED', 'REJECTED', 'PUBLISHED'],
               },
             },
+            { name: 'scope', in: 'query', schema: { type: 'string', enum: ['mine', 'public', 'shared'], default: 'mine' } },
             { name: 'sortBy', in: 'query', schema: { type: 'string', default: 'updatedAt' } },
             { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
           ],
@@ -750,10 +1004,7 @@ export function buildOpenApiSpec() {
               description: 'List of members',
               content: {
                 'application/json': {
-                  schema: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/ManuscriptMember' },
-                  },
+                  schema: { $ref: '#/components/schemas/ManuscriptSharing' },
                 },
               },
             },
@@ -783,6 +1034,63 @@ export function buildOpenApiSpec() {
             },
             '400': { $ref: '#/components/responses/ProblemResponse' },
             '401': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/{id}/members/{userId}': {
+        delete: {
+          tags: ['Manuscripts'],
+          summary: 'Remove a member from a manuscript',
+          operationId: 'removeManuscriptMember',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'userId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            '200': { description: 'Member removed' },
+            '400': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/{id}/general-access': {
+        put: {
+          tags: ['Manuscripts'],
+          summary: 'Set who in the system can open the manuscript',
+          operationId: 'setManuscriptGeneralAccess',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/UpdateGeneralAccessRequest' } },
+            },
+          },
+          responses: {
+            '200': { description: 'Updated' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/people': {
+        get: {
+          tags: ['Manuscripts'],
+          summary: 'Search active members by email or name (to share a manuscript with)',
+          operationId: 'searchManuscriptPeople',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 } }],
+          responses: {
+            '200': {
+              description: 'Matching people',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/PersonResult' } },
+                },
+              },
+            },
           },
         },
       },
