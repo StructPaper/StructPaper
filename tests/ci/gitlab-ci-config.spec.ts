@@ -48,10 +48,10 @@ describe('.gitlab-ci.yml deploy configuration', () => {
     expect(script).toContain('"deploy $CI_COMMIT_SHORT_SHA"');
   });
 
-  it('runs the SSH deploy before the informational environment retag', () => {
+  it('retags the environment tags before triggering the SSH deploy', () => {
     const script = (deployTemplate.script ?? []).join('\n');
-    expect(script.indexOf('deploy $CI_COMMIT_SHORT_SHA')).toBeLessThan(
-      script.indexOf('imagetools create'),
+    expect(script.indexOf('imagetools create')).toBeLessThan(
+      script.indexOf('deploy $CI_COMMIT_SHORT_SHA'),
     );
   });
 

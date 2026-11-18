@@ -269,8 +269,19 @@ build:push:
       if [ -f "$SSH_PRIVATE_KEY" ]; then cp "$SSH_PRIVATE_KEY" ~/.ssh/id_deploy
       else printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_deploy; fi
     - chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+    - |
+      # Retag the environment tags (:staging / :prod / :latest) on the registry BEFORE SSH deploy
+      # so that both SHA pinning and fallback :staging tags in .env are guaranteed to exist.
+      echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      for service in api worker web db-init; do
+        for tag in $DEPLOY_TAGS; do
+          docker buildx imagetools create \
+            --tag "$CI_REGISTRY_IMAGE/$service:$tag" \
+            "$CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHORT_SHA"
+        done
+      done
     # The VM pins every image to :<sha> (forced command -> validate-and-deploy.sh -> deploy.sh),
-    # so the deployed version never depends on the mutable environment tags below.
+    # or falls back to the newly retagged environment tags in .env.
     - >
       ssh -i ~/.ssh/id_deploy
       -o IdentitiesOnly=yes
@@ -279,19 +290,6 @@ build:push:
       -o ConnectTimeout=15
       -o ServerAliveInterval=30
       "$DEPLOY_USER@$DEPLOY_HOST" "deploy $CI_COMMIT_SHORT_SHA"
-    - |
-      # Informational retag of :staging / :prod / :latest after a verified deploy. A registry
-      # hiccup here must not turn a successful deploy red, so failures are only warnings.
-      retag_failed=0
-      echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY" || retag_failed=1
-      for service in api worker web db-init; do
-        for tag in $DEPLOY_TAGS; do
-          docker buildx imagetools create \
-            --tag "$CI_REGISTRY_IMAGE/$service:$tag" \
-            "$CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHORT_SHA" || retag_failed=1
-        done
-      done
-      [ "$retag_failed" = 0 ] || echo "WARNING: environment tag update failed; the VM still runs :$CI_COMMIT_SHORT_SHA."
   after_script:
     - rm -f ~/.ssh/id_deploy
     - docker logout "$CI_REGISTRY" 2>/dev/null || true
