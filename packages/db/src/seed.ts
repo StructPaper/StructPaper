@@ -92,7 +92,7 @@ export const VNUHCM_DEFAULT_JOURNALS = [
     name: 'Tạp chí Phát triển KH&CN - Kỹ thuật và Công nghệ',
     shortName: 'ET',
     issn: '2734-9365',
-    color: '#0F4761',
+    color: '#000000',
     latexCls: 'structpaper-et.cls',
     articleTypes: ['research', 'review', 'methodology'],
   },

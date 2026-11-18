@@ -91,6 +91,20 @@ startxref
     return this.queue.run(userId, () => this.compileUncached(options, texContent, cacheKey));
   }
 
+  /** Journal branding images the template includes (open-access padlock, check-for-updates badge, press logo). */
+  private copyBrandingResources(tempDir: string): void {
+    const candidates = [
+      path.resolve(__dirname, '../../../../resources/latex'),
+      path.resolve(process.cwd(), 'resources/latex'),
+      path.resolve(process.cwd(), 'apps/api/resources/latex'),
+    ];
+    const dir = candidates.find((d) => fs.existsSync(d));
+    if (!dir) return;
+    for (const name of fs.readdirSync(dir)) {
+      if (/\.(png|jpe?g)$/i.test(name)) fs.copyFileSync(path.join(dir, name), path.join(tempDir, name));
+    }
+  }
+
   private async compileUncached(options: CompileLatexRequest, texContent: string, cacheKey: string): Promise<CompileLatexResult> {
     const runId = crypto.randomUUID();
     const tempDir = path.join(os.tmpdir(), `structpaper-api-compile-${runId}`);
@@ -121,6 +135,7 @@ startxref
       }
 
       fs.writeFileSync(texFilePath, processedTex, 'utf-8');
+      this.copyBrandingResources(tempDir);
 
       if (options.images && typeof options.images === 'object') {
         for (const [filename, base64Content] of Object.entries(options.images)) {

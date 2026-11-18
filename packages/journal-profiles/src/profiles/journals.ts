@@ -80,7 +80,7 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
       en: 'Science & Technology Development Journal - Engineering and Technology',
       short: 'VNUHCM-ET',
     },
-    color: '#0F4761', // Official Steel Blue/Dark Slate RGB(15, 71, 97) - Verified in ET ID1563.pdf
+    color: '#000000', // The ET sample PDF (ET ID1563) has no brand colour: title, headings and rules are plain black
     frontMatter: {
       doiPattern: '^10\\.32508/vnuhcm-et\\.\\d+$',
     },

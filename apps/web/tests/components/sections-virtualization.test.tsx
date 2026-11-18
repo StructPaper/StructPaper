@@ -5,7 +5,7 @@ import React, { useState, useCallback } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { createEmptyPaper, type CompletePaper, type PaperSection } from '@/types/paper';
-import * as docxExtractor from '@/lib/docx-extractor';
+import * as qualityModule from '@/lib/validation/quality';
 
 const { headerRenderCounts } = vi.hoisted(() => ({
   headerRenderCounts: new Map<string, number>(),
@@ -362,7 +362,7 @@ describe('SectionsTab virtualization, memoization & performance (Task 3)', () =>
   });
 
   it('updates deferred preflight QC check cleanly in UnifiedEditorView when sections change', async () => {
-    const preflightSpy = vi.spyOn(docxExtractor, 'computePreflightCheck');
+    const preflightSpy = vi.spyOn(qualityModule, 'computeQualityCheck');
 
     const basePaper = createEmptyPaper('VNUHCM-HS');
     basePaper.metadata.title = 'Nghiên cứu thử nghiệm kiểm định cấu trúc bản thảo';

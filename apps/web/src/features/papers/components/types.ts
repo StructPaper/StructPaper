@@ -79,7 +79,7 @@ export const JOURNAL_COLOR_MAP: Record<string, string> = {
   hs: '#2B74B7',
   ssh: '#0000FF',
   ebl: '#8F0B97',
-  et: '#0F4761',
+  et: '#000000',
   ees: '#0C712F',
   arns: '#FF0000',
 };

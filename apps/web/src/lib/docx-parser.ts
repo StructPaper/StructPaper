@@ -613,6 +613,9 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
                 // Runs of one name are contiguous ("Nguy" + "ễ" + "n Thanh H"): keep the raw text,
                 // do not insert a space between runs (that produced "Nguyễ n").
                 curName += parts[partIdx].replace(/[\d*()]/g, '');
+              } else if (curName) {
+                // a run holding only a space ("Viên Vinh" + " " + "Phú") still separates two words
+                curName += parts[partIdx];
               }
             }
           }

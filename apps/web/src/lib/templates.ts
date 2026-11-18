@@ -81,7 +81,7 @@ export const JOURNAL_TEMPLATES: Record<string, JournalTemplate> = {
     name: 'Tạp chí Phát triển Khoa học & Công nghệ – Kỹ thuật & Công nghệ',
     shortName: 'Sci. Tech. Dev. J. - Eng. Tech.',
     publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
-    color: '#0F4761', // Official Steel Blue/Dark Slate RGB(15, 71, 97) - Verified in ET ID1563.pdf
+    color: '#000000', // The ET sample PDF (ET ID1563) has no brand colour: title, headings and rules are plain black
     accentColor: '#F8AB60',
     issn: '2588-1205',
     headerText: 'Tạp chí Phát triển KH&CN – Kỹ thuật & Công nghệ',

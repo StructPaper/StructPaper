@@ -463,6 +463,8 @@ export interface StructuralIssue {
   message: string;
   suggestion: string;
   fixTab?: 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation';
+  /** Stable machine code when the issue comes from the shared validation rules (e.g. "numbering.table"). */
+  code?: string;
 }
 
 export interface PreflightCheck {

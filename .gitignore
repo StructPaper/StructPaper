@@ -86,3 +86,4 @@ scripts/jats/dtd/
 # --- Fonts baked into API image (licensed, not committed) ---
 docker/fonts/*
 !docker/fonts/README.md
+!docker/fonts/SourceSans3-*.ttf

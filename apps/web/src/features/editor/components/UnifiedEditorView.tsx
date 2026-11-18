@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
-import { computePreflightCheck } from '@/lib/docx-extractor';
+import { computeQualityCheck } from '@/lib/validation/quality';
 import { JOURNAL_TEMPLATES } from '@/lib/templates';
 import { usePaper } from '@/context/PaperContext';
 import { sileo, toast } from '@/components/toast';
@@ -368,7 +368,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   }, [paper.id, paper.displayName, formData.id, formData.displayName]);
   const deferredFormData = useDeferredValue(formData);
   const preflight = useMemo(
-    () => computePreflightCheck(deferredFormData),
+    () => computeQualityCheck(deferredFormData),
     [deferredFormData]
   );
 
