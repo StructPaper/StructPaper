@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ProfilePinSchema } from '../journals/journal.contract';
 
 export const ManuscriptStatusEnum = z.enum([
   'DRAFT',
@@ -53,6 +54,10 @@ export type ManuscriptMemberRole = z.infer<typeof ManuscriptMemberRoleEnum>;
 
 export const CreateManuscriptSchema = z.object({
   journalId: z.string().optional(),
+  /** Code of one of the journal's article types ("research"). Unknown codes are ignored. */
+  articleType: z.string().optional(),
+  /** The profile versions the client laid the paper out with; absent: the published ones. */
+  profilePin: ProfilePinSchema.optional(),
   title: z.string().min(1, 'Title is required').max(500),
   abstract: z.string().nullable().optional(),
   metadata: z.record(z.any()).optional().default({}),
@@ -126,6 +131,10 @@ export const ManuscriptResponseSchema = z.object({
   createdBy: z.string().uuid(),
   currentServerRev: z.number().int().nonnegative(),
   version: z.number().int().positive(),
+  /** The profile versions the paper is laid out under; only an explicit upgrade moves them. */
+  profilePin: ProfilePinSchema.optional(),
+  /** Code of the paper's article type ("research"). */
+  articleType: z.string().nullable().optional(),
   metadata: z.record(z.any()),
   createdAt: z.union([z.string().datetime(), z.date()]),
   updatedAt: z.union([z.string().datetime(), z.date()]),

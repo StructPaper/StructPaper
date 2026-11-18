@@ -26,6 +26,16 @@ vi.mock('@/components/toast', () => ({
   },
 }));
 
+// The editor saves through the API: record the calls instead of reaching a server
+const api = vi.hoisted(() => ({
+  updateJournal: vi.fn(),
+  createJournal: vi.fn(),
+  createProfileDraft: vi.fn(),
+  validateProfileDraft: vi.fn(),
+  publishProfileDraft: vi.fn(),
+}));
+vi.mock('@structpaper/api-client', async (importOriginal) => ({ ...(await importOriginal<typeof import('@structpaper/api-client')>()), ...api }));
+
 // Suppress unhandled rejection on happy-dom animation cancel on unmount
 if (typeof Element !== 'undefined' && Element.prototype.animate) {
   const origAnimate = Element.prototype.animate;
@@ -55,6 +65,7 @@ import {
 
 describe('Task 5: Journal Profile & Template Management UI', () => {
   beforeEach(() => {
+    Object.values(api).forEach((fn) => fn.mockReset());
     mockPush.mockClear();
     localStorage.clear();
   });
@@ -209,7 +220,8 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
       expect(screen.getAllByText('Số cột nội dung').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('saves changes to localStorage on "Lưu Thay Đổi" after confirming warning modal', () => {
+    it('saves a changed code through the API (If-Match not sent without a server version) after confirming', async () => {
+      api.updateJournal.mockResolvedValue({ version: 2 });
       render(<JournalDetailEditor initialManaged={sampleManaged} isNew={false} />);
 
       // Modify short code input
@@ -225,11 +237,14 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
       expect(screen.getByText('Lưu cấu hình tạp chí?')).toBeDefined();
 
       // Click confirm in modal
-      const confirmBtn = screen.getByTestId('confirm-save-template-btn');
-      fireEvent.click(confirmBtn);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-save-template-btn'));
+      });
 
-      const stored = getManagedJournalById('hs');
-      expect(stored?.profile.names?.short).toBe('STDJ-HEALTH');
+      await waitFor(() => expect(api.updateJournal).toHaveBeenCalledTimes(1));
+      expect(api.updateJournal).toHaveBeenCalledWith('hs', { code: 'STDJ-HEALTH' }, undefined);
+      // only the code changed: no new profile version
+      expect(api.createProfileDraft).not.toHaveBeenCalled();
     });
 
     it('rejects saving when template short code or name conflicts with existing journal', () => {

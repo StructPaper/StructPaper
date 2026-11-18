@@ -1,58 +1,53 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-  getManagedJournalById,
-  ManagedJournalProfile,
-} from '@/lib/templates/journal-storage';
+import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { JournalDetailEditor } from '@/features/templates';
-import { resolveProfile } from '@structpaper/journal-profiles';
+import { useJournalEditorData } from '@/features/journals';
+import { BASE_PROFILE } from '@structpaper/journal-profiles';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, WifiOff } from 'lucide-react';
+
+/** A blank profile for the "new journal" page: the rules every journal shares, and nothing of another journal's own. */
+function newJournalDraft(): ManagedJournalProfile | null {
+  try {
+    const suffix = Date.now().toString().slice(-4);
+    return {
+      id: `journal-${suffix}`,
+      status: 'draft',
+      isCustom: true,
+      profile: {
+        ...structuredClone(BASE_PROFILE),
+        id: `new-journal-${suffix}`,
+        names: {
+          vi: 'Tạp chí Khoa học Mới',
+          en: 'New Academic Scientific Journal',
+          short: 'NEW-J',
+        },
+        color: '#1e3a8a',
+        publication: { publisher: 'ĐHQG TP.HCM / VNU-HCM Press' },
+      },
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (e) {
+    console.error('Failed to init new journal:', e);
+    return null;
+  }
+}
 
 export default function JournalDetailClient({ id }: { id: string }) {
   const isNew = id === 'new';
 
-  const [managed, setManaged] = useState<ManagedJournalProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const [draft, setDraft] = useState<ManagedJournalProfile | null>(null);
   useEffect(() => {
-    if (!id) return;
+    if (isNew) setDraft(newJournalDraft());
+  }, [isNew]);
 
-    if (isNew) {
-      // Create fresh blank profile derived from standard base
-      try {
-        const baseResolved = resolveProfile('std');
-        setManaged({
-          id: `journal-${Date.now().toString().slice(-4)}`,
-          status: 'draft',
-          isCustom: true,
-          profile: {
-            ...baseResolved,
-            id: `new-journal-${Date.now().toString().slice(-4)}`,
-            names: {
-              vi: 'Tạp chí Khoa học Mới',
-              en: 'New Academic Scientific Journal',
-              short: 'NEW-J',
-            },
-            color: '#1e3a8a',
-          },
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.error('Failed to init new journal:', e);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+  // The journal as the server holds it: name, code, colour, status and its resolved layout rules.
+  const { managed: served, serverVersion, isLoading, notFound, isOffline } = useJournalEditorData(id, !isNew);
+  const managed = isNew ? draft : served;
 
-    const found = getManagedJournalById(id);
-    setManaged(found);
-    setLoading(false);
-  }, [id, isNew]);
-
-  if (loading) {
+  if (isLoading || (isNew && !draft)) {
     return (
       <div className="h-64 flex items-center justify-center text-slate-400 text-xs font-bold animate-pulse">
         Đang nạp hồ sơ quy định tạp chí...
@@ -60,7 +55,7 @@ export default function JournalDetailClient({ id }: { id: string }) {
     );
   }
 
-  if (!managed) {
+  if (!managed || notFound) {
     return (
       <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-slate-200/90 text-center shadow-xs space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
@@ -83,5 +78,15 @@ export default function JournalDetailClient({ id }: { id: string }) {
     );
   }
 
-  return <JournalDetailEditor initialManaged={managed} isNew={isNew} />;
+  return (
+    <>
+      {isOffline && (
+        <div className="mx-3 mt-2 flex items-center gap-2 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-bold text-amber-800" role="status">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>Không kết nối được máy chủ: đang xem bản lưu trên máy này, chưa thể lưu thay đổi.</span>
+        </div>
+      )}
+      <JournalDetailEditor key={managed.id} initialManaged={managed} isNew={isNew} serverVersion={serverVersion} />
+    </>
+  );
 }

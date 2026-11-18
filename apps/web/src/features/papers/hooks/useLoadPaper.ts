@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGetManuscript, isMockModeEnabled, type Manuscript } from '@structpaper/api-client';
 import { loadPaperFromIndexedDb, savePaperToIndexedDb } from '@/lib/storage/paper-sync';
 import { normalizeWorkflowStatus } from '../components/types';
+import { useSessionReady } from '@/features/auth';
 import type { CompletePaper } from '@/types/paper';
 
 export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
@@ -18,7 +19,7 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
       title: ms.title,
       titleEn: meta.titleEn,
       articleType: meta.articleType || 'Bài báo nghiên cứu',
-      journalId: ms.journalId || meta.journalId || 'vnu-jst',
+      journalId: ms.journalId || meta.journalId || 'VNUHCM-STD',
       journalName: meta.journalName || 'Tạp chí Khoa học ĐHQGHN',
       journalAbbv: meta.journalAbbv || 'VNU J. Sci.',
       authors: meta.authors || [],
@@ -45,7 +46,9 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
     sections: doc?.sections || rawMeta?.sections || [],
     references: doc?.references || rawMeta?.references || [],
     layoutSettings: doc?.layoutSettings || rawMeta?.layoutSettings,
-    templateId: doc?.templateId || rawMeta?.templateId || 'vnu-jst',
+    profilePin: (ms as any).profilePin,
+    articleTypeCode: (ms as any).articleType ?? undefined,
+    templateId: doc?.templateId || rawMeta?.templateId || 'vnuhcm-std',
     templateName: doc?.templateName || rawMeta?.templateName,
     status: normalizeWorkflowStatus(ms.status || (ms as any).workflowStatus),
     workflowStatus: normalizeWorkflowStatus(ms.status || (ms as any).workflowStatus),
@@ -70,6 +73,8 @@ export function useLoadPaper(paperId?: string | null): UseLoadPaperReturn {
   const [localError, setLocalError] = useState<any>(null);
 
   const isMock = isMockModeEnabled();
+  // after a reload the access token is gone until the session is restored: asking before that would be asking as a guest
+  const sessionReady = useSessionReady();
   const validId = Boolean(paperId && paperId.trim().length > 0);
 
   // 1. Fetch from NestJS Backend
@@ -81,7 +86,7 @@ export function useLoadPaper(paperId?: string | null): UseLoadPaperReturn {
     refetch: refetchServer,
   } = useGetManuscript(paperId || '', {
     query: {
-      enabled: validId && !isMock,
+      enabled: validId && !isMock && sessionReady,
       retry: false,
     },
   });
@@ -130,6 +135,9 @@ export function useLoadPaper(paperId?: string | null): UseLoadPaperReturn {
         status: normalizeWorkflowStatus(serverData.status || (localPaper as any).workflowStatus || localPaper.status),
         workflowStatus: normalizeWorkflowStatus(serverData.status || (localPaper as any).workflowStatus || localPaper.status),
         version: (serverData as any).version || (localPaper as any).version,
+        // the profile versions the paper is pinned to are the server's to decide
+        profilePin: (serverData as any).profilePin ?? localPaper.profilePin,
+        articleTypeCode: (serverData as any).articleType ?? localPaper.articleTypeCode,
         updatedAt: serverData.updatedAt || localPaper.updatedAt,
       };
       setLocalPaper(updated);
@@ -152,7 +160,7 @@ export function useLoadPaper(paperId?: string | null): UseLoadPaperReturn {
 
   // Computed state
   const isOffline = Boolean(isServerError && localPaper);
-  const isLoading = localLoading || (validId && !isMock && !localPaper && isServerLoading);
+  const isLoading = localLoading || (validId && !isMock && !localPaper && (isServerLoading || !sessionReady));
   const isError = Boolean(!localPaper && (localError || (validId && !isMock && isServerError)));
   const error = localError || serverError;
 

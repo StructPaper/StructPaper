@@ -1,4 +1,4 @@
-import { JOURNAL_TEMPLATES } from './templates';
+import { findJournalTemplate, listJournalTemplates } from './templates';
 
 /** Lower case, no diacritics, "&" and "và" read as "and", everything else a single space. */
 const fold = (s: string): string =>
@@ -30,12 +30,17 @@ export function identifyJournal(text: string, fileName?: string): string | null 
   // DOI prefix of the journals: 10.32508/vnuhcmj-hs ..., and the older 10.32508/stdj...
   for (const m of raw.matchAll(/10\.32508\/(vnuhcmj-([a-z]+)|stdj)/g)) {
     const id = m[2] ? `VNUHCM-${m[2].toUpperCase()}` : 'VNUHCM-STD';
-    if (JOURNAL_TEMPLATES[id]) found.add(canonical(id));
+    if (findJournalTemplate(id)) found.add(canonical(id));
+  }
+
+  // DOI prefix a journal declares for itself (a journal an admin added has no fixed pattern)
+  for (const t of listJournalTemplates()) {
+    if (t.doiPrefix && raw.includes(t.doiPrefix.toLowerCase())) found.add(canonical(t.id));
   }
 
   // ISSN, which only counts when exactly one journal owns it
   const byIssn = new Map<string, Set<string>>();
-  for (const t of Object.values(JOURNAL_TEMPLATES)) {
+  for (const t of listJournalTemplates()) {
     for (const issn of [t.issn, t.eIssn].filter(Boolean) as string[]) {
       if (!byIssn.has(issn)) byIssn.set(issn, new Set());
       byIssn.get(issn)!.add(canonical(t.id));
@@ -46,7 +51,7 @@ export function identifyJournal(text: string, fileName?: string): string | null 
   }
 
   // Names the journal prints about itself
-  for (const t of Object.values(JOURNAL_TEMPLATES)) {
+  for (const t of listJournalTemplates()) {
     const phrases = [t.officialNameEn, t.officialAbbvEn, t.headerText, t.name].filter(Boolean).map((p) => fold(p as string));
     if (phrases.some((p) => p.length > 8 && folded.includes(` ${p} `))) found.add(canonical(t.id));
   }

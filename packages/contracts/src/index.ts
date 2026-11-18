@@ -6,3 +6,4 @@ export * from './manuscripts/manuscript.contract';
 export * from './sync/sync.contract';
 export * from './assets/asset.contract';
 export * from './compile/compile.contract';
+export * from './journals/journal.contract';

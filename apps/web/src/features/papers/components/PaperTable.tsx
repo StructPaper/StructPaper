@@ -1,5 +1,6 @@
 'use client';
 
+import { JournalCodeBadge } from '@/features/journals';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,8 +12,6 @@ import {
   Clock,
 } from 'lucide-react';
 import {
-  getJournalColor,
-  getJournalShortName,
   getManuscriptTitle,
   getManuscriptAuthors,
   getWorkflowStatusConfig,
@@ -153,8 +152,6 @@ export const PaperTable: React.FC<PaperTableProps> = ({
               const { info, doc } = paper;
               const title = getManuscriptTitle(paper);
               const authors = getManuscriptAuthors(paper);
-              const journalColor = getJournalColor(doc.journalId, paper);
-              const journalShort = getJournalShortName(doc.journalId, paper);
               const statusConfig = getWorkflowStatusConfig(
                 info.workflowStatus || (paper as any).status || (paper as any).remoteData?.status
               );
@@ -210,12 +207,7 @@ export const PaperTable: React.FC<PaperTableProps> = ({
                   {/* Journal */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className="font-extrabold text-[11px]"
-                        style={{ color: journalColor }}
-                      >
-                        {journalShort}
-                      </span>
+                      <JournalCodeBadge variant="text" journalId={doc.journalId} record={paper} />
                     </div>
                   </td>
 

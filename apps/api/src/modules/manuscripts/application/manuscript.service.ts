@@ -14,6 +14,8 @@ import {
   manuscriptVisits,
   manuscriptDocs,
   journals,
+  articleTypes,
+  manuscriptProfileSnapshots,
   outboxEvents,
   eq,
   and,
@@ -37,6 +39,8 @@ import type {
 } from '@structpaper/contracts';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
 import { accessOf } from '../domain/manuscript-access';
+import { journalSummary } from '../domain/journal-summary';
+import { ProfileResolveService } from '../../journals/application/profile-resolve.service';
 
 export interface CursorPayload {
   id: string;
@@ -49,6 +53,9 @@ export class ManuscriptService {
     @Optional()
     @Inject('DRIZZLE')
     private readonly db: any,
+    @Optional()
+    @Inject(ProfileResolveService)
+    private readonly profiles?: ProfileResolveService,
   ) {}
 
   /**
@@ -106,9 +113,18 @@ export class ManuscriptService {
       journalId = '00000000-0000-0000-0000-000000000000';
     }
 
+    // the profile versions this paper is written under, and the rules resolved from them
+    let pinned: Awaited<ReturnType<ProfileResolveService['pinFor']>> | undefined;
+    if (this.db && this.profiles && /^[0-9a-f]{8}-/i.test(journalId)) {
+      const [journalRow] = await this.db.select().from(journals).where(eq(journals.id, journalId)).limit(1);
+      if (journalRow) pinned = await this.profiles.pinFor(journalRow, dto.articleType, dto.profilePin);
+    }
+
     const manuscriptRecord = {
       id: manuscriptId,
       journalId,
+      articleTypeId: pinned?.articleTypeId ?? null,
+      profilePin: pinned?.pin ?? {},
       title: dto.title,
       abstract: dto.abstract || null,
       status: 'DRAFT' as const,
@@ -138,6 +154,15 @@ export class ManuscriptService {
       await tx.insert(manuscripts).values(manuscriptRecord);
       await tx.insert(manuscriptMembers).values(memberRecord);
       await tx.insert(manuscriptDocs).values(docRecord);
+      if (pinned) {
+        await tx.insert(manuscriptProfileSnapshots).values({
+          manuscriptId,
+          pin: pinned.pin,
+          resolved: pinned.resolved,
+          hash: crypto.createHash('sha256').update(JSON.stringify(pinned.resolved)).digest('hex'),
+          reason: 'create',
+        });
+      }
     };
 
     if (this.db) {
@@ -148,7 +173,89 @@ export class ManuscriptService {
       }
     }
 
-    return manuscriptRecord;
+    return { ...manuscriptRecord, articleType: pinned?.articleType ?? null };
+  }
+
+  /**
+   * Moves a paper to the rules now published for its journal and article type. The paper never moves on its
+   * own: publishing new rules leaves it as it was until the author asks for this. The pin is the server's, not
+   * part of what a client saves, so it leaves the paper's version (its ETag) alone: a save in flight stays valid.
+   */
+  async upgradeProfile(id: string, userAbility?: AppAbility): Promise<{ upgraded: boolean; profilePin: Record<string, number | undefined>; version: number }> {
+    const manuscript = await this.findManuscriptById(id);
+    if (!manuscript) throw new NotFoundException(`Manuscript with ID ${id} not found`);
+    if (userAbility && !userAbility.can('update', subject('Manuscript', manuscript))) {
+      throw new ForbiddenException('You do not have permission to change this manuscript');
+    }
+    if (!this.db || !this.profiles) throw new BadRequestException('Profile upgrade needs the database');
+
+    const [journalRow] = await this.db.select().from(journals).where(eq(journals.id, manuscript.journalId)).limit(1);
+    if (!journalRow) throw new NotFoundException('The journal of this manuscript no longer exists');
+    const latest = await this.profiles.pinFor(journalRow, manuscript.articleType ?? undefined);
+    const current = manuscript.profilePin || {};
+    const same = ['base', 'journal', 'articleType'].every((k) => (current as any)[k] === (latest.pin as any)[k]);
+    if (same) return { upgraded: false, profilePin: current, version: manuscript.version || 1 };
+
+    await this.db.transaction(async (tx: any) => {
+      await tx.update(manuscripts).set({ profilePin: latest.pin, updatedAt: new Date() }).where(eq(manuscripts.id, id));
+      await tx.insert(manuscriptProfileSnapshots).values({
+        manuscriptId: id,
+        pin: latest.pin,
+        resolved: latest.resolved,
+        hash: crypto.createHash('sha256').update(JSON.stringify(latest.resolved)).digest('hex'),
+        reason: 'profile_upgrade',
+      });
+    });
+    return { upgraded: true, profilePin: latest.pin, version: manuscript.version || 1 };
+  }
+
+  /**
+   * Moves a paper to another article type of its journal, or to none. The paper keeps the base and journal rules it is
+   * pinned to; the new type brings its own published rules, which is what the author asked for by choosing it.
+   */
+  async changeArticleType(
+    id: string,
+    articleTypeCode: string | null,
+    userAbility?: AppAbility,
+  ): Promise<{ changed: boolean; articleType: string | null; profilePin: Record<string, number | undefined>; version: number }> {
+    const manuscript = await this.findManuscriptById(id);
+    if (!manuscript) throw new NotFoundException(`Manuscript with ID ${id} not found`);
+    if (userAbility && !userAbility.can('update', subject('Manuscript', manuscript))) {
+      throw new ForbiddenException('You do not have permission to change this manuscript');
+    }
+    if (!this.db || !this.profiles) throw new BadRequestException('Changing the article type needs the database');
+
+    const [journalRow] = await this.db.select().from(journals).where(eq(journals.id, manuscript.journalId)).limit(1);
+    if (!journalRow) throw new NotFoundException('The journal of this manuscript no longer exists');
+
+    let typeId: string | null = null;
+    if (articleTypeCode) {
+      const [type] = await this.db.select().from(articleTypes)
+        .where(and(eq(articleTypes.journalId, journalRow.id), eq(articleTypes.code, articleTypeCode))).limit(1);
+      if (!type) throw new BadRequestException(`Journal '${journalRow.slug}' has no article type '${articleTypeCode}'`);
+      // an archived type is no longer offered, but a paper that already has it may keep it
+      if (type.status !== 'active' && type.id !== manuscript.articleTypeId) {
+        throw new BadRequestException(`Article type '${articleTypeCode}' is no longer offered by this journal`);
+      }
+      typeId = type.id;
+    }
+    const current = manuscript.profilePin || {};
+    if ((manuscript.articleTypeId ?? null) === typeId) {
+      return { changed: false, articleType: manuscript.articleType ?? null, profilePin: current, version: manuscript.version || 1 };
+    }
+
+    const next = await this.profiles.pinFor(journalRow, articleTypeCode ?? undefined, { base: current.base, journal: current.journal });
+    await this.db.transaction(async (tx: any) => {
+      await tx.update(manuscripts).set({ articleTypeId: typeId, profilePin: next.pin, updatedAt: new Date() }).where(eq(manuscripts.id, id));
+      await tx.insert(manuscriptProfileSnapshots).values({
+        manuscriptId: id,
+        pin: next.pin,
+        resolved: next.resolved,
+        hash: crypto.createHash('sha256').update(JSON.stringify(next.resolved)).digest('hex'),
+        reason: 'article_type_change',
+      });
+    });
+    return { changed: true, articleType: articleTypeCode, profilePin: next.pin, version: manuscript.version || 1 };
   }
 
   /**
@@ -327,9 +434,11 @@ export class ManuscriptService {
       .select({
         manuscript: manuscripts,
         journal: journals,
+        articleType: articleTypes.code,
       })
       .from(manuscripts)
-      .leftJoin(journals, eq(manuscripts.journalId, journals.id));
+      .leftJoin(journals, eq(manuscripts.journalId, journals.id))
+      .leftJoin(articleTypes, eq(manuscripts.articleTypeId, articleTypes.id));
 
     if (combinedWhere) {
       itemsQuery = itemsQuery.where(combinedWhere) as any;
@@ -343,20 +452,11 @@ export class ManuscriptService {
     const items = rows.map((r: any) => {
       const ms = r.manuscript || r;
       const j = r.journal;
-      const settings = j?.settings || {};
-      const journalDto = j
-        ? {
-            id: j.id,
-            slug: j.slug,
-            code: settings.code || (j.slug ? `VNUHCM-${j.slug.replace(/^vnuhcm-/, '').toUpperCase()}` : 'VNUHCM-STD'),
-            name: j.name,
-            shortName: settings.shortName || (j.slug ? j.slug.replace(/^vnuhcm-/, '').toUpperCase() : 'STD'),
-            color: settings.color || '#000099',
-          }
-        : undefined;
+      const journalDto = journalSummary(j);
 
       return {
         ...ms,
+        articleType: r.articleType ?? null,
         journal: journalDto,
         access: accessOf(userAbility, ms),
       };
@@ -668,29 +768,22 @@ export class ManuscriptService {
         .select({
           manuscript: manuscripts,
           journal: journals,
+          articleType: articleTypes.code,
         })
         .from(manuscripts)
         .leftJoin(journals, eq(manuscripts.journalId, journals.id))
+        .leftJoin(articleTypes, eq(manuscripts.articleTypeId, articleTypes.id))
         .where(eq(manuscripts.id, id))
         .limit(1);
 
       if (rows && rows.length > 0) {
         const ms = rows[0].manuscript;
         const j = rows[0].journal;
-        const settings = j?.settings || {};
-        const journalDto = j
-          ? {
-              id: j.id,
-              slug: j.slug,
-              code: settings.code || (j.slug ? `VNUHCM-${j.slug.replace(/^vnuhcm-/, '').toUpperCase()}` : 'VNUHCM-STD'),
-              name: j.name,
-              shortName: settings.shortName || (j.slug ? j.slug.replace(/^vnuhcm-/, '').toUpperCase() : 'STD'),
-              color: settings.color || '#000099',
-            }
-          : undefined;
+        const journalDto = journalSummary(j);
 
         return {
           ...ms,
+          articleType: rows[0].articleType ?? null,
           journal: journalDto,
         };
       }

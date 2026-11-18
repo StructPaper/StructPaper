@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
-import { CompletePaper, LayoutSettings, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
+import { CompletePaper, LayoutSettings } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { getJournalTemplate } from './templates';
 import { resolveTheme, hexToRgb as themeHexToRgb } from './theme-config';
 import { sanitizeMathForLatex } from './math-text';
@@ -93,7 +94,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   const customColor = (customSettings as any)?.color || (paper as any)?.color || (metadata as any)?.journalColor;
   const journalColor = customColor || tmpl.color;
 
-  const settings = customSettings || paper.layoutSettings || DEFAULT_LAYOUT_SETTINGS;
+  const settings = customSettings || resolvePaperLayout(paper);
   const theme = resolveTheme(settings, journalColor);
   const rgb = themeHexToRgb(theme.titleColor);
   const headRgb = themeHexToRgb(theme.tableHeaderColor);

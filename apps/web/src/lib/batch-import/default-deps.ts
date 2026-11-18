@@ -1,4 +1,5 @@
-import { DEFAULT_LAYOUT_SETTINGS, normalizeCompletePaper } from '@/types/paper';
+import { normalizeCompletePaper } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
 import { fetchTitleDuplicates } from '@/lib/storage/title-duplicates';
 import { parseDocxFile } from '@/lib/docx-parser';
@@ -83,7 +84,7 @@ export function createBatchDeps(): BatchDeps {
     async compile(paper, signal) {
       const started = performance.now();
       const ready = normalizeCompletePaper(paper);
-      const tex = exportToLatex(ready, ready.layoutSettings || DEFAULT_LAYOUT_SETTINGS);
+      const tex = exportToLatex(ready, resolvePaperLayout(ready));
       const blob = await compileToPdf(tex, referencedImages(tex, await extractPaperImagesAsync(ready)), signal);
       return { blob, ms: Math.round(performance.now() - started) };
     },

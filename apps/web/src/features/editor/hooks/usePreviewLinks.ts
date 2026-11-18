@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import type { CompletePaper, PaperSection } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { assignEquationNumbers } from '@/lib/validation/numbering';
 import type { EditorTabKey } from '../components/types';
 import { usePageLayoutDefaults } from './usePageLayoutDefaults';
@@ -19,7 +20,7 @@ interface PreviewLinksOptions {
  * turning a page in the preview changes the page-layout markers and recompiles so the result shows at once.
  */
 export function usePreviewLinks({ formData, setFormData, setIsDirty, setActiveSubTab, recompile }: PreviewLinksOptions) {
-  const layoutDefaults = usePageLayoutDefaults(formData.layoutSettings);
+  const layoutDefaults = usePageLayoutDefaults(resolvePaperLayout(formData));
   const [focusRequest, setFocusRequest] = useState<{ id: string; n: number } | null>(null);
 
   const onFocusSection = useCallback(

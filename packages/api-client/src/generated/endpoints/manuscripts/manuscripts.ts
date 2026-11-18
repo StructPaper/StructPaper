@@ -26,6 +26,8 @@ import type {
 
 import type {
   AddManuscriptMemberRequest,
+  ArticleTypeChangeResult,
+  ChangeArticleTypeRequest,
   CreateManuscriptRequest,
   FindManuscriptDuplicatesParams,
   ListManuscriptsParams,
@@ -33,7 +35,9 @@ import type {
   ManuscriptMember,
   ManuscriptSharing,
   PersonResult,
+  ProblemDetails,
   ProblemResponseResponse,
+  ProfileUpgradeResult,
   SearchManuscriptPeopleParams,
   SuccessMessageResponse,
   TitleDuplicate,
@@ -891,3 +895,130 @@ export function useSearchManuscriptPeople<TData = Awaited<ReturnType<typeof sear
 
 
 
+/**
+ * @summary Move a paper to another article type of its journal
+ */
+export const changeManuscriptArticleType = (
+    id: string,
+    changeArticleTypeRequest: ChangeArticleTypeRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<ArticleTypeChangeResult>(
+      {url: `/api/v1/manuscripts/${id}/article-type`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: changeArticleTypeRequest
+    },
+      options);
+    }
+  
+
+
+export const getChangeManuscriptArticleTypeMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeManuscriptArticleType>>, TError,{id: string;data: ChangeArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeManuscriptArticleType>>, TError,{id: string;data: ChangeArticleTypeRequest}, TContext> => {
+
+const mutationKey = ['changeManuscriptArticleType'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeManuscriptArticleType>>, {id: string;data: ChangeArticleTypeRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  changeManuscriptArticleType(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeManuscriptArticleTypeMutationResult = NonNullable<Awaited<ReturnType<typeof changeManuscriptArticleType>>>
+    export type ChangeManuscriptArticleTypeMutationBody = ChangeArticleTypeRequest
+    export type ChangeManuscriptArticleTypeMutationError = ProblemDetails
+
+    /**
+ * @summary Move a paper to another article type of its journal
+ */
+export const useChangeManuscriptArticleType = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeManuscriptArticleType>>, TError,{id: string;data: ChangeArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof changeManuscriptArticleType>>,
+        TError,
+        {id: string;data: ChangeArticleTypeRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getChangeManuscriptArticleTypeMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Move a paper to the rules now published for its journal and article type
+ */
+export const upgradeManuscriptProfile = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ProfileUpgradeResult>(
+      {url: `/api/v1/manuscripts/${id}/profile/upgrade`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getUpgradeManuscriptProfileMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upgradeManuscriptProfile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof upgradeManuscriptProfile>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['upgradeManuscriptProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upgradeManuscriptProfile>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  upgradeManuscriptProfile(id,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpgradeManuscriptProfileMutationResult = NonNullable<Awaited<ReturnType<typeof upgradeManuscriptProfile>>>
+    
+    export type UpgradeManuscriptProfileMutationError = ProblemDetails
+
+    /**
+ * @summary Move a paper to the rules now published for its journal and article type
+ */
+export const useUpgradeManuscriptProfile = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upgradeManuscriptProfile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof upgradeManuscriptProfile>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+
+      const mutationOptions = getUpgradeManuscriptProfileMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    

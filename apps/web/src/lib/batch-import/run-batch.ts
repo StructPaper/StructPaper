@@ -91,7 +91,7 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
           return result;
         }, signal);
         if (signal?.aborted) throw abortError(); // cancelled while this file was being read: do not create it
-        if (picked === null) journal = autoBatchJournal(parsed.metadata?.journalId, opts.journal);
+        if (picked === null) journal = autoBatchJournal(parsed.metadata?.journalId, opts.journal, opts.catalog);
         const wanted = parsed.metadata?.title?.trim() || baseName(file.name);
         let duplicates: Array<{ title: string; uploaderName: string; mine: boolean }> = [];
         try {

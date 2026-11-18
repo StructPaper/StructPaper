@@ -27,6 +27,16 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     latex: {
       cls: 'structpaper-std.cls',
     },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Tự nhiên & Đời sống',
+      shortName: 'Sci. Tech. Dev. J.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#00245F',
+      eIssn: '2588-1469',
+      headerText: 'Science & Technology Development Journal',
+      officialNameEn: 'VNUHCM Journal of Science and Technology Development',
+      officialAbbvEn: 'VNUHCMJ. Sci. Technol. Dev.',
+    },
   },
   hs: {
     id: 'hs',
@@ -41,6 +51,17 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     },
     latex: {
       cls: 'structpaper-hs.cls',
+    },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Health Sciences',
+      shortName: 'Sci. Tech. Dev. J. - Health Sci.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#E65100',
+      eIssn: '2734-9276',
+      headerText: 'Tạp chí Phát triển Khoa học và Công nghệ – Health Sciences',
+      officialNameEn: 'VNUHCM Journal of Health Sciences',
+      officialAbbvEn: 'VNUHCM J. Health Sci.',
+      doiPrefix: '10.32508/vnuhcmj-hs',
     },
   },
   ssh: {
@@ -57,6 +78,15 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     latex: {
       cls: 'structpaper-ssh.cls',
     },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Khoa học Xã hội & Nhân văn',
+      shortName: 'Sci. Tech. Dev. J. - Soc. Sci. Hum.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#00245F',
+      headerText: 'Tạp chí Phát triển KH&CN – Khoa học Xã hội & Nhân văn',
+      officialNameEn: 'VNUHCM Journal of Social Sciences and Humanities',
+      officialAbbvEn: 'VNUHCMJ. Soc. Sci. Humanit.',
+    },
   },
   ebl: {
     id: 'ebl',
@@ -71,6 +101,16 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     },
     latex: {
       cls: 'structpaper-ebl.cls',
+    },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Kinh tế, Luật & Quản lý',
+      shortName: 'Sci. Tech. Dev. J. - Econ. Bus. Law',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#BA68C8',
+      headerText: 'Tạp chí Phát triển KH&CN – Kinh tế, Luật & Quản lý',
+      officialNameEn: 'VNUHCM Journal of Economics, Business and Law',
+      officialAbbvEn: 'VNUHCM J. Econ. Bus. Law',
+      doiPrefix: '10.32508/vnuhcmj-ebl',
     },
   },
   et: {
@@ -87,6 +127,15 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     latex: {
       cls: 'structpaper-et.cls',
     },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Kỹ thuật & Công nghệ',
+      shortName: 'Sci. Tech. Dev. J. - Eng. Tech.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#F8AB60',
+      headerText: 'Tạp chí Phát triển KH&CN – Kỹ thuật & Công nghệ',
+      officialNameEn: 'VNUHCM Journal of Engineering and Technology',
+      officialAbbvEn: 'VNUHCM J. Eng. Technol.',
+    },
   },
   ees: {
     id: 'ees',
@@ -102,6 +151,16 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     latex: {
       cls: 'structpaper-ees.cls',
     },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Môi trường & Khoa học Trái đất',
+      shortName: 'Sci. Tech. Dev. J. - Env. Earth Sci.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#00803F',
+      headerText: 'Tạp chí Phát triển KH&CN – Môi trường & Khoa học Trái đất',
+      officialNameEn: 'VNUHCM Journal of Environment and Earth Sciences',
+      officialAbbvEn: 'VNUHCM J. Environ. Earth Sci.',
+      doiPrefix: '10.32508/vnuhcmj-ees',
+    },
   },
   arns: {
     id: 'arns',
@@ -116,6 +175,15 @@ export const JOURNAL_DEFINITIONS: Record<JournalId, JournalTierProfile> = {
     },
     latex: {
       cls: 'structpaper-arns.cls',
+    },
+    publication: {
+      name: 'Tạp chí Phát triển Khoa học & Công nghệ – Nghiên cứu Tự nhiên Nâng cao',
+      shortName: 'Sci. Tech. Dev. J. - Nat. Sci.',
+      publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
+      accentColor: '#D32F2F',
+      headerText: 'Tạp chí Phát triển KH&CN – Natural Sciences',
+      officialNameEn: 'VNUHCM Journal of Advanced Research and Natural Sciences',
+      officialAbbvEn: 'VNUHCM J. Adv. Res. Nat. Sci.',
     },
   },
 };

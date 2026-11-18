@@ -1,5 +1,6 @@
 import { CompletePaper, LayoutSettings } from '@/types/paper';
 import { JournalProfile } from '@structpaper/journal-profiles';
+import { layoutFromProfile, type LayoutProfile } from '@/lib/layout/profile-layout';
 
 /**
  * Generates a realistic mock academic research paper tailored to the given Journal Profile.
@@ -15,25 +16,8 @@ export function generateSamplePaperForJournal(
   const nameEn = merged.names?.en || 'Science and Technology Development Journal';
   const brandColor = merged.color || '#000099';
 
-  // Determine layout settings from profile
-  const columns = merged.layout?.columns === 1 ? '1-column' : '2-column';
-  const paperSize = merged.layout?.paperSize === 'a4' ? 'a4' : 'custom';
-  const columnSep = merged.layout?.columnGap ? `${merged.layout.columnGap}mm` : '1pc';
-
-  const layoutSettings: LayoutSettings & { color?: string } = {
-    paperSize,
-    columnLayout: columns,
-    fontSize: '9pt',
-    columnSep: columnSep as any,
-    lineSpacing: '1.13',
-    pageNumbering: {
-      enabled: true,
-      position: 'bottom-alternating',
-      format: 'arabic',
-      startNumber: 1,
-      suppressOnFirstPage: false,
-    },
-  };
+  // the preview is typeset with the layout the journal's rules ask for (columns, paper, type size, spacing)
+  const layoutSettings: LayoutSettings & { color?: string } = layoutFromProfile(merged as LayoutProfile);
 
   // Select article type
   const firstArticleType =

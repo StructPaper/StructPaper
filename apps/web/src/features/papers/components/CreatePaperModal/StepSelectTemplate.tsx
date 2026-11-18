@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { ManagedJournalProfile, getDefaultVnuhcmJournals } from '@/lib/templates/journal-storage';
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
+import { useJournalTemplates } from '@/features/journals';
+import { Shimmer } from '@/components/ui/Shimmer';
 import { CompactTemplateCard } from './CompactTemplateCard';
 
 interface StepSelectTemplateProps {
@@ -15,7 +17,7 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
   onConfirm,
   onBack,
 }) => {
-  const journals = getDefaultVnuhcmJournals();
+  const { templates: journals, isLoading } = useJournalTemplates();
   // Nothing is chosen up front. A card chosen again is un-chosen; without a choice it is automatic.
   const [selectedManaged, setSelectedManaged] = useState<ManagedJournalProfile | null>(null);
 
@@ -39,12 +41,13 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
         </button>
 
         <span className="text-[11px] font-bold text-slate-400">
-          7 Mẫu tạp chí ĐHQG-HCM
+          {isLoading ? '' : `${journals.length} Mẫu tạp chí ĐHQG-HCM`}
         </span>
       </div>
 
       {/* Grid of Compact Template Cards */}
       <div className="flex-1 min-h-0 overflow-y-auto p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 pr-1 custom-scrollbar">
+        {isLoading && Array.from({ length: 6 }, (_, i) => <Shimmer key={`s${i}`} className="h-[88px] w-full rounded-2xl" />)}
         {journals.map((journal) => (
           <CompactTemplateCard
             key={journal.id}

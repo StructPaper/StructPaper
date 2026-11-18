@@ -87,6 +87,7 @@
   - Asset: Presigned URL S3/MinIO, kiểm magic bytes, loại trùng SHA-256, dọn rác GC.
 - **Hiện trạng Backend**:
   - ✅ **Đã hoàn thành**: Module `JournalsModule` trong NestJS cung cấp đầy đủ 4 endpoint: `GET /journals`, `GET /journals/:id`, `GET /journals/:id/article-types`, `GET /profiles/resolve`. Đã seed sẵn 7 tạp chí ĐHQG-HCM chuẩn trong PostgreSQL.
+  - ✅ **Đã hoàn thành (2026-11-18)**: Quản lý tạp chí đầu-cuối (tạo/sửa tạp chí, `profile_versions` bất biến với draft → validate → publish → rollback, ghim phiên bản `pin`). Xem `docs/superpowers/specs/2026-11-18-journal-management-design.md`. Chưa làm: `article_types` và `profile_files` thành bảng riêng.
   - ✅ **Đã hoàn thành**: Endpoint chuyển trạng thái chuyên biệt `POST /manuscripts/:id/status` với Finite State Machine (`DRAFT` ➔ `SUBMITTED` ➔ `IN_REVIEW` ➔ `ACCEPTED` / `REJECTED` ➔ `PUBLISHED`), kiểm tra quyền ban biên tập và phát sự kiện `ManuscriptStatusChanged` vào bảng `outbox_events` trong transaction nguyên tử.
   - ✅ **Đã hoàn thành**: Bản thảo CRUD (`/manuscripts`) và Thành viên bản thảo (`/manuscripts/:id/members`).
   - Assets: Đã có quy trình tải lên 2 bước qua S3 presigned URL: `POST /assets/upload-intent` và `POST /assets/upload-complete`.
@@ -172,7 +173,9 @@
 | | `/roles/assign` | POST | ✅ Đã hoàn thành (chống leo thang) | ✅ Đã tích hợp trên `/permissions` |
 | | `/admin/users/{id}/roles/{roleId}` | DELETE | ✅ Đã hoàn thành (route riêng & chống leo thang) | ✅ Đã có nút gỡ vai trò |
 | **journals** | `/journals`, `/journals/{id}/article-types`| GET | ✅ Đã hoàn thành (JournalsModule) | ✅ Đã đồng bộ API (`useManagedJournals`) |
-| | `/profiles/resolve` | GET | ✅ Đã hoàn thành (JournalsModule) | ⚠️ FE dùng hàm gộp nội bộ |
+| | `/profiles/resolve`, `/profiles/published` | GET | ✅ Đã hoàn thành (ETag, `pin`) | ✅ FE đăng ký profile đã xuất bản (`PublishedProfilesSync`) |
+| | `/journals` (POST), `/journals/{id}` (PATCH, If-Match) | POST/PATCH | ✅ Đã hoàn thành (quyền theo từng tạp chí) | ✅ Trình soạn thảo mẫu lưu qua API |
+| | `/profiles/{scope}/{id}/versions`, `/drafts`, `/validate`, `/publish`, `/rollback` | GET/POST/PATCH | ✅ Đã hoàn thành (bất biến sau publish, trigger DB) | ✅ Tab "Lịch sử phiên bản" |
 | **manuscripts**| `/manuscripts` (CRUD) | GET/POST/PATCH/DELETE | ✅ Đã hoàn thành đầy đủ | ✅ Đã tích hợp (`/papers`, Editor) |
 | | `/manuscripts/{id}/members` | GET/POST/DELETE | ✅ Đã hoàn thành đầy đủ | ❌ Chưa có Modal quản lý thành viên |
 | | `/manuscripts/{id}/status` | POST | ✅ Đã hoàn thành (State Machine & Outbox Event) | ❌ Chưa có thanh nút đổi trạng thái |

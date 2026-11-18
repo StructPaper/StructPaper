@@ -1,4 +1,5 @@
 'use client';
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createBatchDeps } from '@/lib/batch-import/default-deps';
@@ -22,10 +23,14 @@ export interface UseBatchImportOptions {
   onFinished?: (items: BatchItem[]) => void;
   /** Dependencies; the real ones by default (tests pass fakes). */
   createDeps?: () => BatchDeps;
+  /** Journals an automatic template choice may pick from (the server's list). */
+  catalog?: ManagedJournalProfile[];
 }
 
 /** State around runBatchImport: progress for the UI, cancel, retry of the failed files. */
-export function useBatchImport({ onFinished, createDeps = createBatchDeps }: UseBatchImportOptions = {}) {
+export function useBatchImport({ onFinished, createDeps = createBatchDeps, catalog }: UseBatchImportOptions = {}) {
+  const catalogRef = useRef(catalog);
+  catalogRef.current = catalog;
   const [items, setItems] = useState<BatchItem[]>([]);
   const [running, setRunning] = useState(false);
   const [skipped, setSkipped] = useState(0);
@@ -81,7 +86,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
       setSkipped(skippedCount);
       latestRef.current = initialItems(files);
       setItems(latestRef.current);
-      return execute((signal, onUpdate) => runBatchImport({ files, journal, journals, deps: createDeps(), signal, onUpdate }));
+      return execute((signal, onUpdate) => runBatchImport({ files, journal, journals, catalog: catalogRef.current, deps: createDeps(), signal, onUpdate }));
     },
     [execute, createDeps]
   );
@@ -90,7 +95,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
     const journal = journalRef.current;
     if (abortRef.current || !journal) return Promise.resolve();
     const prev = items;
-    return execute((signal, onUpdate) => retryFailed(prev, filesRef.current, { journal, journals: journalsRef.current, deps: createDeps(), signal, onUpdate }));
+    return execute((signal, onUpdate) => retryFailed(prev, filesRef.current, { journal, journals: journalsRef.current, catalog: catalogRef.current, deps: createDeps(), signal, onUpdate }));
   }, [execute, createDeps, items]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);

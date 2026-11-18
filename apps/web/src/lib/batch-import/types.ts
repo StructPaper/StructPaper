@@ -1,3 +1,4 @@
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import type { CompletePaper } from '@/types/paper';
 
 /**
@@ -66,6 +67,8 @@ export interface BatchOptions {
   /** Template per file (same order as `files`); a file may use a different journal than the others. */
   /** null = automatic: the journal the file states, else `journal`. */
   journals?: Array<BatchJournal | null>;
+  /** Journals an automatic choice may pick from (the server's list); built-in when absent. */
+  catalog?: ManagedJournalProfile[];
   deps: BatchDeps;
   /** Word files read at the same time (browser CPU). Default 2. */
   parseLimit?: number;

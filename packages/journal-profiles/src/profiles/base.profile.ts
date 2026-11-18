@@ -69,9 +69,10 @@ export const BASE_PROFILE: JournalProfile = {
     GuideText: 'ignore',
   },
   layout: {
-    paperSize: 'A4',
+    // the VNUHCM page is 8.51 x 11 in, not A4: 'custom' is what the typesetter calls it
+    paperSize: 'custom',
     columns: 2,
-    columnGap: 6.0,
+    columnGap: 4.23, // 1pc
     margins: {
       top: 20.0,
       bottom: 20.0,
@@ -93,13 +94,13 @@ export const BASE_PROFILE: JournalProfile = {
       heading1: 13,
       heading2: 11,
       heading3: 10,
-      body: 10,
+      body: 9,
       caption: 9,
       table: 8.5,
       reference: 8.5,
     },
     leading: {
-      body: 1.15,
+      body: 1.13,
       heading: 1.2,
     },
     widowOrphan: {

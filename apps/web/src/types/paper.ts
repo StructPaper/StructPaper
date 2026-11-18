@@ -29,6 +29,8 @@ export interface PaperDates {
 export interface PaperMetadata {
   title: string;
   titleEn?: string;
+  /** Code of the article type in the paper's journal ("research"): the author's choice; the server applies that type's rules. */
+  articleTypeCode?: string;
   articleType: string; // 'Bài tổng quan' | 'Bài báo nghiên cứu' | 'Báo cáo ca lâm sàng' | 'Research Article' | 'Review Article'
   journalId: string;
   journalName: string;
@@ -372,7 +374,7 @@ export function normalizeCompletePaper(paper: CompletePaper): CompletePaper {
       ...paper.metadata,
       affiliations: normalizedAffiliations,
     },
-    layoutSettings: paper.layoutSettings || DEFAULT_LAYOUT_SETTINGS,
+    layoutSettings: paper.layoutSettings,
     sections: (paper.sections || []).map((sec) => {
       if (sec.type === 'table' && sec.table) {
         return {
@@ -555,7 +557,15 @@ export interface CompletePaper {
   metadata: PaperMetadata;
   sections: PaperSection[];
   references: PaperReference[];
-  layoutSettings?: LayoutSettings;
+  /**
+   * What the author changed about the page layout on this paper. Everything else follows the rules of the
+   * paper's journal (see resolvePaperLayout), so this holds only the differences.
+   */
+  layoutSettings?: Partial<LayoutSettings>;
+  /** The journal-profile versions the paper is laid out under. Set by the server; only an explicit upgrade moves them. */
+  profilePin?: { base?: number; journal?: number; articleType?: number };
+  /** Code of the paper's article type in its journal ("research"). */
+  articleTypeCode?: string;
   templateId?: string;
   templateName?: string;
   updatedAt?: string;

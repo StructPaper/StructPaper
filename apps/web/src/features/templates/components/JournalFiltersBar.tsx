@@ -91,6 +91,13 @@ export const JournalFiltersBar: React.FC<JournalFiltersBarProps> = ({
         <Gate capability="journal:manage">
         <div className="flex items-center gap-2 shrink-0">
           <Link
+            href="/templates/base"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-extrabold bg-zinc-200 hover:bg-zinc-300 text-zinc-800 transition-all cursor-pointer"
+            title="Quy tắc mà mọi tạp chí kế thừa"
+          >
+            <span>Quy tắc dùng chung</span>
+          </Link>
+          <Link
             href="/templates/journal/new"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-extrabold bg-[#78C841] hover:bg-[#6cb43a] text-zinc-950 shadow-2xs transition-all cursor-pointer"
             title="Tạo hồ sơ tạp chí khoa học mới"

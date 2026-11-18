@@ -7,6 +7,7 @@ import { usePaper } from '@/context/PaperContext';
 import { UnifiedEditorView, ReadOnlyPaperView, usePaperStorage } from '@/features/editor';
 import { usePaperAccess } from '@/features/papers';
 import { useAuthStore } from '@/lib/auth-store';
+import { useSessionReady } from '@/features/auth';
 import { CompletePaper } from '@/lib/sample-papers';
 
 function PaperEditorContent({ paperId }: { paperId: string }) {
@@ -17,6 +18,7 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const { access } = usePaperAccess(paperId);
+  const sessionReady = useSessionReady();
   const isSignedIn = useAuthStore((state) => Boolean(state.user || state.isAuthenticated));
 
   useEffect(() => {
@@ -24,6 +26,8 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
       setIsLoading(false);
       return;
     }
+    // after a reload wait for the session, or the request goes out as a guest and a private paper looks missing
+    if (!sessionReady) return;
 
     let isMounted = true;
     setIsLoading(true);
@@ -47,14 +51,14 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [paperId, loadPaper, setPaper, setCurrentJournal]);
+  }, [paperId, sessionReady, loadPaper, setPaper, setCurrentJournal]);
 
   const handleUpdatePaper = (updated: CompletePaper) => {
     setLoadedPaper(updated);
     updatePaper(updated);
   };
 
-  if (isLoading || access.status === 'loading') {
+  if (isLoading || !sessionReady || access.status === 'loading') {
     return (
       <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-[#F8F9FA] text-[#1A1A1A]">
         <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />

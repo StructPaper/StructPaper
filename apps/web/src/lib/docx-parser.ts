@@ -15,7 +15,7 @@ import { articleIdFromFileName } from './publication';
 import { normalizeImportedTitle } from './title-case';
 import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
-import { JOURNAL_TEMPLATES, getJournalTemplate } from './templates';
+import { findJournalTemplate, getJournalTemplate } from './templates';
 
 /**
  * Decode XML entities
@@ -68,7 +68,7 @@ export function detectJournalFromContent(
   fileName?: string
 ): { journalId: string; journalName: string; journalAbbv: string } {
   const id = identifyJournal(textSnippet, fileName) ?? 'VNUHCM-STDJ';
-  const template = JOURNAL_TEMPLATES[id] ?? JOURNAL_TEMPLATES['VNUHCM-STDJ'];
+  const template = findJournalTemplate(id) ?? getJournalTemplate('VNUHCM-STDJ');
   return { journalId: id, journalName: template.name, journalAbbv: template.shortName };
 }
 
@@ -1997,10 +1997,11 @@ export async function parseDocxFileWithAi(
         if (aiData.title && aiData.title.trim()) basePaper.metadata.title = aiData.title.trim();
         if (aiData.titleEn && aiData.titleEn.trim()) basePaper.metadata.titleEn = aiData.titleEn.trim();
         if (aiData.articleType && aiData.articleType.trim()) basePaper.metadata.articleType = aiData.articleType.trim();
-        if (aiData.journalId && JOURNAL_TEMPLATES[aiData.journalId]) {
+        const aiJournal = findJournalTemplate(aiData.journalId);
+        if (aiData.journalId && aiJournal) {
           basePaper.metadata.journalId = aiData.journalId;
-          basePaper.metadata.journalName = JOURNAL_TEMPLATES[aiData.journalId].name;
-          basePaper.metadata.journalAbbv = JOURNAL_TEMPLATES[aiData.journalId].shortName;
+          basePaper.metadata.journalName = aiJournal.name;
+          basePaper.metadata.journalAbbv = aiJournal.shortName;
         }
         if (Array.isArray(aiData.authors) && aiData.authors.length > 0) {
           basePaper.metadata.authors = aiData.authors.map((a: any, idx: number) => ({

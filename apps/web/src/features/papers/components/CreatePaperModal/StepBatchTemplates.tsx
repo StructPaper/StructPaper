@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
-import { ManagedJournalProfile, getDefaultVnuhcmJournals } from '@/lib/templates/journal-storage';
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
+import { useJournalTemplates } from '@/features/journals';
+import { Shimmer } from '@/components/ui/Shimmer';
 import { CompactTemplateCard } from './CompactTemplateCard';
 
 interface StepBatchTemplatesProps {
@@ -20,7 +22,7 @@ const shortName = (j: ManagedJournalProfile) => j.profile.names?.short || j.id.t
  * own for each file (e.g. a Health Sciences paper and an Economics paper in the same batch).
  */
 export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, onConfirm, onBack }) => {
-  const journals = useMemo(() => getDefaultVnuhcmJournals(), []);
+  const { templates: journals, isLoading } = useJournalTemplates();
   const [perFile, setPerFile] = useState(false);
   // Nothing is chosen up front: a card chosen again is un-chosen, and no choice means automatic.
   const [shared, setShared] = useState<ManagedJournalProfile | null>(null);
@@ -65,6 +67,7 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
 
       {!perFile ? (
         <div className="flex-1 min-h-0 p-1 px-1.5 grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto pr-1 custom-scrollbar">
+          {isLoading && Array.from({ length: 6 }, (_, i) => <Shimmer key={`s${i}`} className="h-[88px] w-full rounded-2xl" />)}
           {journals.map((j) => (
             <CompactTemplateCard key={j.id} managed={j} isSelected={shared?.id === j.id} onSelect={(m) => setShared((cur) => (cur?.id === m.id ? null : m))} />
           ))}

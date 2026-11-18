@@ -147,7 +147,7 @@ describe('Task 2: 3-Tier Journal Profiles Inheritance', () => {
 
       expect(custom.layout.columns).toBe(1);
       expect(custom.layout.columnGap).toBe(10);
-      expect(custom.layout.paperSize).toBe('A4');
+      expect(custom.layout.paperSize).toBe(BASE_PROFILE.layout.paperSize); // untouched fields keep the base value
       expect(JSON.stringify(BASE_PROFILE)).toBe(baseBefore);
     });
 

@@ -15,7 +15,8 @@ import { toBatchJournal, managedJournalFor } from '@/lib/batch-import/journals';
 import { useBatchImport } from '../../hooks/useBatchImport';
 import { summarize } from '@/lib/batch-import/summary';
 import type { BatchItem } from '@/lib/batch-import/types';
-import { ManagedJournalProfile, getDefaultVnuhcmJournals } from '@/lib/templates/journal-storage';
+import { getDefaultVnuhcmJournals, type ManagedJournalProfile } from '@/lib/templates/journal-storage';
+import { useJournalTemplates } from '@/features/journals';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { usePaper } from '@/context/PaperContext';
 import { usePaperStorage, ImportValidationModal } from '@/features/editor';
@@ -70,7 +71,11 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   // Several Word files picked at once: one paper per file, imported side by side.
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [batchSkipped, setBatchSkipped] = useState(0);
+  const { templates: serverCatalog } = useJournalTemplates();
+  // acting before the list has arrived (e.g. a click on Continue) must not find nothing
+  const journalCatalog = serverCatalog.length > 0 ? serverCatalog : getDefaultVnuhcmJournals();
   const batch = useBatchImport({
+    catalog: journalCatalog,
     onFinished: (items) => {
       const sum = summarize(items);
       if (sum.created > 0) {
@@ -250,7 +255,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   const startBatch = (choices: Array<ManagedJournalProfile | null>, files: File[], skipped: number) =>
     batch.start(
       files,
-      toBatchJournal(getDefaultVnuhcmJournals()[0]), // for files whose journal can not be told
+      toBatchJournal(journalCatalog[0]), // for files whose journal can not be told
       skipped,
       choices.map((c) => (c ? toBatchJournal(c) : null)),
     );
@@ -269,7 +274,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   // Step 2 completed
   const handleStep2Complete = async (managed: ManagedJournalProfile | null) => {
     // no template chosen: the journal the file states, else the generic one
-    const resolved = managed ?? managedJournalFor(isBlank ? undefined : parsedPaper?.metadata?.journalId) ?? getDefaultVnuhcmJournals()[0];
+    const resolved = managed ?? managedJournalFor(isBlank ? undefined : parsedPaper?.metadata?.journalId, journalCatalog) ?? journalCatalog[0];
     await finalizeCreation(resolved, isBlank ? null : parsedPaper);
   };
 

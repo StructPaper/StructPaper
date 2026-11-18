@@ -1,5 +1,6 @@
 'use client';
 
+import { JournalCodeBadge } from '@/features/journals';
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
@@ -12,8 +13,6 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import {
-  getJournalColor,
-  getJournalShortName,
   getManuscriptTitle,
   getManuscriptAuthors,
   getWorkflowStatusConfig,
@@ -196,8 +195,6 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
           recentPapers.map((paper) => {
             const title = getManuscriptTitle(paper);
             const authors = getManuscriptAuthors(paper);
-            const journalColor = getJournalColor(paper.doc.journalId, paper);
-            const journalShort = getJournalShortName(paper.doc.journalId, paper);
             const statusConfig = getWorkflowStatusConfig(
               paper.info.workflowStatus || (paper as any).status || (paper as any).remoteData?.status
             );
@@ -219,12 +216,7 @@ export const RecentPapersRow: React.FC<RecentPapersRowProps> = ({
               <div>
                 {/* Card Top: Journal code badge & Status pill / Pinned */}
                 <div className="flex items-center justify-between mb-2.5">
-                  <span
-                    className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold text-white shadow-2xs"
-                    style={{ backgroundColor: journalColor }}
-                  >
-                    {journalShort}
-                  </span>
+                  <JournalCodeBadge journalId={paper.doc.journalId} record={paper} />
                   <div className="flex items-center gap-1.5">
                     {paper.info.pinned && (
                       <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />

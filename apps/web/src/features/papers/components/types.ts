@@ -1,11 +1,6 @@
 import type { ManuscriptRecord, WorkflowStatus } from '@structpaper/doc-model';
 export type { WorkflowStatus };
-import {
-  ALL_JOURNAL_IDS,
-  JOURNAL_DEFINITIONS,
-  normalizeJournalId,
-  type JournalId,
-} from '@structpaper/journal-profiles';
+import type { JournalId } from '@structpaper/journal-profiles';
 
 export type FilterWorkflowStatus = 'all' | WorkflowStatus;
 export type FilterJournal = 'all' | JournalId | string;
@@ -72,62 +67,6 @@ export function normalizeWorkflowStatus(status?: string | null): WorkflowStatus 
 export function getWorkflowStatusConfig(status?: string | null): WorkflowStatusConfig {
   const normalized = normalizeWorkflowStatus(status);
   return WORKFLOW_STATUS_CONFIG[normalized] || WORKFLOW_STATUS_CONFIG.draft;
-}
-
-export const JOURNAL_COLOR_MAP: Record<string, string> = {
-  std: '#000099',
-  hs: '#2B74B7',
-  ssh: '#0000FF',
-  ebl: '#8F0B97',
-  et: '#000000',
-  ees: '#0C712F',
-  arns: '#FF0000',
-};
-
-export function getJournalColor(journalId?: string, record?: ManuscriptRecord): string {
-  // 1. Direct color from backend-joined journal
-  const backendJournal = (record?.doc as any)?.journal || (record as any)?.remoteData?.journal;
-  if (backendJournal?.color) {
-    return backendJournal.color;
-  }
-
-  // 2. Fallback to journal profile definition
-  if (!journalId) return JOURNAL_COLOR_MAP.std;
-  const normalized = normalizeJournalId(journalId);
-  if (normalized && JOURNAL_DEFINITIONS[normalized]?.color) {
-    return JOURNAL_DEFINITIONS[normalized].color!;
-  }
-  return JOURNAL_COLOR_MAP[journalId.toLowerCase()] || JOURNAL_COLOR_MAP.std;
-}
-
-export function getJournalShortName(journalId?: string, record?: ManuscriptRecord): string {
-  // 1. Direct code/shortName from backend-joined journal
-  const backendJournal = (record?.doc as any)?.journal || (record as any)?.remoteData?.journal;
-  if (backendJournal?.code) {
-    return backendJournal.code;
-  }
-  if (backendJournal?.shortName) {
-    return `VNUHCM-${backendJournal.shortName.toUpperCase()}`;
-  }
-
-  // 2. Metadata journal abbreviation
-  const meta = (record?.doc?.meta as any) || (record as any)?.remoteData?.metadata;
-  if (meta?.journalAbbv) {
-    return meta.journalAbbv;
-  }
-  if (!journalId) return 'VNUHCM';
-
-  // 3. Journal definition normalized slug
-  const normalized = normalizeJournalId(journalId);
-  if (normalized && JOURNAL_DEFINITIONS[normalized]?.names?.short) {
-    return JOURNAL_DEFINITIONS[normalized].names.short;
-  }
-
-  // 4. Default fallback if journalId is not a raw UUID
-  if (journalId.length > 20) {
-    return 'VNUHCM';
-  }
-  return journalId.toUpperCase();
 }
 
 export function getManuscriptTitle(record: ManuscriptRecord): string {

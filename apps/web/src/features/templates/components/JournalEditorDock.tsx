@@ -115,6 +115,8 @@ export interface JournalEditorDockProps {
   isSaving: boolean;
   isDirty?: boolean;
   saveSuccess?: boolean;
+  /** The caller may only look: saving, resetting and changing the status are off. */
+  readOnly?: boolean;
 }
 
 export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
@@ -127,6 +129,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   isSaving,
   isDirty = false,
   saveSuccess = false,
+  readOnly = false,
 }) => {
   let router: any = null;
   try {
@@ -137,6 +140,13 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   }
 
   const isPublished = status === 'published';
+  const isArchived = status === 'archived';
+  const STATUS_HINT: Record<JournalStatus, string> = {
+    published: 'Đang phát hành (Nhấn để chuyển thành Bản nháp)',
+    draft: 'Bản nháp (Nhấn để chuyển thành Lưu trữ)',
+    validated: 'Bản nháp (Nhấn để chuyển thành Lưu trữ)',
+    archived: 'Đã lưu trữ (Nhấn để phát hành lại)',
+  };
 
   const handleBack = () => {
     if (router) {
@@ -165,6 +175,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 1: Reset to Base */}
         <DockIconButton
           onClick={onReset}
+          disabled={readOnly}
           label="Khôi phục cấu hình Base mặc định"
           icon={<RotateCcw className="w-5 h-5 text-zinc-700" strokeWidth={2.4} />}
         />
@@ -172,11 +183,8 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 2: Toggle Status (Draft vs Published) */}
         <DockIconButton
           onClick={onToggleStatus}
-          label={
-            isPublished
-              ? 'Đang phát hành (Nhấn để chuyển thành Bản nháp)'
-              : 'Bản nháp (Nhấn để chuyển thành Đang phát hành)'
-          }
+          disabled={readOnly}
+          label={STATUS_HINT[status]}
           icon={
             isPublished ? (
               <CheckCircle2 className="w-5 h-5 text-[#78C841]" strokeWidth={2.4} />
@@ -212,7 +220,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 4: Save Changes */}
         <DockIconButton
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isSaving || readOnly}
           label={saveSuccess ? 'Đã lưu thành công!' : isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
           icon={<Save className="w-5 h-5 text-zinc-700" strokeWidth={2.4} />}
           badge={
@@ -232,11 +240,8 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         <div className="w-6 h-[1px] mb-2" />
         <DockIconButton
           onClick={onToggleStatus}
-          label={
-            isPublished
-              ? 'Hồ sơ đang phát hành công khai (PUB)'
-              : 'Hồ sơ đang lưu trữ bản nháp (DRAFT)'
-          }
+          disabled={readOnly}
+          label={STATUS_HINT[status]}
           customContent={
             <div className="flex flex-col items-center justify-center">
               <span
@@ -244,7 +249,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
                   isPublished ? 'text-[#14532D]' : 'text-amber-700'
                 }`}
               >
-                {isPublished ? 'PUB' : 'DRAFT'}
+                {isPublished ? 'PUB' : isArchived ? 'ARCH' : 'DRAFT'}
               </span>
             </div>
           }

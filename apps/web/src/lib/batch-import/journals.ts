@@ -12,15 +12,22 @@ export function toBatchJournal(managed: ManagedJournalProfile): BatchJournal {
 }
 
 /** Managed journal that a template id such as "VNUHCM-HS" (or the old "VNUHCM-STDJ") stands for. */
-export function managedJournalFor(templateId?: string): ManagedJournalProfile | null {
+export function managedJournalFor(
+  templateId?: string,
+  catalog: ManagedJournalProfile[] = getDefaultVnuhcmJournals(),
+): ManagedJournalProfile | null {
   const id = (templateId || '').replace(/^VNUHCM-/i, '').toLowerCase();
   if (!id) return null;
   const alias = id === 'stdj' ? 'std' : id;
-  return getDefaultVnuhcmJournals().find((j) => j.id.toLowerCase() === alias) ?? null;
+  return catalog.find((j) => j.id.toLowerCase() === alias) ?? null;
 }
 
 /** No template chosen: the journal the file itself states, else the generic one. */
-export function autoBatchJournal(parsedJournalId: string | undefined, fallback: BatchJournal): BatchJournal {
-  const managed = managedJournalFor(parsedJournalId);
+export function autoBatchJournal(
+  parsedJournalId: string | undefined,
+  fallback: BatchJournal,
+  catalog?: ManagedJournalProfile[],
+): BatchJournal {
+  const managed = managedJournalFor(parsedJournalId, catalog);
   return managed ? toBatchJournal(managed) : fallback;
 }

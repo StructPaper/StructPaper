@@ -1,1 +1,0 @@
-ALTER TABLE "manuscripts" ADD COLUMN "general_access" varchar(20) DEFAULT 'RESTRICTED' NOT NULL;

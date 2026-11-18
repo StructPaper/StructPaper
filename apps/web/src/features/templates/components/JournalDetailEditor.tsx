@@ -10,6 +10,7 @@ import {
 } from '@/lib/templates/journal-storage';
 import { toast } from '@/components/toast';
 import { useJournalEditorSave } from '../hooks/useJournalEditorSave';
+import { useJournalAccess } from '@/features/journals';
 import { ActionConfirmModal } from '@/components/modals';
 import { JournalEditorDock } from './JournalEditorDock';
 import { JournalEditorTopBar } from './JournalEditorTopBar';
@@ -21,6 +22,8 @@ import { JournalGeneralTab } from './tabs/JournalGeneralTab';
 import { JournalFrontMatterTab } from './tabs/JournalFrontMatterTab';
 import { JournalArticleTypesTab } from './tabs/JournalArticleTypesTab';
 import { JournalLayoutTab } from './tabs/JournalLayoutTab';
+import { JournalVersionsTab } from './tabs/JournalVersionsTab';
+import { JournalPublicationTab } from './tabs/JournalPublicationTab';
 import { ResizableSplitLayout, LivePreviewPane, useEditorCompilation } from '@/features/editor';
 import { generateSamplePaperForJournal } from '@/lib/templates/sample-template-paper';
 import { CompletePaper } from '@/types/paper';
@@ -28,6 +31,8 @@ import { CompletePaper } from '@/types/paper';
 interface JournalDetailEditorProps {
   initialManaged: ManagedJournalProfile;
   isNew?: boolean;
+  /** The journal's version on the server (its ETag): a save from a stale editor is refused. */
+  serverVersion?: number;
 }
 
 function getPrecompiledPdfForJournal(id: string): string | null {
@@ -45,8 +50,12 @@ function getPrecompiledPdfForJournal(id: string): string | null {
 export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
   initialManaged,
   isNew = false,
+  serverVersion,
 }) => {
   const router = useRouter();
+  // the API decides who may edit which journal; the screen only shows what it would allow
+  const access = useJournalAccess(initialManaged.id, !isNew);
+  const canEdit = isNew ? access.canCreate : access.canEdit;
 
   const [managed, setManaged] = useState<ManagedJournalProfile>(initialManaged);
   const [activeTab, setActiveTab] = useState<JournalEditorTabKey>('general');
@@ -86,6 +95,8 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     confirmReset,
     cancelReset,
   } = useJournalEditorSave({
+    initialManaged,
+    serverVersion,
     managed,
     setManaged,
     setIsDirty,
@@ -116,16 +127,19 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     setIsDirty(true);
   }, []);
 
+  // published -> draft -> archived -> published again
   const handleToggleStatus = useCallback(() => {
     const nextStatus: JournalStatus =
-      managed.status === 'published' ? 'draft' : 'published';
+      managed.status === 'published' ? 'draft' : managed.status === 'archived' ? 'published' : 'archived';
     setManaged((prev) => ({ ...prev, status: nextStatus }));
     setIsDirty(true);
     toast.info(
       'Trạng thái mẫu',
       nextStatus === 'published'
         ? 'Chuyển sang: Đang phát hành (published)'
-        : 'Chuyển sang: Bản nháp (draft)'
+        : nextStatus === 'archived'
+          ? 'Chuyển sang: Lưu trữ (archived): tạp chí không còn được chọn cho bài mới'
+          : 'Chuyển sang: Bản nháp (draft)'
     );
   }, [managed.status]);
 
@@ -153,6 +167,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
           articleTypesCount={managed.profile.articleTypes?.length}
+          showVersions={!isNew}
         />
       </div>
 
@@ -171,10 +186,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
           />
         )}
         {activeTab === 'article-types' && (
-          <JournalArticleTypesTab
-            profile={managed.profile}
-            onChange={handleUpdateProfile}
-          />
+          <JournalArticleTypesTab profile={managed.profile} journalKey={managed.id} isNew={isNew} canEdit={canEdit} />
         )}
         {activeTab === 'layout' && (
           <JournalLayoutTab
@@ -182,6 +194,10 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
             onChange={handleUpdateProfile}
           />
         )}
+        {activeTab === 'publication' && (
+          <JournalPublicationTab profile={managed.profile} onChange={handleUpdateProfile} />
+        )}
+        {activeTab === 'versions' && !isNew && <JournalVersionsTab journalKey={managed.id} />}
       </div>
     </div>
   );
@@ -214,6 +230,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         isSaving={isSaving}
         isDirty={isDirty}
         saveSuccess={saveSuccess}
+        readOnly={!canEdit}
       />
 
       {/* Main Workspace Area */}
@@ -298,7 +315,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
             </div>
           </div>
         }
-        description="Thay đổi cấu hình template này sẽ cập nhật trực tiếp quy chuẩn dàn trang PDF, Word và các bài báo đang áp dụng mẫu tạp chí này. Bạn có chắc chắn muốn lưu các thay đổi?"
+        description="Thông tin nhận diện sẽ được cập nhật ngay. Thay đổi quy định dàn trang sẽ được xuất bản thành một phiên bản mới (bài đã ghim vào phiên bản cũ vẫn giữ nguyên quy định cũ). Bạn có chắc chắn muốn lưu?"
         cancelLabel="Hủy bỏ"
         confirmLabel="Xác nhận lưu"
         confirmIcon={<Save className="w-4 h-4" />}
@@ -313,10 +330,10 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         onClose={cancelReset}
         onConfirm={confirmReset}
         variant="danger"
-        title="Khôi phục cấu hình gốc?"
-        description="Toàn bộ tùy chỉnh của tạp chí này sẽ bị hoàn tác về thông số gốc mặc định của hệ thống. Bạn có chắc chắn muốn tiếp tục?"
+        title="Bỏ các chỉnh sửa chưa lưu?"
+        description="Các chỉnh sửa chưa lưu sẽ bị bỏ và hồ sơ quay về quy định đang xuất bản. Bạn có chắc chắn muốn tiếp tục?"
         cancelLabel="Hủy bỏ"
-        confirmLabel="Khôi phục gốc"
+        confirmLabel="Bỏ chỉnh sửa"
         confirmIcon={<RotateCcw className="w-4 h-4" />}
         testId="template-reset-confirm-modal"
         confirmTestId="confirm-reset-template-btn"

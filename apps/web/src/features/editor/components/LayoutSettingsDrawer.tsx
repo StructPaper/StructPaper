@@ -23,7 +23,8 @@ import {
   PageNumberingSettings,
   DEFAULT_PAGE_NUMBERING,
 } from '@/types/paper';
-import { JOURNAL_TEMPLATES } from '@/lib/templates';
+import { useJournals } from '@/features/journals';
+import { Shimmer } from '@/components/ui/Shimmer';
 import { Select, SelectOption } from '@/components/ui/Select';
 import { ThemeSettingsSection } from './ThemeSettingsSection';
 import { formatSamplePage } from './page-number-format';
@@ -38,16 +39,6 @@ interface LayoutSettingsDrawerProps {
   isCompiling?: boolean;
 }
 
-// Filter duplicate STDJ alias for cleaner UI
-const JOURNAL_OPTIONS: SelectOption[] = Object.values(JOURNAL_TEMPLATES)
-  .filter((tmpl) => tmpl.id !== 'VNUHCM-STDJ')
-  .map((tmpl) => ({
-    value: tmpl.id,
-    label: tmpl.name,
-    description: `${tmpl.shortName} • ${tmpl.id}`,
-    color: tmpl.color,
-    badge: tmpl.id.replace('VNUHCM-', ''),
-  }));
 
 export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
   isOpen,
@@ -58,6 +49,14 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
   isCompiling = false,
 }) => {
   const [mounted, setMounted] = useState(false);
+  const { journals, isLoading: journalsLoading, find: findJournalInfo } = useJournals();
+  const journalOptions: SelectOption[] = journals.map((j) => ({
+    value: j.code,
+    label: j.name,
+    description: j.code,
+    color: j.color,
+    badge: j.key.toUpperCase(),
+  }));
   const [localSettings, setLocalSettings] = useState<LayoutSettings>(() => ({
     ...DEFAULT_LAYOUT_SETTINGS,
     ...settings,
@@ -188,14 +187,18 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
                   </label>
                 </div>
 
-                <Select
-                  value={localJournal}
-                  onChange={(val) => setLocalJournal(val)}
-                  options={JOURNAL_OPTIONS}
-                  size="sm"
-                  searchable={true}
-                  searchPlaceholder="Tìm kiếm trong 7 tạp chí VNUHCM..."
-                />
+                {journalsLoading ? (
+                  <Shimmer className="h-9 w-full rounded-2xl" />
+                ) : (
+                  <Select
+                    value={findJournalInfo(localJournal)?.code ?? localJournal}
+                    onChange={(val) => setLocalJournal(val)}
+                    options={journalOptions}
+                    size="sm"
+                    searchable={true}
+                    searchPlaceholder={`Tìm kiếm trong ${journals.length} tạp chí VNUHCM...`}
+                  />
+                )}
               </div>
 
               {/* 2. CÀI ĐẶT ĐÁNH SỐ TRANG (WORD-STYLE PAGE NUMBERING) */}

@@ -24,6 +24,8 @@ import {
   UpdateManuscriptSchema,
   ChangeManuscriptStatusSchema,
   ManuscriptQuerySchema,
+  ChangeArticleTypeSchema,
+  type ChangeArticleType,
   AddManuscriptMemberSchema,
   UpdateGeneralAccessSchema,
   PeopleSearchQuerySchema,
@@ -205,6 +207,23 @@ export class ManuscriptController {
   ) {
     const ability = await this.getAbility(req);
     return this.sharing!.setGeneralAccess(id, body.generalAccess, ability);
+  }
+
+  /** Moves the paper to the rules now published for its journal and article type (it never moves on its own). */
+  @Post(':id/profile/upgrade')
+  @HttpCode(HttpStatus.OK)
+  async upgradeProfile(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.upgradeProfile(id, ability);
+  }
+
+  /** Moves the paper to another article type of its journal (null: none); the new type's rules apply. */
+  @Put(':id/article-type')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(ChangeArticleTypeSchema))
+  async changeArticleType(@Param('id', ManuscriptIdPipe) id: string, @Body() body: ChangeArticleType, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.changeArticleType(id, body.articleType, ability);
   }
 
   @Post(':id/status')

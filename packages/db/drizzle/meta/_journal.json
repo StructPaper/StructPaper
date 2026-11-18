@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1794591840333,
-      "tag": "0000_peaceful_kang",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1794951591998,
-      "tag": "0001_manuscript_general_access",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1794962503996,
-      "tag": "0002_manuscript_visits",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1795050000000,
-      "tag": "0003_et_journal_color",
+      "when": 1795200000000,
+      "tag": "0000_init",
       "breakpoints": true
     }
   ]

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CompletePaper, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
+import { CompletePaper } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { exportToLatex } from '@/lib/exporters';
 import {
   CompileScheduler,
@@ -186,7 +187,7 @@ export function useEditorCompilation({
   const compileLatexToPdf = useCallback(
     async (customPaperData?: CompletePaper): Promise<string | null> => {
       const paperToCompile = customPaperData || formData;
-      const settings = paperToCompile.layoutSettings || DEFAULT_LAYOUT_SETTINGS;
+      const settings = resolvePaperLayout(paperToCompile);
 
       const seq = ++compileSeqRef.current;
       const isLatest = () => seq === compileSeqRef.current;

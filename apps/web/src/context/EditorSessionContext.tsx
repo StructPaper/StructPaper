@@ -62,25 +62,20 @@ export function EditorSessionProvider({
 }: {
   children: React.ReactNode;
 }): React.ReactElement {
-  const [autoSaveEnabled, setAutoSaveEnabledState] = useState<boolean>(() =>
-    readAutoSavePreference()
-  );
+  // First render = the server's defaults, so the HTML always matches; the stored choices are read right after mount.
+  const [autoSaveEnabled, setAutoSaveEnabledState] = useState<boolean>(true);
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
-  const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('structpaper_pdf_interactive_mode') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(false);
+  const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
 
-  const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>(() => {
+  useEffect(() => {
     try {
-      return localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi';
+      setPdfFocusModeState(localStorage.getItem('structpaper_pdf_interactive_mode') === 'true');
+      setPdfLanguageState(localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi');
     } catch {
-      return 'vi';
+      // storage unavailable: keep the defaults
     }
-  });
+  }, []);
   const setPdfLanguage = useCallback((language: PageLanguage) => {
     setPdfLanguageState(language);
     try {

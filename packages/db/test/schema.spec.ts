@@ -65,14 +65,16 @@ describe('Drizzle Schema & Table Definitions', () => {
   });
 
   describe('journals table columns & relations', () => {
-    it('contains slug citext, settings jsonb, and version integer', () => {
+    it('has real columns for who a journal is (code, names, colour, ISSN, status), not a settings blob', () => {
       const cols = getTableColumns(journals);
       expect(cols.id).toBeDefined();
       expect(cols.slug).toBeDefined();
       expect(cols.slug.isUnique).toBe(true);
       expect(cols.name).toBeDefined();
       expect(cols.issn).toBeDefined();
-      expect(cols.settings).toBeDefined();
+      for (const c of ['code', 'nameEn', 'shortName', 'color', 'latexCls', 'status', 'sortOrder']) expect((cols as any)[c]).toBeDefined();
+      expect(cols.code.isUnique).toBe(true);
+      expect((cols as any).settings).toBeUndefined();
       expect(cols.version).toBeDefined();
       expect(cols.version.default).toBe(1);
     });
@@ -315,6 +317,7 @@ describe('Drizzle Schema & Table Definitions', () => {
     it('seeds default journal, 5 roles, wildcard permission, and invited admin user', async () => {
       const insertedRows: Record<string, any[]> = {
         journals: [],
+        article_types: [],
         roles: [],
         permissions: [],
         role_permissions: [],
@@ -350,7 +353,13 @@ describe('Drizzle Schema & Table Definitions', () => {
       const result = await seedDatabase(mockDb);
 
       expect(result.journal).toBeDefined();
-      expect(result.journal.slug).toBe('vnu-jst');
+      expect(result.journal.slug).toBe('vnuhcm-std');
+      expect(insertedRows.journals).toHaveLength(7);
+      expect(insertedRows.journals.find((j) => j.slug === 'vnuhcm-arns')?.status).toBe('draft');
+      expect(insertedRows.journals.find((j) => j.slug === 'vnuhcm-et')?.color).toBe('#000000');
+      // each journal accepts 3 article types, every one with Vietnamese and English labels
+      expect(insertedRows.article_types).toHaveLength(21);
+      expect(insertedRows.article_types.every((t) => t.labels?.vi && t.labels?.en)).toBe(true);
       expect(result.roles).toHaveLength(5);
       expect(result.adminUser).toBeDefined();
       expect(result.adminUser.status).toBe('INVITED');

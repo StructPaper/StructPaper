@@ -4,9 +4,12 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredVa
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
-import { CompletePaper, PaperSection, LayoutSettings, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
+import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
+import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
+import { usePaperProfile, useArticleTypeSync, ProfileUpgradeBanner } from '@/features/journals';
+import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
-import { JOURNAL_TEMPLATES } from '@/lib/templates';
+import { getJournalTemplate } from '@/lib/templates';
 import { usePaper } from '@/context/PaperContext';
 import { sileo, toast } from '@/components/toast';
 import { EditorTabKey } from './types';
@@ -123,6 +126,10 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       onSavePaper: savePaper,
       setIsDirty,
     });
+  // the rules this paper is pinned to; when they lay the page out differently from the latest ones, typeset again
+  const profile = usePaperProfile(formData, { onLayoutChange: () => void compileLatexToPdf() });
+  // the article type the author picks moves the paper to that type's rules on the server
+  useArticleTypeSync(formData, setFormData);
   /** Export in progress (covers the save + compile phase before the download starts). */
   const [pendingExport, setPendingExport] = useState<ExportFormat | null>(null);
 
@@ -381,12 +388,15 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   const handleApplyLayoutSettings = (newSettings: LayoutSettings, newJournalId?: string) => {
     const journalIdToUse = newJournalId || formData.metadata.journalId || currentJournal;
-    const tmpl = JOURNAL_TEMPLATES[journalIdToUse] || JOURNAL_TEMPLATES['VNUHCM-HS'];
-    const updated: CompletePaper = {
+    const tmpl = getJournalTemplate(journalIdToUse);
+    // the paper stores only what differs from its journal's rules; another journal means another set of rules
+    const journalChanged = journalIdToUse !== (formData.metadata.journalId || currentJournal);
+    const target: CompletePaper = {
       ...formData,
-      layoutSettings: newSettings,
       metadata: { ...formData.metadata, journalId: journalIdToUse, journalName: tmpl.name, journalAbbv: tmpl.shortName },
+      ...(journalChanged ? { profilePin: undefined, articleTypeCode: undefined } : {}),
     };
+    const updated: CompletePaper = { ...target, layoutSettings: layoutOverrides(journalLayoutOf(target), newSettings) };
     setFormData(updated);
     setIsDirty(true);
     onUpdatePaper(updated);
@@ -504,6 +514,11 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
+        <ProfileUpgradeBanner
+          paper={formData}
+          isOutdated={profile.isOutdated}
+          onUpgraded={(pin, version) => setFormData((prev) => ({ ...prev, profilePin: pin, version }))}
+        />
         <EditorDocumentMenuBarSlot
           name={documentName}
           onRename={handleRename}
@@ -546,7 +561,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       </div>
 
       <ExtractedContentDrawer isOpen={isExtractedDrawerOpen} onClose={() => setIsExtractedDrawerOpen(false)} paper={formData} />
-      <LayoutSettingsDrawer isOpen={isSettingsDrawerOpen} onClose={() => setIsSettingsDrawerOpen(false)} settings={formData.layoutSettings || DEFAULT_LAYOUT_SETTINGS} journalId={formData.metadata.journalId || currentJournal} onApplySettings={handleApplyLayoutSettings} isCompiling={isCompilingPdf} />
+      <LayoutSettingsDrawer isOpen={isSettingsDrawerOpen} onClose={() => setIsSettingsDrawerOpen(false)} settings={resolvePaperLayout(formData)} journalId={formData.metadata.journalId || currentJournal} onApplySettings={handleApplyLayoutSettings} isCompiling={isCompilingPdf} />
       <OpenDocumentDialog isOpen={isOpenDialog} onClose={() => setIsOpenDialog(false)} onOpen={handleOpenItem} />
       <ExportGateModal
         isOpen={exportGate !== null}

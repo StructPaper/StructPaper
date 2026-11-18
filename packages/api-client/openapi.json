@@ -416,48 +416,6 @@
           "status"
         ]
       },
-      "Journal": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "shortName": {
-            "type": "string"
-          },
-          "issn": {
-            "type": "string",
-            "nullable": true
-          },
-          "color": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "articleTypes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name"
-        ]
-      },
       "ActivateAccountRequest": {
         "type": "object",
         "properties": {
@@ -639,6 +597,14 @@
           "version": {
             "type": "integer"
           },
+          "profilePin": {
+            "$ref": "#/components/schemas/ProfilePin"
+          },
+          "articleType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Code of the article type (\"research\")"
+          },
           "metadata": {
             "type": "object",
             "additionalProperties": true
@@ -668,6 +634,13 @@
           "journalId": {
             "type": "string",
             "format": "uuid"
+          },
+          "articleType": {
+            "type": "string",
+            "description": "Code of one of the journal's article types"
+          },
+          "profilePin": {
+            "$ref": "#/components/schemas/ProfilePin"
           },
           "title": {
             "type": "string"
@@ -1243,6 +1216,603 @@
         "required": [
           "success"
         ]
+      },
+      "ProfilePin": {
+        "type": "object",
+        "description": "The profile versions a paper was written under",
+        "properties": {
+          "base": {
+            "type": "integer"
+          },
+          "journal": {
+            "type": "integer"
+          },
+          "articleType": {
+            "type": "integer"
+          }
+        }
+      },
+      "ArticleType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "description": "research, review, case-report ..."
+          },
+          "labels": {
+            "type": "object",
+            "properties": {
+              "vi": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vi",
+              "en"
+            ]
+          },
+          "label": {
+            "type": "object",
+            "properties": {
+              "vi": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vi",
+              "en"
+            ],
+            "description": "Same as labels"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "requiredSections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "labels",
+          "status",
+          "sortOrder"
+        ]
+      },
+      "CreateArticleTypeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,49}$"
+          },
+          "labels": {
+            "type": "object",
+            "properties": {
+              "vi": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vi",
+              "en"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "labels"
+        ]
+      },
+      "UpdateArticleTypeRequest": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "object",
+            "properties": {
+              "vi": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vi",
+              "en"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "JournalAccess": {
+        "type": "object",
+        "properties": {
+          "canEdit": {
+            "type": "boolean"
+          },
+          "canCreate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canEdit",
+          "canCreate"
+        ]
+      },
+      "ChangeArticleTypeRequest": {
+        "type": "object",
+        "properties": {
+          "articleType": {
+            "type": "string",
+            "nullable": true,
+            "description": "Code of one of the journal's article types; null for none"
+          }
+        },
+        "required": [
+          "articleType"
+        ]
+      },
+      "ArticleTypeChangeResult": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "articleType": {
+            "type": "string",
+            "nullable": true
+          },
+          "profilePin": {
+            "$ref": "#/components/schemas/ProfilePin"
+          },
+          "version": {
+            "type": "integer",
+            "description": "The paper's version after the change (its ETag)"
+          }
+        },
+        "required": [
+          "changed",
+          "profilePin",
+          "version"
+        ]
+      },
+      "ProfileUpgradeResult": {
+        "type": "object",
+        "properties": {
+          "upgraded": {
+            "type": "boolean"
+          },
+          "profilePin": {
+            "$ref": "#/components/schemas/ProfilePin"
+          },
+          "version": {
+            "type": "integer",
+            "description": "The paper's version after the change (its ETag)"
+          }
+        },
+        "required": [
+          "upgraded",
+          "profilePin",
+          "version"
+        ]
+      },
+      "Journal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "shortName": {
+            "type": "string"
+          },
+          "issn": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "description": "#RRGGBB"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "articleTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Codes of the active article types"
+          },
+          "latexCls": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Also the ETag; send it back as If-Match when editing"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "code",
+          "name",
+          "shortName",
+          "color",
+          "status",
+          "version"
+        ]
+      },
+      "CreateJournalRequest": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The slug is \"vnuhcm-\" + key",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "VNUHCM-HS",
+            "pattern": "^[A-Z0-9][A-Z0-9-]{1,30}$"
+          },
+          "shortName": {
+            "type": "string"
+          },
+          "issn": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "default": "draft"
+          },
+          "articleTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Codes of the article types to start with"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "color"
+        ]
+      },
+      "UpdateJournalRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "VNUHCM-HS",
+            "pattern": "^[A-Z0-9][A-Z0-9-]{1,30}$"
+          },
+          "shortName": {
+            "type": "string"
+          },
+          "issn": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "ProfileVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "base",
+              "journal",
+              "article_type"
+            ]
+          },
+          "journalId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "validated",
+              "published",
+              "archived"
+            ]
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "schemaVersion": {
+            "type": "integer"
+          },
+          "changeNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "version",
+          "state",
+          "config",
+          "createdAt"
+        ]
+      },
+      "ProfileValidation": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ]
+            }
+          },
+          "version": {
+            "$ref": "#/components/schemas/ProfileVersion"
+          }
+        },
+        "required": [
+          "ok",
+          "issues",
+          "version"
+        ]
+      },
+      "CreateProfileDraftRequest": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "changeNote": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "config"
+        ]
+      },
+      "UpdateProfileDraftRequest": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "changeNote": {
+            "type": "string"
+          }
+        }
+      },
+      "PublishProfileRequest": {
+        "type": "object",
+        "properties": {
+          "changeNote": {
+            "type": "string"
+          }
+        }
+      },
+      "RollbackProfileRequest": {
+        "type": "object",
+        "properties": {
+          "toVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changeNote": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "toVersion"
+        ]
+      },
+      "PublishedProfiles": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "version",
+              "config"
+            ]
+          },
+          "journals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer"
+                },
+                "config": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "version",
+                "config"
+              ]
+            }
+          },
+          "articleTypes": {
+            "type": "object",
+            "description": "journal key -> article type code -> rules",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "version",
+                  "config"
+                ]
+              }
+            }
+          },
+          "etag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "base",
+          "journals",
+          "articleTypes",
+          "etag"
+        ]
       }
     },
     "responses": {
@@ -1572,30 +2142,6 @@
           },
           "409": {
             "$ref": "#/components/responses/ProblemResponse"
-          }
-        }
-      }
-    },
-    "/api/v1/journals": {
-      "get": {
-        "tags": [
-          "Journals"
-        ],
-        "summary": "List journals",
-        "operationId": "listJournals",
-        "responses": {
-          "200": {
-            "description": "Journals",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Journal"
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -2684,6 +3230,1226 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals": {
+      "get": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "List journals",
+        "operationId": "listJournals",
+        "responses": {
+          "200": {
+            "description": "Journals, in the order the admins set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Journal"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Create a journal",
+        "operationId": "createJournal",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJournalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{id}": {
+      "get": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Get a journal by id, slug or key",
+        "operationId": "getJournal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Journal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Edit a journal (If-Match with its version)",
+        "operationId": "updateJournal",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJournalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{id}/access": {
+      "get": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "What the caller may do with a journal",
+        "operationId": "getJournalAccess",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalAccess"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{id}/article-types": {
+      "get": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "The article types a journal accepts",
+        "operationId": "listArticleTypes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article types, in order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArticleType"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Add an article type to a journal",
+        "operationId": "createArticleType",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateArticleTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleType"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/journals/{id}/article-types/{code}": {
+      "patch": {
+        "tags": [
+          "Journals"
+        ],
+        "summary": "Rename, reorder or archive an article type",
+        "operationId": "updateArticleType",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateArticleTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleType"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscripts/{id}/article-type": {
+      "put": {
+        "tags": [
+          "Manuscripts"
+        ],
+        "summary": "Move a paper to another article type of its journal",
+        "operationId": "changeManuscriptArticleType",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeArticleTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleTypeChangeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscripts/{id}/profile/upgrade": {
+      "post": {
+        "tags": [
+          "Manuscripts"
+        ],
+        "summary": "Move a paper to the rules now published for its journal and article type",
+        "operationId": "upgradeManuscriptProfile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileUpgradeResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/published": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "The published layout rules of every journal",
+        "operationId": "getPublishedProfiles",
+        "parameters": [
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published tiers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedProfiles"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged"
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/resolve": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "The resolved profile of a journal (and article type), optionally pinned",
+        "operationId": "resolveProfile",
+        "parameters": [
+          {
+            "name": "journal",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pin",
+            "in": "query",
+            "required": false,
+            "description": "base:1,journal:3,type:2",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/versions": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "All versions of a scope, newest first",
+        "operationId": "listProfileVersions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileVersion"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/drafts": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Start a new draft version",
+        "operationId": "createProfileDraft",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfileDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileVersion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/drafts/{version}": {
+      "patch": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Edit a draft (a validated one goes back to draft)",
+        "operationId": "updateProfileDraft",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileVersion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/drafts/{version}/validate": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Check a draft produces a complete profile",
+        "operationId": "validateProfileDraft",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileValidation"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/drafts/{version}/publish": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Publish a validated draft; the current version is archived",
+        "operationId": "publishProfileDraft",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileVersion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/{scope}/{id}/rollback": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Publish a copy of an earlier version as a new version",
+        "operationId": "rollbackProfile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "base",
+                "journal",
+                "article_type"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Journal id, slug or key (\"hs\"); \"hs:research\" for an article type; \"base\" for the base scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem Details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }

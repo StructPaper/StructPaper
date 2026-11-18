@@ -2,18 +2,21 @@
 
 import React, { useRef, useEffect } from 'react';
 
-export type JournalEditorTabKey = 'general' | 'frontmatter' | 'article-types' | 'layout';
+export type JournalEditorTabKey = 'general' | 'frontmatter' | 'article-types' | 'layout' | 'publication' | 'versions';
 
 interface JournalEditorTabNavProps {
   activeTab: JournalEditorTabKey;
   onTabChange: (tab: JournalEditorTabKey) => void;
   articleTypesCount?: number;
+  /** The version history only exists for a journal the server already knows. */
+  showVersions?: boolean;
 }
 
 export const JournalEditorTabNav: React.FC<JournalEditorTabNavProps> = ({
   activeTab,
   onTabChange,
   articleTypesCount,
+  showVersions = false,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement>(null);
@@ -36,6 +39,8 @@ export const JournalEditorTabNav: React.FC<JournalEditorTabNavProps> = ({
         ) : null,
     },
     { key: 'layout', label: 'Dàn trang' },
+    { key: 'publication', label: 'Thông tin in & trích dẫn' },
+    ...(showVersions ? [{ key: 'versions' as const, label: 'Lịch sử phiên bản' }] : []),
   ];
 
   // Auto-scroll active tab into center view if overflow occurs

@@ -16,7 +16,9 @@ import {
 import { CompletePaper, ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { createEmptyPaper } from '@/types/paper';
 import { parseDocxFile } from '@/lib/docx-parser';
-import { JOURNAL_TEMPLATES } from '@/lib/templates';
+import { getJournalTemplate } from '@/lib/templates';
+import { useJournals } from '@/features/journals';
+import { Shimmer } from '@/components/ui/Shimmer';
 import { usePaper } from '@/context/PaperContext';
 import { Select, SelectOption } from '@/components/ui/Select';
 import { sileo } from '@/components/toast';
@@ -27,13 +29,6 @@ interface UploadViewProps {
   currentPaper: CompletePaper;
 }
 
-const JOURNAL_OPTIONS: SelectOption[] = Object.values(JOURNAL_TEMPLATES).map((tmpl) => ({
-  value: tmpl.id,
-  label: tmpl.name,
-  description: `${tmpl.shortName} • ${tmpl.id}`,
-  color: tmpl.color,
-  badge: tmpl.id.replace('VNUHCM-', ''),
-}));
 
 export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPaper }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +38,17 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const { currentJournal, setCurrentJournal } = usePaper();
-  const activeTemplate = JOURNAL_TEMPLATES[currentJournal] || JOURNAL_TEMPLATES['VNUHCM-HS'];
+  const activeTemplate = getJournalTemplate(currentJournal);
+  // what the screen shows about journals (name, code, colour) comes from the server; the template above only feeds the paper's data
+  const { journals, isLoading: journalsLoading, find: findJournalInfo } = useJournals();
+  const activeJournal = findJournalInfo(currentJournal);
+  const journalOptions: SelectOption[] = journals.map((j) => ({
+    value: j.code,
+    label: j.name,
+    description: j.code,
+    color: j.color,
+    badge: j.key.toUpperCase(),
+  }));
 
   const {
     duplicatePrompt,
@@ -144,20 +149,20 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
             <div className="flex items-center gap-2">
               <span className="font-bold text-[#1A1A1A] text-sm sm:text-base">Mẫu tạp chí đích</span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#D9F99D] text-[#14532D]">
-                {activeTemplate.id.replace('VNUHCM-', '')}
+                {(activeJournal?.key ?? activeTemplate.id.replace('VNUHCM-', '')).toUpperCase()}
               </span>
             </div>
             <p className="text-xs text-zinc-500 mt-0.5">
-              <span className="font-semibold text-zinc-700">{activeTemplate.name} ({activeTemplate.shortName})</span>.
+              <span className="font-semibold text-zinc-700">{activeJournal?.name ?? activeTemplate.name} ({activeJournal?.code ?? activeTemplate.shortName})</span>.
             </p>
           </div>
         </div>
 
         <div className="w-full sm:w-80 rounded-[16px] shadow-md flex-shrink-0">
           <Select
-            value={currentJournal}
+            value={activeJournal?.code ?? currentJournal}
             onChange={(val) => setCurrentJournal(val)}
-            options={JOURNAL_OPTIONS}
+            options={journalOptions}
             size="sm"
             searchable={true}
             searchPlaceholder="Tìm kiếm trong 7 tạp chí VNUHCM..."
@@ -284,21 +289,22 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
               >
                 Tất cả (8)
               </button>
-              {Object.values(JOURNAL_TEMPLATES).map((tmpl) => (
+              {journalsLoading && Array.from({ length: 7 }, (_, i) => <Shimmer key={`s${i}`} className="h-6 w-16 rounded-full" />)}
+              {journals.map((j) => (
                 <button
-                  key={tmpl.id}
-                  onClick={() => setSelectedFilter(tmpl.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedFilter === tmpl.id
+                  key={j.id}
+                  onClick={() => setSelectedFilter(j.code)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedFilter === j.code
                     ? 'text-white shadow-xs'
                     : 'bg-gray-100 text-zinc-600 hover:bg-gray-200'
                     }`}
                   style={
-                    selectedFilter === tmpl.id
-                      ? { backgroundColor: tmpl.color }
+                    selectedFilter === j.code
+                      ? { backgroundColor: j.color }
                       : {}
                   }
                 >
-                  {tmpl.shortName.replace('Sci. Tech. Dev. J.', 'STDJ')}
+                  {j.code}
                 </button>
               ))}
             </div>
@@ -307,7 +313,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
           {/* Grid of sample papers */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5">
             {filteredSamples.map((item) => {
-              const tmpl = JOURNAL_TEMPLATES[item.journalId] || JOURNAL_TEMPLATES['VNUHCM-HS'];
+              const itemJournal = findJournalInfo(item.journalId);
               const isSelected = currentPaper.id === item.paper.id;
               const refCount = item.paper.references.length;
               const tableCount = item.paper.sections.filter((s) => s.type === 'table').length;
@@ -326,9 +332,9 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
                     <div className="flex items-center justify-between mb-2">
                       <span
                         className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold text-white shadow-2xs"
-                        style={{ backgroundColor: tmpl.color }}
+                        style={{ backgroundColor: itemJournal?.color }}
                       >
-                        {tmpl.id.replace('VNUHCM-', '')}
+                        {(itemJournal?.key ?? item.journalId.replace('VNUHCM-', '')).toUpperCase()}
                       </span>
                       <span className="text-[10px] font-extrabold text-[#14532D] bg-[#D9F99D] px-2 py-0.5 rounded-full">
                         {refCount} TLTK

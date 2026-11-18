@@ -1,9 +1,9 @@
 'use client';
 
+import { JournalCodeBadge } from '@/features/journals';
 import React from 'react';
 import { UploadCloud } from 'lucide-react';
 import { ActionConfirmModal } from '@/components/modals';
-import { getJournalColor, getJournalShortName } from './types';
 import { formatUploadDate, type TitleDuplicate } from '@/lib/storage/title-duplicates';
 
 export interface DuplicatePaperWarningModalProps {
@@ -30,17 +30,10 @@ export const DuplicatePaperWarningModal: React.FC<DuplicatePaperWarningModalProp
   onClose,
   onConfirmUpload,
 }) => {
-  const journalColor = getJournalColor(journalId);
-  const journalShort = getJournalShortName(journalId);
 
   const previewCard = (
     <div className="w-full bg-slate-50 border border-slate-200/70 rounded-3xl p-3.5 flex items-center gap-3 shadow-inner">
-      <span
-        className="shrink-0 px-2.5 py-1 rounded-xl text-[10.5px] font-extrabold text-white shadow-2xs"
-        style={{ backgroundColor: journalColor }}
-      >
-        {journalShort}
-      </span>
+      <JournalCodeBadge variant="tile" journalId={journalId} />
       <div className="min-w-0 flex-1">
         <h4 className="text-xs font-bold text-slate-900 truncate">
           {paperTitle}
