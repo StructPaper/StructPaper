@@ -28,6 +28,11 @@ export abstract class StorageService {
   abstract getObjectBuffer(storageKey: string): Promise<Buffer | null>;
 
   /**
+   * Stores a small object written by the API itself (e.g. the latest compiled PDF of a manuscript).
+   */
+  abstract putObject(storageKey: string, body: Buffer, mimeType: string): Promise<void>;
+
+  /**
    * Deletes an object from storage.
    */
   abstract deleteObject(storageKey: string): Promise<void>;

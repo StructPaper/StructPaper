@@ -114,7 +114,7 @@ describe('Privilege Escalation Protection & Role Revocation', () => {
           { id: editorUserId },
           journalManagerAbility,
         ),
-      ).rejects.toThrow(/Users cannot assign elevated roles to themselves/i);
+      ).rejects.toThrow(/You cannot change your own roles/i);
     });
 
     it('User without role management permissions cannot assign any roles', async () => {
@@ -212,6 +212,110 @@ describe('Privilege Escalation Protection & Role Revocation', () => {
       const result = await accessController.revokeRole(targetUserId, editorRoleId, undefined, mockReq);
       expect(result.success).toBe(true);
       expect(result.permissionsVersion).toBe(6);
+    });
+  });
+
+  describe('3. Self-protection and "always keep a SuperAdmin"', () => {
+    /** select() #1 resolves the role; select() #2 is the locked "active SuperAdmins" query. */
+    const mockSuperAdminRevocation = (activeSuperAdminIds: string[]) => {
+      const forUpdate = vi.fn().mockResolvedValue(activeSuperAdminIds.map((id) => ({ id })));
+      mockDb.select
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: () => Promise.resolve([{ id: superAdminRoleId, name: 'SuperAdmin' }]) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ innerJoin: () => ({ innerJoin: () => ({ where: () => ({ for: forUpdate }) }) }) }),
+        });
+      mockDb.transaction = vi.fn(async (fn: any) => fn(mockDb));
+      mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue([{}]) });
+      mockDb.update.mockReturnValue({
+        set: () => ({ where: () => ({ returning: () => Promise.resolve([{ id: targetUserId, permissionsVersion: 9 }]) }) }),
+      });
+      return forUpdate;
+    };
+
+    const superAdminAbility = () => abilityFactory.createForUser(adminUserId, { roles: [{ name: 'SuperAdmin' }] });
+
+    it('a SuperAdmin can NOT remove their own SuperAdmin role', async () => {
+      setupMockRoleSelect(superAdminRoleId, 'SuperAdmin');
+
+      await expect(
+        accessService.revokeRole(
+          { userId: adminUserId, roleId: superAdminRoleId },
+          { id: adminUserId },
+          await superAdminAbility(),
+        ),
+      ).rejects.toThrow(/You cannot change your own roles/i);
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    it('a SuperAdmin can NOT change their own roles at all (assign is blocked too)', async () => {
+      setupMockRoleSelect(editorRoleId, 'Editor');
+
+      await expect(
+        accessService.assignRole(
+          { userId: adminUserId, roleId: editorRoleId },
+          { id: adminUserId },
+          await superAdminAbility(),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('revoking SuperAdmin from the ONLY active SuperAdmin is refused (409) and nothing is deleted', async () => {
+      mockSuperAdminRevocation([targetUserId]);
+
+      await expect(
+        accessService.revokeRole(
+          { userId: targetUserId, roleId: superAdminRoleId },
+          { id: adminUserId },
+          await superAdminAbility(),
+        ),
+      ).rejects.toThrow(/At least one active SuperAdmin must remain/i);
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    it('revoking SuperAdmin is allowed when another active SuperAdmin remains', async () => {
+      mockSuperAdminRevocation([targetUserId, adminUserId]);
+
+      const result = await accessService.revokeRole(
+        { userId: targetUserId, roleId: superAdminRoleId },
+        { id: adminUserId },
+        await superAdminAbility(),
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockDb.delete).toHaveBeenCalled();
+    });
+
+    it('the check and the delete run in ONE transaction with the SuperAdmin rows locked (FOR UPDATE)', async () => {
+      const forUpdate = mockSuperAdminRevocation([targetUserId, adminUserId]);
+
+      await accessService.revokeRole(
+        { userId: targetUserId, roleId: superAdminRoleId },
+        { id: adminUserId },
+        await superAdminAbility(),
+      );
+
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(forUpdate).toHaveBeenCalledWith('update', expect.anything());
+    });
+
+    it('revoking an ordinary role does not need the lock or a transaction', async () => {
+      setupMockRoleSelect(editorRoleId, 'Editor');
+      mockDb.transaction = vi.fn();
+      mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue([{}]) });
+      mockDb.update.mockReturnValue({
+        set: () => ({ where: () => ({ returning: () => Promise.resolve([{ id: targetUserId, permissionsVersion: 3 }]) }) }),
+      });
+
+      await accessService.revokeRole(
+        { userId: targetUserId, roleId: editorRoleId },
+        { id: adminUserId },
+        await superAdminAbility(),
+      );
+
+      expect(mockDb.transaction).not.toHaveBeenCalled();
     });
   });
 });

@@ -73,7 +73,7 @@ vi.stubGlobal(
 import { EditorLeftDock } from '@/features/editor';
 import { PaperProvider } from '@/context/PaperContext';
 import { CompletePaper, DEFAULT_LAYOUT_SETTINGS } from '@/types/paper';
-import PreviewPage from '@/app/preview/page';
+import PreviewPage from '@/app/(authenticate)/(main)/preview/page';
 
 const mockPaper: CompletePaper = {
   id: 'test_paper_shell_1',

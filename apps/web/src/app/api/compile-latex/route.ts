@@ -6,6 +6,7 @@ export const maxDuration = 300;
 /**
  * POST /api/compile-latex
  * Forwards the LaTeX source to the NestJS backend (Tectonic) and pipes the PDF back.
+ * The caller's bearer token is forwarded (the backend compile route requires login).
  * On failure it returns a JSON error (never a blank placeholder PDF) so the UI can show it.
  */
 export async function POST(req: NextRequest) {
@@ -31,11 +32,16 @@ export async function POST(req: NextRequest) {
       'http://localhost:3001'
     ).replace(/\/+$/, '');
 
+    const authorization = req.headers.get('authorization');
+
     let backendRes: Response;
     try {
       backendRes = await fetch(`${backendBaseUrl}/api/v1/compile/latex`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authorization ? { Authorization: authorization } : {}),
+        },
         body: JSON.stringify({
           tex,
           texContent: tex,
@@ -54,6 +60,20 @@ export async function POST(req: NextRequest) {
           engine: 'Tectonic',
         },
         { status: 502 }
+      );
+    }
+
+    if (backendRes.status === 401 || backendRes.status === 403) {
+      return NextResponse.json(
+        {
+          error:
+            backendRes.status === 401
+              ? 'Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập'
+              : 'Bạn không có quyền biên dịch',
+          details: 'Hãy đăng nhập lại rồi biên dịch lại.',
+          engine: 'Tectonic',
+        },
+        { status: backendRes.status },
       );
     }
 

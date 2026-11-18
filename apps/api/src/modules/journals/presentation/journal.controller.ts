@@ -1,6 +1,9 @@
 import { Controller, Get, Param, Query, Inject, HttpCode, HttpStatus } from '@nestjs/common';
+import { Public } from '../../access/presentation/decorators/public.decorator';
 import { JournalService, type JournalDto } from '../application/journal.service';
 
+// Read-only reference data (journals, article types, profiles): visible without logging in.
+@Public()
 @Controller()
 export class JournalController {
   constructor(

@@ -9,20 +9,17 @@ import {
   Res,
   HttpCode,
   HttpStatus,
-  UseGuards,
   UsePipes,
   Optional,
   Inject,
 } from '@nestjs/common';
 import { SubmitOpsSchema, type SubmitOps } from '@structpaper/contracts';
-import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
 import { AbilityFactory, type AppAbility } from '../../access/domain/ability.factory';
 import { AbilityCacheService } from '../../access/domain/ability-cache.service';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { SyncService } from '../application/sync.service';
 
 @Controller('manuscripts')
-@UseGuards(JwtAuthGuard)
 export class SyncController {
   constructor(
     @Inject(SyncService)

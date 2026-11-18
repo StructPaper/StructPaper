@@ -30,6 +30,9 @@ export interface RemoteCompilerOptions {
 
   /** Optional secondary compiler to fall back to when the HTTP endpoint is unreachable */
   fallbackCompiler?: CompilerPort;
+
+  /** Extra request headers resolved per request (e.g. the Authorization bearer token) */
+  getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
 /**
@@ -45,6 +48,7 @@ export class RemoteCompiler implements CompilerPort {
   private readonly environmentId: string;
   private readonly timeoutMs?: number;
   private readonly fallbackCompiler?: CompilerPort;
+  private readonly getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
   private readonly progressListeners = new Set<(event: CompileProgress) => void>();
 
   constructor(options: RemoteCompilerOptions = {}) {
@@ -54,6 +58,7 @@ export class RemoteCompiler implements CompilerPort {
     this.environmentId = options.environmentId ?? 'tl2026-server';
     this.timeoutMs = options.timeoutMs;
     this.fallbackCompiler = options.fallbackCompiler;
+    this.getHeaders = options.getHeaders;
   }
 
   /**
@@ -169,6 +174,7 @@ export class RemoteCompiler implements CompilerPort {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/pdf, application/json',
+            ...(this.getHeaders ? await this.getHeaders() : {}),
           },
           body: JSON.stringify(payload),
           signal: abortCtrl.signal,

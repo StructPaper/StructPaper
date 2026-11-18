@@ -6,6 +6,7 @@ import { Select, SelectOption, DatePicker } from '@/components/ui';
 import { FileText, Calendar, BookOpen, Tag } from 'lucide-react';
 import { PublicationInfoFields } from './PublicationInfoFields';
 import { ArticleTypeField } from './ArticleTypeField';
+import { KeywordsInput } from './KeywordsInput';
 import { useTabScrollRestoration } from '../hooks';
 import {
   useEditorCommandBus,
@@ -76,15 +77,8 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
     autoResize(abstractEnRef.current);
   }, [metadata.abstractEn]);
 
-  const handleKeywordsChange = (val: string) => {
-    const list = val.split(',').map((k) => k.trim()).filter(Boolean);
-    dispatchKeywordsChange(activeBus, list, onChange, metadata);
-  };
-
-  const handleKeywordsEnChange = (val: string) => {
-    const list = val.split(',').map((k) => k.trim()).filter(Boolean);
-    dispatchKeywordsEnChange(activeBus, list, onChange, metadata);
-  };
+  const handleKeywordsChange = (list: string[]) => dispatchKeywordsChange(activeBus, list, onChange, metadata);
+  const handleKeywordsEnChange = (list: string[]) => dispatchKeywordsEnChange(activeBus, list, onChange, metadata);
 
   return (
     <div ref={scrollContainerRef} className="h-full flex flex-col min-h-0 overflow-y-auto p-4 sm:p-5 pb-12 space-y-4">
@@ -115,18 +109,6 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
           className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm font-semibold text-zinc-900 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all leading-snug shadow-2xs"
           placeholder="Nhập tựa đề bài báo tiếng Việt..."
         />
-        {metadata.titleOriginal && metadata.titleOriginal !== metadata.title && (
-          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-zinc-600" data-testid="title-normalized">
-            <span>Tựa đề trong Word viết HOA toàn bộ nên đã đổi sang kiểu câu như bản in.</span>
-            <button
-              type="button"
-              onClick={() => onChange({ ...metadata, title: metadata.titleOriginal as string, titleOriginal: undefined })}
-              className="px-2 py-0.5 rounded-full bg-white border border-zinc-200 font-bold text-zinc-700 hover:bg-zinc-50"
-            >
-              Hoàn tác
-            </button>
-          </div>
-        )}
       </div>
 
       {/* English Title */}
@@ -145,7 +127,7 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
           autoCorrect="off"
           autoCapitalize="off"
           style={{ resize: 'none', overflow: 'hidden' }}
-          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm italic text-zinc-800 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all leading-snug shadow-2xs"
+          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm font-semibold italic text-zinc-900 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all leading-snug shadow-2xs"
           placeholder="Article Title in English..."
         />
       </div>
@@ -247,10 +229,9 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
                 <Tag className="w-3.5 h-3.5 text-zinc-500" />
                 Từ khóa bài báo (Tiếng Việt, cách nhau bằng dấu phẩy):
               </label>
-              <input
-                type="text"
-                value={(metadata.keywords || []).join(', ')}
-                onChange={(e) => handleKeywordsChange(e.target.value)}
+              <KeywordsInput
+                value={metadata.keywords || []}
+                onChange={handleKeywordsChange}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -264,10 +245,9 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
                 <Tag className="w-3.5 h-3.5 text-zinc-500" />
                 Keywords in English (comma-separated):
               </label>
-              <input
-                type="text"
-                value={(metadata.keywordsEn || []).join(', ')}
-                onChange={(e) => handleKeywordsEnChange(e.target.value)}
+              <KeywordsInput
+                value={metadata.keywordsEn || []}
+                onChange={handleKeywordsEnChange}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"

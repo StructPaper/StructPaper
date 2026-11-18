@@ -8,6 +8,9 @@
 
 export interface ActivateAccountRequest {
   token: string;
-  /** @minLength 8 */
+  /**
+   * @minLength 8
+   * @maxLength 128
+   */
   password: string;
 }

@@ -15,4 +15,5 @@ export const ManuscriptMemberRole = {
   COAUTHOR: 'COAUTHOR',
   EDITOR: 'EDITOR',
   REVIEWER: 'REVIEWER',
+  VIEWER: 'VIEWER',
 } as const;

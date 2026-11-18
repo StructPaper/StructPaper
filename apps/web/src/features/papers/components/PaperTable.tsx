@@ -6,15 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import {
   Pin,
-  PinOff,
   MoreVertical,
-  Edit3,
   Sliders,
-  Copy,
-  Download,
-  Trash2,
   Clock,
-  X,
 } from 'lucide-react';
 import {
   getJournalColor,
@@ -26,6 +20,7 @@ import {
   getSyncBadgeConfig,
 } from './types';
 import { useStorage } from '@/context/StorageContext';
+import { PaperMenuItems } from './PaperMenuItems';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
@@ -40,6 +35,7 @@ interface PaperTableProps {
   onDuplicate: (paper: ManuscriptRecord) => void;
   onExportBackup: (paper: ManuscriptRecord) => void;
   onDelete: (id: string) => void;
+  onShare?: (paper: ManuscriptRecord) => void;
 }
 
 interface MenuAnchor {
@@ -61,6 +57,7 @@ export const PaperTable: React.FC<PaperTableProps> = ({
   onDuplicate,
   onExportBackup,
   onDelete,
+  onShare,
 }) => {
   const storage = useStorage();
   const [mounted, setMounted] = useState(false);
@@ -363,115 +360,17 @@ export const PaperTable: React.FC<PaperTableProps> = ({
                     transformOrigin: menuAnchor.openUpwards ? 'bottom right' : 'top right',
                   }}
                 >
-                  <div className="flex items-center justify-between px-2 py-1 select-none">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                      Thao tác bài báo
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCloseMenu();
-                      }}
-                      className="w-5 h-5 rounded-full hover:bg-zinc-100 flex items-center justify-center text-zinc-400 hover:text-zinc-700 cursor-pointer"
-                      title="Đóng menu"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  <div className="border-t border-zinc-200/80 my-0.5" />
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenEditor(activePaper.info.id);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 text-zinc-800 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Mở soạn thảo</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    data-testid={`quick-edit-${activePaper.info.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onQuickEdit(activePaper);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 text-zinc-800 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Sửa thông tin nhanh</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    data-testid={`pin-toggle-${activePaper.info.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTogglePin(activePaper.info.id, activePaper.info.pinned);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 text-zinc-800 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    {activePaper.info.pinned ? (
-                      <>
-                        <PinOff className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Bỏ ghim</span>
-                      </>
-                    ) : (
-                      <>
-                        <Pin className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Ghim lên đầu</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDuplicate(activePaper);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 text-zinc-800 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-zinc-600" />
-                    <span>Nhân bản bài báo</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExportBackup(activePaper);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 text-zinc-800 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 text-[#14532D]" />
-                    <span>Xuất .structpaper</span>
-                  </button>
-
-                  <div className="border-t border-zinc-200/80 my-0.5" />
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(activePaper.info.id);
-                      onCloseMenu();
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl hover:bg-rose-50 text-rose-600 flex items-center gap-2 font-medium transition-colors text-left cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Xóa bài báo</span>
-                  </button>
+                  <PaperMenuItems
+                    paper={activePaper}
+                    onCloseMenu={onCloseMenu}
+                    onOpenEditor={onOpenEditor}
+                    onQuickEdit={onQuickEdit}
+                    onTogglePin={onTogglePin}
+                    onDuplicate={onDuplicate}
+                    onExportBackup={onExportBackup}
+                    onDelete={onDelete}
+                    onShare={onShare}
+                  />
                 </motion.div>
               </div>
             )}

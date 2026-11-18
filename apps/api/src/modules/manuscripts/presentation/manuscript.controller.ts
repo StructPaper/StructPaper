@@ -1,8 +1,11 @@
 import {
   Controller,
+  StreamableFile,
+  NotFoundException,
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Param,
   Query,
@@ -12,7 +15,6 @@ import {
   Res,
   HttpCode,
   HttpStatus,
-  UseGuards,
   UsePipes,
   Optional,
   Inject,
@@ -23,20 +25,34 @@ import {
   ChangeManuscriptStatusSchema,
   ManuscriptQuerySchema,
   AddManuscriptMemberSchema,
+  UpdateGeneralAccessSchema,
+  PeopleSearchQuerySchema,
   type CreateManuscript,
   type UpdateManuscript,
   type ChangeManuscriptStatus,
   type ManuscriptQuery,
   type AddManuscriptMember,
+  type UpdateGeneralAccess,
 } from '@structpaper/contracts';
-import { JwtAuthGuard } from '../../access/presentation/guards/jwt-auth.guard';
 import { AbilityFactory, type AppAbility } from '../../access/domain/ability.factory';
 import { AbilityCacheService } from '../../access/domain/ability-cache.service';
+import { OptionalAuth } from '../../access/presentation/decorators/optional-auth.decorator';
 import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { ManuscriptService } from '../application/manuscript.service';
+import { ManuscriptSharingService } from '../application/manuscript-sharing.service';
+import { ManuscriptPreviewService } from '../application/manuscript-preview.service';
+
+/** Ids of papers that only exist on the user's machine (paper_123) are not UUIDs: answer 404, never a database error. */
+const ManuscriptIdPipe = {
+  transform(value: string) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+      throw new NotFoundException(`Manuscript with ID ${value} not found`);
+    }
+    return value;
+  },
+};
 
 @Controller('manuscripts')
-@UseGuards(JwtAuthGuard)
 export class ManuscriptController {
   constructor(
     @Inject(ManuscriptService)
@@ -46,6 +62,10 @@ export class ManuscriptController {
     @Optional()
     @Inject(AbilityCacheService)
     private readonly abilityCache?: AbilityCacheService,
+    @Inject(ManuscriptSharingService)
+    private readonly sharing?: ManuscriptSharingService,
+    @Inject(ManuscriptPreviewService)
+    private readonly previews?: ManuscriptPreviewService,
   ) {}
 
   @Post()
@@ -53,7 +73,10 @@ export class ManuscriptController {
   @UsePipes(new ZodValidationPipe(CreateManuscriptSchema))
   async create(@Body() body: CreateManuscript, @Req() req: any) {
     const ability = await this.getAbility(req);
-    return this.manuscriptService.createManuscript(body, req.user?.id, ability);
+    const created = await this.manuscriptService.createManuscript(body, req.user?.id, ability);
+    // The creator just became OWNER: their cached ability does not know this manuscript yet.
+    if (req.user?.id) this.abilityCache?.invalidate(req.user.id);
+    return created;
   }
 
   @Get()
@@ -63,14 +86,25 @@ export class ManuscriptController {
     return this.manuscriptService.listManuscripts(query, ability, req.user?.id);
   }
 
+  /** Look members up by email/name to share a manuscript with (any signed-in user). */
+  @Get('people')
+  @UsePipes(new ZodValidationPipe(PeopleSearchQuerySchema))
+  async searchPeople(@Query() query: { q: string }, @Req() req: any) {
+    return this.sharing!.searchPeople(query.q, req.user?.id);
+  }
+
+  /** Readable by guests when the owner shared it with "anyone with the link". */
   @Get(':id')
+  @OptionalAuth()
   async getById(
-    @Param('id') id: string,
+    @Param('id', ManuscriptIdPipe) id: string,
     @Req() req: any,
     @Res({ passthrough: true }) res: any,
   ) {
     const ability = await this.getAbility(req);
     const manuscript = await this.manuscriptService.getManuscript(id, ability);
+    if (req.user?.id) void this.sharing?.recordVisit(manuscript, req.user.id);
+    if (!req.user) delete manuscript.members; // guests never see who else has access
     if (manuscript?.version !== undefined) {
       res.header('ETag', `"${manuscript.version}"`);
     }
@@ -80,7 +114,7 @@ export class ManuscriptController {
   @Patch(':id')
   @UsePipes(new ZodValidationPipe(UpdateManuscriptSchema))
   async update(
-    @Param('id') id: string,
+    @Param('id', ManuscriptIdPipe) id: string,
     @Body() body: UpdateManuscript,
     @Headers('if-match') ifMatch: string | undefined,
     @Req() req: any,
@@ -96,46 +130,77 @@ export class ManuscriptController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async delete(@Param('id') id: string, @Req() req: any) {
+  async delete(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
     const ability = await this.getAbility(req);
     return this.manuscriptService.deleteManuscript(id, ability);
+  }
+
+  /** Latest compiled PDF: readable by everybody who may read the paper, guests included. */
+  @Get(':id/preview')
+  @OptionalAuth()
+  async getPreview(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any, @Res({ passthrough: true }) res: any) {
+    const ability = await this.getAbility(req);
+    const pdf = await this.previews!.read(id, ability);
+    res.header('Content-Type', 'application/pdf');
+    res.header('Cache-Control', 'private, no-store');
+    return new StreamableFile(pdf);
+  }
+
+  /** Stores the PDF an editor has just compiled so that readers can see it. */
+  @Put(':id/preview')
+  @HttpCode(HttpStatus.OK)
+  async putPreview(@Param('id', ManuscriptIdPipe) id: string, @Body() body: unknown, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.previews!.save(id, body, ability);
   }
 
   @Post(':id/members')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(AddManuscriptMemberSchema))
   async addMember(
-    @Param('id') id: string,
+    @Param('id', ManuscriptIdPipe) id: string,
     @Body() body: AddManuscriptMember,
     @Req() req: any,
   ) {
     const ability = await this.getAbility(req);
-    return this.manuscriptService.addMember(id, body, ability);
+    return this.sharing!.addMember(id, body, ability);
   }
 
   @Delete(':id/members/:userId')
   @HttpCode(HttpStatus.OK)
   async removeMember(
-    @Param('id') id: string,
+    @Param('id', ManuscriptIdPipe) id: string,
     @Param('userId') userId: string,
     @Req() req: any,
   ) {
     const ability = await this.getAbility(req);
-    return this.manuscriptService.removeMember(id, userId, ability);
+    return this.sharing!.removeMember(id, userId, ability);
   }
 
   @Get(':id/members')
   @HttpCode(HttpStatus.OK)
-  async getMembers(@Param('id') id: string, @Req() req: any) {
+  async getMembers(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
     const ability = await this.getAbility(req);
-    return this.manuscriptService.getMembers(id, ability);
+    return this.sharing!.getMembers(id, ability);
+  }
+
+  @Put(':id/general-access')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(UpdateGeneralAccessSchema))
+  async setGeneralAccess(
+    @Param('id', ManuscriptIdPipe) id: string,
+    @Body() body: UpdateGeneralAccess,
+    @Req() req: any,
+  ) {
+    const ability = await this.getAbility(req);
+    return this.sharing!.setGeneralAccess(id, body.generalAccess, ability);
   }
 
   @Post(':id/status')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(ChangeManuscriptStatusSchema))
   async changeStatus(
-    @Param('id') id: string,
+    @Param('id', ManuscriptIdPipe) id: string,
     @Body() body: ChangeManuscriptStatus,
     @Req() req: any,
   ) {
@@ -145,7 +210,8 @@ export class ManuscriptController {
 
   private async getAbility(req: any): Promise<AppAbility | undefined> {
     const user = req.user;
-    if (!user) return undefined;
+    // Guest (only possible on @OptionalAuth routes): an ability without any role or membership.
+    if (!user) return this.abilityFactory.createForUser({ roles: [], manuscriptMemberships: [] });
 
     const userId = user.id;
     const pv = user.permissionsVersion;

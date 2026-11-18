@@ -55,6 +55,9 @@ export class PoliciesGuard implements CanActivate {
       }
     }
 
+    // Expose the resolved ability so controllers/services can run finer-grained checks.
+    request.ability = ability;
+
     for (const handler of policyHandlers) {
       let isAllowed = false;
 

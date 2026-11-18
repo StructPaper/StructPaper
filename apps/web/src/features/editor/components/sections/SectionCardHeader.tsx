@@ -172,7 +172,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
         {isHeading && (
           <div className="flex items-center gap-1 bg-white/80 p-0.5 rounded-lg text-[10px]">
             {(['h1', 'h2', 'h3'] as const).map((hType) => (
-              <button
+              <button data-edit-only
                 key={hType}
                 type="button"
                 onClick={() => onUpdateSection(idx, { ...sec, type: hType })}
@@ -185,7 +185,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
                 {hType}
               </button>
             ))}
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onConvertToParagraph(idx)}
               className="px-1.5 py-0.5 rounded font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200 transition-colors cursor-pointer flex items-center gap-0.5 ml-0.5"
@@ -204,7 +204,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
               Chuyển sang:
             </span>
             {(['h1', 'h2', 'h3'] as const).map((hType) => (
-              <button
+              <button data-edit-only
                 key={hType}
                 type="button"
                 onClick={() => onConvertToHeading(idx, hType)}
@@ -220,7 +220,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
         {/* Citation Conversion Controls */}
         {isCitation && (
           <div className="flex items-center gap-1 bg-white/80 p-0.5 rounded-lg text-[10px]">
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onConvertToParagraph(idx)}
               className="px-1.5 py-0.5 rounded font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-1"
@@ -229,7 +229,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
               <AlignLeft className="w-2.5 h-2.5" />
               <span>↳ Đoạn văn</span>
             </button>
-            <button
+            <button data-edit-only
               type="button"
               onClick={() => onConvertToHeading(idx, 'h1')}
               className="px-1.5 py-0.5 rounded font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-1"
@@ -243,7 +243,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
       </div>
 
       {/* Right Action Icons (Reorder, Page Break & Delete) */}
-      <div className="flex items-center gap-1.5 ml-auto">
+      <div data-edit-only className="flex items-center gap-1.5 ml-auto">
         <PageLayoutControl sec={sec} idx={idx} onUpdateSection={onUpdateSection} />
 
         {/* Page Break Toggle */}

@@ -183,6 +183,8 @@ describe('Identity & User Management', () => {
             }),
           })),
         })),
+        // The transaction callback runs against the same mock (we only assert the statements).
+        transaction: vi.fn().mockImplementation(async (fn: any) => fn(mockDb)),
       };
 
       authService = new AuthService(passwordService, tokenService, mockDb, mailService);
@@ -297,18 +299,42 @@ describe('Identity & User Management', () => {
       expect(mockDb.update).toHaveBeenCalled();
     });
 
+    /**
+     * Makes the n-th db.update(...).returning() resolve to the given rows
+     * (activate: 1st = claim the token, 2nd = activate the user).
+     */
+    const stubUpdateResults = (...results: any[][]) => {
+      const updatedTables: any[] = [];
+      let call = 0;
+      mockDb.update.mockImplementation((table: any) => {
+        updatedTables.push(table);
+        const rows = results[call++] ?? [];
+        return {
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue(rows) }),
+          }),
+        };
+      });
+      return updatedTables;
+    };
+
+    const pendingInvitation = (rawToken: string, overrides: Record<string, any> = {}) => ({
+      id: 'token-uuid-1',
+      userId: 'user-invited-3',
+      type: 'INVITATION',
+      tokenHash: tokenService.hashToken(rawToken),
+      expiresAt: new Date(Date.now() + 100000),
+      consumedAt: null,
+      ...overrides,
+    });
+
     it('activate activates user with valid invitation token and sets password', async () => {
       const rawToken = 'valid-activation-token-raw';
-      const tokenHash = tokenService.hashToken(rawToken);
-
-      mockDb.query.userTokens.findFirst.mockResolvedValue({
-        id: 'token-uuid-1',
-        userId: 'user-invited-3',
-        type: 'INVITATION',
-        tokenHash,
-        expiresAt: new Date(Date.now() + 100000),
-        consumedAt: null,
-      });
+      mockDb.query.userTokens.findFirst.mockResolvedValue(pendingInvitation(rawToken));
+      stubUpdateResults(
+        [{ id: 'token-uuid-1', userId: 'user-invited-3' }], // token claimed
+        [{ id: 'user-invited-3' }], // user activated
+      );
 
       const result = await authService.activate({
         token: rawToken,
@@ -317,40 +343,66 @@ describe('Identity & User Management', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('Account activated');
-      expect(mockDb.update).toHaveBeenCalled();
+      // Claim + activation happen inside ONE transaction
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDb.update).toHaveBeenCalledTimes(2);
     });
 
-    it('activate rejects expired or already consumed token', async () => {
-      mockDb.query.userTokens.findFirst.mockResolvedValue({
-        id: 'token-uuid-consumed',
-        userId: 'user-invited-3',
-        type: 'INVITATION',
-        tokenHash: 'hash',
-        expiresAt: new Date(Date.now() + 100000),
-        consumedAt: new Date(),
-      });
+    it('activate rejects expired, consumed or unknown tokens with one generic message and never hashes the password', async () => {
+      const hashSpy = vi.spyOn(passwordService, 'hash');
+      const cases = [
+        pendingInvitation('t', { consumedAt: new Date() }), // already used / revoked
+        pendingInvitation('t', { expiresAt: new Date(Date.now() - 1000) }), // expired
+        null, // unknown
+      ];
 
-      await expect(
-        authService.activate({
-          token: 'consumed-token',
-          password: 'Password123!',
-        }),
-      ).rejects.toThrow(BadRequestException);
+      for (const record of cases) {
+        mockDb.query.userTokens.findFirst.mockResolvedValue(record);
+        await expect(authService.activate({ token: 't', password: 'Password123!' })).rejects.toThrow(
+          'Invalid or expired activation token',
+        );
+      }
+      expect(hashSpy).not.toHaveBeenCalled();
+      expect(mockDb.transaction).not.toHaveBeenCalled();
     });
 
-    it('resetPassword consumes token, hashes new password, and increments permissionsVersion', async () => {
+    it('activate is single-use under concurrency: if the token was claimed meanwhile, nothing is activated', async () => {
+      const rawToken = 'raced-token';
+      mockDb.query.userTokens.findFirst.mockResolvedValue(pendingInvitation(rawToken));
+      // Another request consumed the token between the pre-check and our UPDATE: 0 rows claimed
+      const updated = stubUpdateResults([]);
+
+      await expect(authService.activate({ token: rawToken, password: 'NewStrongPassword123!' })).rejects.toThrow(
+        BadRequestException,
+      );
+      // Only the (failed) claim ran: the user row was never touched
+      expect(updated).toHaveLength(1);
+    });
+
+    it('activate rolls back when the user is no longer INVITED', async () => {
+      const rawToken = 'late-token';
+      mockDb.query.userTokens.findFirst.mockResolvedValue(pendingInvitation(rawToken));
+      stubUpdateResults(
+        [{ id: 'token-uuid-1', userId: 'user-invited-3' }], // claimed...
+        [], // ...but the user is not INVITED anymore -> must throw so the transaction rolls back
+      );
+
+      await expect(authService.activate({ token: rawToken, password: 'NewStrongPassword123!' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('resetPassword atomically consumes the token, bumps permissionsVersion and revokes refresh tokens', async () => {
       const rawToken = 'valid-reset-token-raw';
-      const tokenHash = tokenService.hashToken(rawToken);
-
-      mockDb.query.userTokens.findFirst.mockResolvedValue({
-        id: 'reset-token-1',
-        userId: 'user-active-1',
-        type: 'PASSWORD_RESET',
-        tokenHash,
-        expiresAt: new Date(Date.now() + 100000),
-        consumedAt: null,
-      });
+      mockDb.query.userTokens.findFirst.mockResolvedValue(
+        pendingInvitation(rawToken, { id: 'reset-token-1', userId: 'user-active-1', type: 'PASSWORD_RESET' }),
+      );
       mockDb.query.users.findFirst.mockResolvedValue(usersStore[0]);
+      const updated = stubUpdateResults(
+        [{ id: 'reset-token-1', userId: 'user-active-1' }], // token claimed
+        [], // users (no returning needed)
+        [], // refresh tokens revoked
+      );
 
       const result = await authService.resetPassword({
         token: rawToken,
@@ -359,16 +411,47 @@ describe('Identity & User Management', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('Password reset successfully');
-      expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(updated).toHaveLength(3); // user_tokens, users, refresh_tokens
     });
 
-    it('me returns user profile stripped of passwordHash', async () => {
+    it('resetPassword rejects a token that was already consumed', async () => {
+      mockDb.query.userTokens.findFirst.mockResolvedValue(
+        pendingInvitation('x', { type: 'PASSWORD_RESET', consumedAt: new Date() }),
+      );
+
+      await expect(authService.resetPassword({ token: 'x', newPassword: 'BrandNewPassword123!' })).rejects.toThrow(
+        'Invalid or expired password reset token',
+      );
+    });
+
+    it('me returns user profile stripped of passwordHash, with the roles the user holds', async () => {
       mockDb.query.users.findFirst.mockResolvedValue(usersStore[0]);
+      // role assignments query: select().from().innerJoin().leftJoin().where()
+      mockDb.select.mockReturnValue({
+        from: () => ({
+          innerJoin: () => ({
+            leftJoin: () => ({
+              where: () =>
+                Promise.resolve([
+                  { userId: 'user-active-1', roleName: 'JournalManager', scopeJournalId: 'j-std', journalName: 'Tạp chí STD' },
+                  { userId: 'user-active-1', roleName: 'Author', scopeJournalId: '00000000-0000-0000-0000-000000000000', journalName: null },
+                ]),
+            }),
+          }),
+        }),
+      });
 
       const profile = await authService.me('user-active-1');
       expect(profile.id).toBe('user-active-1');
       expect(profile.email).toBe('active@structpaper.org');
       expect(profile.passwordHash).toBeUndefined();
+      expect(profile.roles).toEqual([
+        { roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'Tạp chí STD' },
+        { roleName: 'Author', scopeJournalId: null, scopeJournalName: null },
+      ]);
+      // what the UI may show: derived from the roles by the same rules the guards use
+      expect(profile.capabilities).toEqual(['member:manage', 'role:assign']);
     });
   });
 
@@ -424,29 +507,7 @@ describe('Identity & User Management', () => {
       userService = new UserService(mockDb, tokenService, mailService);
     });
 
-    it('inviteUser creates user in INVITED state, creates user_tokens, logs and returns activationUrl', async () => {
-      mockDb.query.users.findFirst.mockResolvedValue(null);
-
-      const res = await userService.inviteUser({
-        email: 'newauthor@structpaper.org',
-        displayName: 'New Author',
-        role: 'Author',
-      });
-
-      expect(res.user.email).toBe('newauthor@structpaper.org');
-      expect(res.user.status).toBe('INVITED');
-      expect(res.activationUrl).toBeDefined();
-      expect(res.token).toBeDefined();
-      expect(mailService.getSentMails()).toHaveLength(1);
-      expect(mailService.getLatestMail()?.email).toBe('newauthor@structpaper.org');
-    });
-
-    it('listUsers returns paginated items and total', async () => {
-      const list = await userService.listUsers({ limit: 10, offset: 0 });
-      expect(list.items).toHaveLength(1);
-      expect(list.items[0].displayName).toBe('Old Name');
-      expect(list.items[0].passwordHash).toBeUndefined();
-    });
+    // inviteUser / listUsers / invitations are covered in test/users/user.service.spec.ts
 
     it('updates user when If-Match matches current version', async () => {
       const updated = await userService.updateUser('user-uuid-123', { displayName: 'New Name' }, '2');
@@ -535,7 +596,7 @@ describe('Identity & User Management', () => {
       await userController.getById('user-123', mockRes as any);
       expect(mockRes.headers['ETag']).toBe('"1"');
 
-      await userController.update('user-123', { displayName: 'Updated' }, '"1"', mockRes as any);
+      await userController.update('user-123', { displayName: 'Updated' }, '"1"', {} as any, mockRes as any);
       expect(mockRes.headers['ETag']).toBe('"2"');
     });
   });

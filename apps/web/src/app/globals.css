@@ -547,3 +547,25 @@ select:focus-visible {
     margin: 0;
   }
 }
+/* View-only editor: edit controls disappear, fields keep their normal look */
+[data-readonly='true'] [data-edit-only] {
+  display: none !important;
+}
+[data-readonly='true'] input,
+[data-readonly='true'] textarea {
+  cursor: default;
+}
+/* A field you can not change must not look like one you are typing in */
+[data-readonly='true'] input:focus,
+[data-readonly='true'] textarea:focus,
+[data-readonly='true'] select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #e4e4e7 !important;
+  caret-color: transparent;
+}
+[data-readonly='true'] [contenteditable]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  caret-color: transparent;
+}

@@ -30,8 +30,12 @@ import type {
   ListManuscriptsParams,
   Manuscript,
   ManuscriptMember,
+  ManuscriptSharing,
+  PersonResult,
   ProblemResponseResponse,
+  SearchManuscriptPeopleParams,
   SuccessMessageResponse,
+  UpdateGeneralAccessRequest,
   UpdateManuscriptRequest
 } from '../../model';
 
@@ -425,7 +429,7 @@ export const getManuscriptMembers = (
 ) => {
       
       
-      return customInstance<ManuscriptMember[]>(
+      return customInstance<ManuscriptSharing>(
       {url: `/api/v1/manuscripts/${id}/members`, method: 'GET', signal
     },
       options);
@@ -573,4 +577,222 @@ export const useAddManuscriptMember = <TError = ProblemResponseResponse,
 
       return useMutation(mutationOptions, queryClient);
     }
+    /**
+ * @summary Remove a member from a manuscript
+ */
+export const removeManuscriptMember = (
+    id: string,
+    userId: string,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/v1/manuscripts/${id}/members/${userId}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getRemoveManuscriptMemberMutationOptions = <TError = ProblemResponseResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeManuscriptMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeManuscriptMember>>, TError,{id: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeManuscriptMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeManuscriptMember>>, {id: string;userId: string}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  removeManuscriptMember(id,userId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveManuscriptMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeManuscriptMember>>>
     
+    export type RemoveManuscriptMemberMutationError = ProblemResponseResponse
+
+    /**
+ * @summary Remove a member from a manuscript
+ */
+export const useRemoveManuscriptMember = <TError = ProblemResponseResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeManuscriptMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeManuscriptMember>>,
+        TError,
+        {id: string;userId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getRemoveManuscriptMemberMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Set who in the system can open the manuscript
+ */
+export const setManuscriptGeneralAccess = (
+    id: string,
+    updateGeneralAccessRequest: UpdateGeneralAccessRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/v1/manuscripts/${id}/general-access`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateGeneralAccessRequest
+    },
+      options);
+    }
+  
+
+
+export const getSetManuscriptGeneralAccessMutationOptions = <TError = ProblemResponseResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setManuscriptGeneralAccess>>, TError,{id: string;data: UpdateGeneralAccessRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof setManuscriptGeneralAccess>>, TError,{id: string;data: UpdateGeneralAccessRequest}, TContext> => {
+
+const mutationKey = ['setManuscriptGeneralAccess'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setManuscriptGeneralAccess>>, {id: string;data: UpdateGeneralAccessRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setManuscriptGeneralAccess(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetManuscriptGeneralAccessMutationResult = NonNullable<Awaited<ReturnType<typeof setManuscriptGeneralAccess>>>
+    export type SetManuscriptGeneralAccessMutationBody = UpdateGeneralAccessRequest
+    export type SetManuscriptGeneralAccessMutationError = ProblemResponseResponse
+
+    /**
+ * @summary Set who in the system can open the manuscript
+ */
+export const useSetManuscriptGeneralAccess = <TError = ProblemResponseResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setManuscriptGeneralAccess>>, TError,{id: string;data: UpdateGeneralAccessRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setManuscriptGeneralAccess>>,
+        TError,
+        {id: string;data: UpdateGeneralAccessRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getSetManuscriptGeneralAccessMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Search active members by email or name (to share a manuscript with)
+ */
+export const searchManuscriptPeople = (
+    params: SearchManuscriptPeopleParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PersonResult[]>(
+      {url: `/api/v1/manuscripts/people`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getSearchManuscriptPeopleQueryKey = (params?: SearchManuscriptPeopleParams,) => {
+    return [
+    `/api/v1/manuscripts/people`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getSearchManuscriptPeopleQueryOptions = <TData = Awaited<ReturnType<typeof searchManuscriptPeople>>, TError = unknown>(params: SearchManuscriptPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchManuscriptPeopleQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchManuscriptPeople>>> = ({ signal }) => searchManuscriptPeople(params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SearchManuscriptPeopleQueryResult = NonNullable<Awaited<ReturnType<typeof searchManuscriptPeople>>>
+export type SearchManuscriptPeopleQueryError = unknown
+
+
+export function useSearchManuscriptPeople<TData = Awaited<ReturnType<typeof searchManuscriptPeople>>, TError = unknown>(
+ params: SearchManuscriptPeopleParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchManuscriptPeople>>,
+          TError,
+          Awaited<ReturnType<typeof searchManuscriptPeople>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchManuscriptPeople<TData = Awaited<ReturnType<typeof searchManuscriptPeople>>, TError = unknown>(
+ params: SearchManuscriptPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchManuscriptPeople>>,
+          TError,
+          Awaited<ReturnType<typeof searchManuscriptPeople>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSearchManuscriptPeople<TData = Awaited<ReturnType<typeof searchManuscriptPeople>>, TError = unknown>(
+ params: SearchManuscriptPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Search active members by email or name (to share a manuscript with)
+ */
+
+export function useSearchManuscriptPeople<TData = Awaited<ReturnType<typeof searchManuscriptPeople>>, TError = unknown>(
+ params: SearchManuscriptPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchManuscriptPeople>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSearchManuscriptPeopleQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+

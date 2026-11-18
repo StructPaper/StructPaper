@@ -9,6 +9,7 @@ import { DocumentApi } from '@/lib/documents/document-api';
 import { DocumentSync } from '@/lib/documents/document-sync';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
 import { abortError } from './limiter';
+import { getAuthHeaders } from '../auth-headers';
 import type { BatchDeps } from './types';
 
 /** PDF from the compile endpoint (the same one the editor uses). */
@@ -22,7 +23,7 @@ export async function compileToPdf(
   try {
     res = await fetchFn('/api/compile-latex', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({ tex, images }),
       signal,
     });

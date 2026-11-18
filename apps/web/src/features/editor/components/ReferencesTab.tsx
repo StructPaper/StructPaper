@@ -148,7 +148,7 @@ export const ReferencesTab: React.FC<ReferencesTabProps> = ({
             Tài liệu Tham khảo ({references.length})
           </h3>
         </div>
-        <button
+        <button data-edit-only
           type="button"
           onClick={handleAddReference}
           className="btn-pill-lime text-xs py-1.5 px-3 flex items-center gap-1.5 shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
@@ -235,7 +235,7 @@ export const ReferencesTab: React.FC<ReferencesTabProps> = ({
                   </div>
 
                   {/* Delete button */}
-                  <button
+                  <button data-edit-only
                     type="button"
                     disabled={isDeleting}
                     onClick={() => handleRemoveReference(ref.id)}
@@ -265,7 +265,7 @@ export const ReferencesTab: React.FC<ReferencesTabProps> = ({
             <p className="text-sm font-semibold text-zinc-600">
               Chưa có tài liệu tham khảo nào trong danh sách.
             </p>
-            <button
+            <button data-edit-only
               type="button"
               onClick={handleAddReference}
               className="btn-pill-lime text-xs"

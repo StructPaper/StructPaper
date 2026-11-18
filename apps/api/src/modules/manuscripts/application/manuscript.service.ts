@@ -11,6 +11,7 @@ import * as crypto from 'node:crypto';
 import {
   manuscripts,
   manuscriptMembers,
+  manuscriptVisits,
   manuscriptDocs,
   journals,
   outboxEvents,
@@ -25,16 +26,17 @@ import {
   lt,
   sql,
 } from '@structpaper/db';
+import { NON_DELETABLE_STATUSES } from '@structpaper/contracts';
 import type {
   CreateManuscript,
   UpdateManuscript,
   ChangeManuscriptStatus,
   ManuscriptStatus,
   ManuscriptQuery,
-  AddManuscriptMember,
   ManuscriptResponse,
 } from '@structpaper/contracts';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
+import { accessOf } from '../domain/manuscript-access';
 
 export interface CursorPayload {
   id: string;
@@ -170,8 +172,24 @@ export class ManuscriptService {
 
     const whereConditions: any[] = [];
 
+    // 0. Library scopes: every paper shared with anyone ("public"), or the public ones I opened
+    //    through a link ("shared"). Everything else is limited by what the user's rules allow.
+    const scope = query.scope ?? 'mine';
+    if (scope !== 'mine') {
+      whereConditions.push(inArray(manuscripts.generalAccess, ['VIEWER', 'EDITOR']));
+      if (scope === 'shared') {
+        if (!userId) return { items: [], total: 0, page: query.cursor ? undefined : page, limit, nextCursor: undefined };
+        whereConditions.push(
+          inArray(
+            manuscripts.id,
+            this.db.select({ id: manuscriptVisits.manuscriptId }).from(manuscriptVisits).where(eq(manuscriptVisits.userId, userId)),
+          ),
+        );
+      }
+    }
+
     // 1. CASL Ability Scoping pushed to SQL
-    if (userAbility) {
+    if (userAbility && scope === 'mine') {
       const isSuperAdmin = userAbility.can('manage', 'all');
       if (!isSuperAdmin) {
         const allowedJournals: string[] = [];
@@ -340,6 +358,7 @@ export class ManuscriptService {
       return {
         ...ms,
         journal: journalDto,
+        access: accessOf(userAbility, ms),
       };
     });
 
@@ -381,6 +400,7 @@ export class ManuscriptService {
     return {
       ...manuscript,
       members,
+      access: accessOf(userAbility, manuscript),
     };
   }
 
@@ -472,7 +492,12 @@ export class ManuscriptService {
       !userAbility.can('delete', subject('Manuscript', manuscript)) &&
       !userAbility.can('manage', subject('Manuscript', manuscript))
     ) {
-      throw new ForbiddenException('You do not have permission to delete this manuscript');
+      const locked = NON_DELETABLE_STATUSES.includes(manuscript.status);
+      throw new ForbiddenException(
+        locked
+          ? 'Bản thảo đã vào quy trình biên tập/xuất bản nên không thể xóa'
+          : 'You do not have permission to delete this manuscript',
+      );
     }
 
     if (this.db) {
@@ -480,95 +505,6 @@ export class ManuscriptService {
     }
 
     return { success: true };
-  }
-
-  /**
-   * Adds a member to the manuscript.
-   */
-  async addMember(
-    manuscriptId: string,
-    dto: AddManuscriptMember,
-    userAbility?: AppAbility,
-  ): Promise<any> {
-    const manuscript = await this.findManuscriptById(manuscriptId);
-    if (!manuscript) {
-      throw new NotFoundException(`Manuscript with ID ${manuscriptId} not found`);
-    }
-
-    if (
-      userAbility &&
-      !userAbility.can('manage', subject('Manuscript', manuscript)) &&
-      !userAbility.can('update', subject('Manuscript', manuscript))
-    ) {
-      throw new ForbiddenException('You do not have permission to manage members of this manuscript');
-    }
-
-    const memberRecord = {
-      manuscriptId,
-      userId: dto.userId,
-      role: dto.role,
-      createdAt: new Date(),
-    };
-
-    if (this.db) {
-      await this.db
-        .insert(manuscriptMembers)
-        .values(memberRecord)
-        .onConflictDoNothing?.();
-    }
-
-    return memberRecord;
-  }
-
-  /**
-   * Removes a member from the manuscript.
-   */
-  async removeMember(
-    manuscriptId: string,
-    userId: string,
-    userAbility?: AppAbility,
-  ): Promise<{ success: boolean }> {
-    const manuscript = await this.findManuscriptById(manuscriptId);
-    if (!manuscript) {
-      throw new NotFoundException(`Manuscript with ID ${manuscriptId} not found`);
-    }
-
-    if (
-      userAbility &&
-      !userAbility.can('manage', subject('Manuscript', manuscript)) &&
-      !userAbility.can('update', subject('Manuscript', manuscript))
-    ) {
-      throw new ForbiddenException('You do not have permission to manage members of this manuscript');
-    }
-
-    if (this.db) {
-      await this.db
-        .delete(manuscriptMembers)
-        .where(
-          and(
-            eq(manuscriptMembers.manuscriptId, manuscriptId),
-            eq(manuscriptMembers.userId, userId),
-          ),
-        );
-    }
-
-    return { success: true };
-  }
-
-  /**
-   * Retrieves all members of a manuscript.
-   */
-  async getMembers(manuscriptId: string, userAbility?: AppAbility): Promise<any[]> {
-    const manuscript = await this.findManuscriptById(manuscriptId);
-    if (!manuscript) {
-      throw new NotFoundException(`Manuscript with ID ${manuscriptId} not found`);
-    }
-
-    if (userAbility && !userAbility.can('read', subject('Manuscript', manuscript))) {
-      throw new ForbiddenException('You do not have permission to view members of this manuscript');
-    }
-
-    return this.findMembersByManuscriptId(manuscriptId);
   }
 
   /**
@@ -642,11 +578,11 @@ export class ManuscriptService {
           );
         }
       } else {
-        // Editorial decisions (IN_REVIEW, ACCEPTED, REJECTED, PUBLISHED) require Editor or Manager
+        // Editorial decisions (IN_REVIEW, ACCEPTED, REJECTED, PUBLISHED) are made by managers only:
+        // an Editor role alone no longer reaches other people's manuscripts.
         const canManageManuscript =
           userAbility.can('manage', 'Manuscript') ||
-          userAbility.can('manage', subject('Manuscript', manuscript)) ||
-          userAbility.can('update', subject('Manuscript', { journalId: manuscript.journalId }));
+          userAbility.can('manage', subject('Manuscript', manuscript));
 
         if (!canManageManuscript) {
           throw new ForbiddenException(

@@ -4,6 +4,7 @@ import React from 'react';
 import { AbstractTabProps } from './types';
 import { BookOpen, Tag, Info } from 'lucide-react';
 import { useTabScrollRestoration } from '../hooks';
+import { KeywordsInput } from './KeywordsInput';
 
 interface AutoResizeTextareaProps {
   value: string;
@@ -68,27 +69,8 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
     ? metadata.abstractEn.trim().split(/\s+/).filter(Boolean).length
     : 0;
 
-  const handleKeywordsChange = (val: string) => {
-    const list = val
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-    onChange({
-      ...metadata,
-      keywords: list,
-    });
-  };
-
-  const handleKeywordsEnChange = (val: string) => {
-    const list = val
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
-    onChange({
-      ...metadata,
-      keywordsEn: list,
-    });
-  };
+  const handleKeywordsChange = (list: string[]) => onChange({ ...metadata, keywords: list });
+  const handleKeywordsEnChange = (list: string[]) => onChange({ ...metadata, keywordsEn: list });
 
   return (
     <div ref={scrollContainerRef} className="h-full flex flex-col min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
@@ -152,10 +134,9 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
             <Tag className="w-3.5 h-3.5 text-zinc-500" />
             <span>Từ khóa tiếng Việt (phân cách bằng dấu phẩy):</span>
           </div>
-          <input
-            type="text"
-            value={metadata.keywords?.join(', ') || ''}
-            onChange={(e) => handleKeywordsChange(e.target.value)}
+          <KeywordsInput
+            value={metadata.keywords || []}
+            onChange={handleKeywordsChange}
             spellCheck={false}
             autoCorrect="off"
             autoCapitalize="off"
@@ -182,10 +163,9 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
             <Tag className="w-3.5 h-3.5 text-zinc-500" />
             <span>Keywords (English - comma separated):</span>
           </div>
-          <input
-            type="text"
-            value={metadata.keywordsEn?.join(', ') || ''}
-            onChange={(e) => handleKeywordsEnChange(e.target.value)}
+          <KeywordsInput
+            value={metadata.keywordsEn || []}
+            onChange={handleKeywordsEnChange}
             spellCheck={false}
             autoCorrect="off"
             autoCapitalize="off"

@@ -14,6 +14,7 @@ export const manuscripts = pgTable('manuscripts', {
   title: varchar('title', { length: 500 }).notNull(),
   abstract: text('abstract'),
   status: varchar('status', { length: 50 }).notNull().default('DRAFT'),
+  generalAccess: varchar('general_access', { length: 20 }).notNull().default('RESTRICTED'),
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id, { onDelete: 'restrict' }),
@@ -39,6 +40,21 @@ export const manuscriptMembers = pgTable(
   (table) => [
     primaryKey({ columns: [table.manuscriptId, table.userId] }),
   ],
+);
+
+/** Papers a signed-in user opened through a public link: the "Shared with me" list. */
+export const manuscriptVisits = pgTable(
+  'manuscript_visits',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    manuscriptId: uuid('manuscript_id')
+      .notNull()
+      .references(() => manuscripts.id, { onDelete: 'cascade' }),
+    lastOpenedAt: timestamp('last_opened_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.manuscriptId] })],
 );
 
 export const manuscriptsRelations = relations(manuscripts, ({ one, many }) => ({

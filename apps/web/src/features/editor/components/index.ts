@@ -42,3 +42,4 @@ export { ArticleTypeField } from './ArticleTypeField';
 export * from './command-bus-adapter';
 export * from './preflight-wrapper';
 export * from './types';
+export * from './ReadOnlyPaperView';

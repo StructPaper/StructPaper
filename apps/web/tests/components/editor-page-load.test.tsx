@@ -41,7 +41,7 @@ describe('PaperContext setters', () => {
 
 describe('/papers/[id] page', () => {
   it('loads the paper once, not in a loop (each load re-renders the provider)', async () => {
-    const { default: PaperDetailPage } = await import('@/app/papers/[id]/page');
+    const { default: PaperDetailPage } = await import('@/app/(authenticate)/(workspace)/papers/[id]/page');
     render(
       <PaperProvider>
         <PaperDetailPage params={{ id: 'paper_old' }} />

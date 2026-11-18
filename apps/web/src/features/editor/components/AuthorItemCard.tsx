@@ -175,7 +175,7 @@ export const AuthorItemCard: React.FC<AuthorItemCardProps> = ({
               <span className="font-bold text-zinc-800">Tác giả liên hệ* (Corresponding Author)</span>
             </label>
 
-            <button
+            <button data-edit-only
               type="button"
               disabled={isDeleting}
               onClick={onRemoveAuthor}
