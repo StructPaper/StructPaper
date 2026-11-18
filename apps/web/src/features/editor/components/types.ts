@@ -100,7 +100,7 @@ export interface LivePreviewPaneProps {
   isCompilingPdf: boolean;
   compileStats: CompileStats | null;
   compileErrorInfo: CompileErrorInfo | null;
-  onRecompile: () => void;
+  onRecompile?: () => void;
   onClearError: () => void;
   /** When the running compile started (ms epoch), to show elapsed seconds. */
   compileStartedAt?: number | null;

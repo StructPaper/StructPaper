@@ -104,6 +104,12 @@ export class S3StorageService extends StorageService {
     }
   }
 
+  async putObject(storageKey: string, body: Buffer, mimeType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: storageKey, Body: body, ContentType: mimeType }),
+    );
+  }
+
   async deleteObject(storageKey: string): Promise<void> {
     try {
       await this.client.send(

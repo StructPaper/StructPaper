@@ -10,6 +10,7 @@ import {
   listVariants,
   itemVariants,
 } from './select-utils';
+import { useReadOnly } from './read-only';
 import { useDropdownPlacement, LIST_MAX_HEIGHT, SEARCH_BOX_HEIGHT } from './useDropdownPlacement';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -61,7 +62,7 @@ export function Select<T extends string | number = string>({
   variant = 'default',
   align = 'left',
   fullWidth = true,
-  disabled = false,
+  disabled: disabledProp = false,
   searchable = false,
   searchPlaceholder = 'Tìm kiếm...',
   className = '',
@@ -71,6 +72,8 @@ export function Select<T extends string | number = string>({
   renderOption,
   renderTrigger,
 }: SelectProps<T>) {
+  const readOnly = useReadOnly();
+  const disabled = disabledProp || readOnly;
   const generatedId = useId();
   const selectId = id || generatedId;
   const [isOpen, setIsOpen] = useState(false);

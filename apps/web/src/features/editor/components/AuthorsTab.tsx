@@ -148,7 +148,7 @@ export const AuthorsTab: React.FC<AuthorsTabProps> = ({
               Danh sách Tác giả ({metadata.authors.length})
             </h3>
           </div>
-          <button
+          <button data-edit-only
             type="button"
             onClick={handleAddAuthor}
             className="btn-pill-lime text-xs py-1.5 px-3 flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
@@ -199,7 +199,7 @@ export const AuthorsTab: React.FC<AuthorsTabProps> = ({
               Mỗi cơ quan có cùng mã số ID, gồm tên Tiếng Việt & Tiếng Anh.
             </p>
           </div>
-          <button
+          <button data-edit-only
             type="button"
             onClick={handleAddAffiliation}
             className="btn-pill-subtle text-xs py-1.5 px-3 flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xs"

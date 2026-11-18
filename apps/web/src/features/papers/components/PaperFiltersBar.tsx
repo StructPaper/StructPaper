@@ -7,6 +7,8 @@ import {
   LayoutGrid,
   List,
   X,
+  Globe2,
+  Users,
 } from 'lucide-react';
 import {
   ALL_JOURNAL_IDS,
@@ -20,6 +22,7 @@ import {
   type ViewMode,
   WORKFLOW_STATUS_CONFIG,
 } from './types';
+import { LIBRARY_LABELS, type LibraryMode } from '../hooks/useLibraryPapers';
 
 interface PaperFiltersBarProps {
   searchQuery: string;
@@ -34,6 +37,10 @@ interface PaperFiltersBarProps {
   onViewModeChange: (v: ViewMode) => void;
   countsByStatus?: Partial<Record<FilterWorkflowStatus, number>>;
   onCreateFromTemplate?: () => void;
+  /** Which list is shown; the library toggles only appear when `showLibrary` is set. */
+  libraryMode?: LibraryMode;
+  onLibraryModeChange?: (mode: LibraryMode) => void;
+  showLibrary?: boolean;
 }
 
 const STATUS_TABS: Array<{ id: FilterWorkflowStatus; label: string }> = [
@@ -57,6 +64,9 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
   viewMode,
   onViewModeChange,
   onCreateFromTemplate,
+  libraryMode = 'mine',
+  onLibraryModeChange,
+  showLibrary = false,
 }) => {
   const [searchInputValue, setSearchInputValue] = React.useState(searchQuery);
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -100,9 +110,9 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
   return (
     <div className="space-y-3">
       {/* Row 1: Eatzy-style Search Bar */}
-      <div className="w-full flex items-center justify-start">
+      <div className="w-full flex flex-wrap items-center justify-start gap-2.5">
         {/* Eatzy Search Input Box with constrained width */}
-        <div className="w-full max-w-xl relative group">
+        <div className="flex-1 min-w-[260px] max-w-xl relative group">
           <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3 z-10 pointer-events-none">
             <Search className="w-5 h-5 text-gray-400 group-hover:text-zinc-600 group-focus-within:text-[#78C841] transition-colors" />
             <div className="w-px h-4 bg-gray-200 group-hover:bg-zinc-300 transition-colors" />
@@ -133,6 +143,32 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
             </button>
           )}
         </div>
+
+        {showLibrary && onLibraryModeChange && (
+          <div className="ml-auto flex items-center gap-2" data-testid="library-toggles">
+            {(['public', 'shared'] as const).map((mode) => {
+              const active = libraryMode === mode;
+              const Icon = mode === 'public' ? Globe2 : Users;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  data-testid={`library-toggle-${mode}`}
+                  aria-pressed={active}
+                  onClick={() => onLibraryModeChange(active ? 'mine' : mode)}
+                  className={`inline-flex items-center gap-2 px-4 py-3 rounded-3xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                    active
+                      ? 'bg-[#78C841] text-zinc-950 shadow-md shadow-lime-900/10'
+                      : 'bg-slate-50/60 border-2 border-white text-zinc-600 hover:text-zinc-900 hover:bg-white shadow-eatzy-inner'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{LIBRARY_LABELS[mode].label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Row 2: Status Filter Chips & Right Controls */}

@@ -12,6 +12,7 @@ import {
   Copy,
   Download,
   Trash2,
+  Share2,
   ArrowRight,
   X,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import {
   formatRelativeTime,
   getSyncBadgeConfig,
 } from './types';
+import { paperAccessOfRecord } from '../access';
 import { useStorage } from '@/context/StorageContext';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -39,6 +41,7 @@ interface PaperCardProps {
   onDuplicate: (paper: ManuscriptRecord) => void;
   onExportBackup: (paper: ManuscriptRecord) => void;
   onDelete: (id: string) => void;
+  onShare?: (paper: ManuscriptRecord) => void;
 }
 
 export const PaperCard: React.FC<PaperCardProps> = ({
@@ -52,8 +55,10 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   onDuplicate,
   onExportBackup,
   onDelete,
+  onShare,
 }) => {
   const storage = useStorage();
+  const { canShare, canDelete } = paperAccessOfRecord(paper);
   const { info, doc } = paper;
   const title = getManuscriptTitle(paper);
   const authors = getManuscriptAuthors(paper);
@@ -215,6 +220,22 @@ export const PaperCard: React.FC<PaperCardProps> = ({
                       <span>Sửa thông tin nhanh</span>
                     </button>
 
+                    {canShare && onShare && (
+                      <button
+                        type="button"
+                        data-testid={`share-paper-${info.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShare(paper);
+                          onCloseMenu();
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 flex items-center gap-2 font-medium cursor-pointer transition-colors"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-[#14532D]" />
+                        <span>Chia sẻ</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       data-testid={`pin-toggle-${info.id}`}
@@ -264,21 +285,25 @@ export const PaperCard: React.FC<PaperCardProps> = ({
                       <span>Xuất file .structpaper</span>
                     </button>
 
-                    <div className="border-t border-zinc-200/80 my-0.5" />
+                    {canDelete && (
+                      <>
+                        <div className="border-t border-zinc-200/80 my-0.5" />
 
-                    <button
-                      type="button"
-                      data-testid={`delete-paper-${info.id}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(info.id);
-                        onCloseMenu();
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 flex items-center gap-2 font-medium cursor-pointer transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Xóa bài báo</span>
-                    </button>
+                        <button
+                          type="button"
+                          data-testid={`delete-paper-${info.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(info.id);
+                            onCloseMenu();
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 flex items-center gap-2 font-medium cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa bài báo</span>
+                        </button>
+                      </>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

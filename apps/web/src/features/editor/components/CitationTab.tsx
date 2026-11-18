@@ -67,7 +67,7 @@ export const CitationTab: React.FC<CitationTabProps> = ({
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           {metadata && (
-            <button
+            <button data-edit-only
               type="button"
               onClick={handleGenerate}
               className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 text-xs font-bold flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"

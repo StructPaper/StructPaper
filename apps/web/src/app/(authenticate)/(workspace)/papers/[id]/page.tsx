@@ -4,7 +4,9 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { usePaper } from '@/context/PaperContext';
-import { UnifiedEditorView, usePaperStorage } from '@/features/editor';
+import { UnifiedEditorView, ReadOnlyPaperView, usePaperStorage } from '@/features/editor';
+import { usePaperAccess } from '@/features/papers';
+import { useAuthStore } from '@/lib/auth-store';
 import { CompletePaper } from '@/lib/sample-papers';
 
 function PaperEditorContent({ paperId }: { paperId: string }) {
@@ -14,6 +16,8 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
   const [loadedPaper, setLoadedPaper] = useState<CompletePaper | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const { access } = usePaperAccess(paperId);
+  const isSignedIn = useAuthStore((state) => Boolean(state.user || state.isAuthenticated));
 
   useEffect(() => {
     if (!paperId) {
@@ -50,7 +54,7 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
     updatePaper(updated);
   };
 
-  if (isLoading) {
+  if (isLoading || access.status === 'loading') {
     return (
       <div className="h-[calc(100vh-var(--titlebar-height,0px))] w-full flex flex-col items-center justify-center gap-4 bg-[#F8F9FA] text-[#1A1A1A]">
         <Loader2 className="w-12 h-12 animate-spin text-[#78C841]" strokeWidth={3} />
@@ -76,6 +80,10 @@ function PaperEditorContent({ paperId }: { paperId: string }) {
         </button>
       </div>
     );
+  }
+
+  if (access.readOnly) {
+    return <ReadOnlyPaperView paper={currentPaper} canCompile={isSignedIn} />;
   }
 
   return (

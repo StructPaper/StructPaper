@@ -1,9 +1,8 @@
 'use client';
-
+import { useReadOnly } from './read-only';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 export interface DatePickerProps {
   value: string; // e.g. "14-06-2025" or "YYYY-MM-DD"
   onChange: (dateStr: string) => void;
@@ -76,11 +75,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   onChange,
   label,
   placeholder = 'DD-MM-YYYY',
-  disabled = false,
+  disabled: disabledProp = false,
   minWidth = 'w-full',
   align: alignProp = 'auto',
   className = '',
 }) => {
+  const disabled = useReadOnly() || disabledProp;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'day' | 'month' | 'year'>('day');

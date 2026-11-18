@@ -15,6 +15,7 @@ import {
 import { toast } from '@/components/toast';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
 import { getAuthHeaders } from '@/lib/auth-headers';
+import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
 import { CompileStats, CompileErrorInfo } from '../components/types';
 
 export interface UseEditorCompilationOptions {
@@ -26,6 +27,10 @@ export interface UseEditorCompilationOptions {
   router?: CompilerRouter;
   networkMonitor?: NetworkMonitor;
   debounceMs?: number;
+  /** Compile once when the paper opens (default). View-only guests have no compile access. */
+  autoCompile?: boolean;
+  /** Keep the server copy of the PDF up to date for readers (editors only; default on). */
+  publishPreview?: boolean;
 }
 
 export function useEditorCompilation({
@@ -37,6 +42,8 @@ export function useEditorCompilation({
   router: customRouter,
   networkMonitor: customNetworkMonitor,
   debounceMs = 500,
+  autoCompile = true,
+  publishPreview = true,
 }: UseEditorCompilationOptions) {
   const isDefaultHs630 =
     formData.id === 'hs630' || formData.metadata?.doi?.includes('630');
@@ -203,6 +210,8 @@ export function useEditorCompilation({
           if (url && isLatest()) {
             setCompiledPdfUrl(url);
           }
+          const pdf = result.pdfBlob ?? (result.pdfBuffer ? new Blob([result.pdfBuffer as any], { type: 'application/pdf' }) : null);
+          if (publishPreview && pdf && isLatest()) void publishPdfPreview(paperToCompile.id, pdf);
           const engineKind = result.producedBy?.kind;
           const engineName =
             result.engine ||
@@ -277,7 +286,7 @@ export function useEditorCompilation({
       setCompiledPdfUrl('/demo-files/ID630_HS-2026-10-02-07-07.pdf');
     } else {
       setCompiledPdfUrl(null);
-      compileLatexToPdf(paper);
+      if (autoCompile) compileLatexToPdf(paper);
     }
   }, [paper.id]);
 

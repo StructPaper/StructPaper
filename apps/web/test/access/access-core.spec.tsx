@@ -173,7 +173,7 @@ describe('declarative navigation table', () => {
   });
 
   it('the bottom bar is generated from the same table (same order, only flagged items)', () => {
-    expect(bottomBarNav([...MAIN_NAV, ACCOUNT_NAV]).map((i) => i.path)).toEqual(['/papers', '/templates', '/settings', '/account']);
+    expect(bottomBarNav([...MAIN_NAV, ACCOUNT_NAV]).map((i) => i.path)).toEqual(['/papers', '/templates', '/account']);
   });
 
   it('every item has a unique path', () => {

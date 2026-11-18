@@ -16,6 +16,10 @@ export const CAPABILITIES = {
   'role:assign': 'Assign and revoke roles',
   /** Grant or revoke the SuperAdmin role (only SuperAdmin). */
   'role:grant_superadmin': 'Grant the SuperAdmin role',
+  /** Add or change journals / templates. Without it the journal list is view-only. */
+  'journal:manage': 'Manage journals and templates',
+  /** Read every manuscript (so the public library / shared-with-me shortcuts are not needed). */
+  'manuscript:read_all': 'Read all manuscripts',
 } as const;
 
 export type Capability = keyof typeof CAPABILITIES;

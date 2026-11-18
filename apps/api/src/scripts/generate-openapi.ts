@@ -108,7 +108,7 @@ export function buildOpenApiSpec() {
             roles: { type: 'array', items: { $ref: '#/components/schemas/UserRoleAssignmentView' } },
             capabilities: {
               type: 'array',
-              items: { type: 'string', enum: ['member:manage', 'role:assign', 'role:grant_superadmin'] },
+              items: { type: 'string', enum: ['member:manage', 'role:assign', 'role:grant_superadmin', 'journal:manage', 'manuscript:read_all'] },
               description: 'Effective capabilities of the user. The UI asks for these, never for role names.',
             },
           },
@@ -266,6 +266,8 @@ export function buildOpenApiSpec() {
               type: 'string',
               enum: ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'ACCEPTED', 'REJECTED', 'PUBLISHED'],
             },
+            generalAccess: { $ref: '#/components/schemas/GeneralAccess' },
+            access: { $ref: '#/components/schemas/ManuscriptAccess' },
             createdBy: { type: 'string', format: 'uuid' },
             currentServerRev: { type: 'integer' },
             version: { type: 'integer' },
@@ -302,16 +304,61 @@ export function buildOpenApiSpec() {
           properties: {
             manuscriptId: { type: 'string', format: 'uuid' },
             userId: { type: 'string', format: 'uuid' },
-            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER'] },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
             createdAt: { type: 'string', format: 'date-time' },
           },
           required: ['manuscriptId', 'userId', 'role'],
+        },
+        GeneralAccess: { type: 'string', enum: ['RESTRICTED', 'VIEWER', 'EDITOR'] },
+        ManuscriptAccess: {
+          type: 'object',
+          description: 'What the current user may do with this manuscript (computed by the API rules).',
+          properties: {
+            canEdit: { type: 'boolean' },
+            canShare: { type: 'boolean' },
+            canDelete: { type: 'boolean' },
+          },
+          required: ['canEdit', 'canShare', 'canDelete'],
+        },
+        ManuscriptMemberDetail: {
+          type: 'object',
+          properties: {
+            manuscriptId: { type: 'string', format: 'uuid' },
+            userId: { type: 'string', format: 'uuid' },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
+            createdAt: { type: 'string', format: 'date-time' },
+            email: { type: 'string', nullable: true },
+            displayName: { type: 'string', nullable: true },
+          },
+          required: ['manuscriptId', 'userId', 'role'],
+        },
+        ManuscriptSharing: {
+          type: 'object',
+          properties: {
+            generalAccess: { $ref: '#/components/schemas/GeneralAccess' },
+            members: { type: 'array', items: { $ref: '#/components/schemas/ManuscriptMemberDetail' } },
+          },
+          required: ['generalAccess', 'members'],
+        },
+        UpdateGeneralAccessRequest: {
+          type: 'object',
+          properties: { generalAccess: { $ref: '#/components/schemas/GeneralAccess' } },
+          required: ['generalAccess'],
+        },
+        PersonResult: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            email: { type: 'string' },
+            displayName: { type: 'string', nullable: true },
+          },
+          required: ['id', 'email'],
         },
         AddManuscriptMemberRequest: {
           type: 'object',
           properties: {
             userId: { type: 'string', format: 'uuid' },
-            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER'] },
+            role: { type: 'string', enum: ['OWNER', 'COAUTHOR', 'EDITOR', 'REVIEWER', 'VIEWER'] },
           },
           required: ['userId', 'role'],
         },
@@ -834,6 +881,7 @@ export function buildOpenApiSpec() {
                 enum: ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'ACCEPTED', 'REJECTED', 'PUBLISHED'],
               },
             },
+            { name: 'scope', in: 'query', schema: { type: 'string', enum: ['mine', 'public', 'shared'], default: 'mine' } },
             { name: 'sortBy', in: 'query', schema: { type: 'string', default: 'updatedAt' } },
             { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
           ],
@@ -956,10 +1004,7 @@ export function buildOpenApiSpec() {
               description: 'List of members',
               content: {
                 'application/json': {
-                  schema: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/ManuscriptMember' },
-                  },
+                  schema: { $ref: '#/components/schemas/ManuscriptSharing' },
                 },
               },
             },
@@ -989,6 +1034,63 @@ export function buildOpenApiSpec() {
             },
             '400': { $ref: '#/components/responses/ProblemResponse' },
             '401': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/{id}/members/{userId}': {
+        delete: {
+          tags: ['Manuscripts'],
+          summary: 'Remove a member from a manuscript',
+          operationId: 'removeManuscriptMember',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'userId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            '200': { description: 'Member removed' },
+            '400': { $ref: '#/components/responses/ProblemResponse' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/{id}/general-access': {
+        put: {
+          tags: ['Manuscripts'],
+          summary: 'Set who in the system can open the manuscript',
+          operationId: 'setManuscriptGeneralAccess',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/UpdateGeneralAccessRequest' } },
+            },
+          },
+          responses: {
+            '200': { description: 'Updated' },
+            '403': { $ref: '#/components/responses/ProblemResponse' },
+          },
+        },
+      },
+      '/api/v1/manuscripts/people': {
+        get: {
+          tags: ['Manuscripts'],
+          summary: 'Search active members by email or name (to share a manuscript with)',
+          operationId: 'searchManuscriptPeople',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 } }],
+          responses: {
+            '200': {
+              description: 'Matching people',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/PersonResult' } },
+                },
+              },
+            },
           },
         },
       },

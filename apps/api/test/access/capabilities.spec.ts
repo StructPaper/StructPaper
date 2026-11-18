@@ -20,11 +20,11 @@ import { AccessController } from '../../src/modules/access/presentation/access.c
 const PERSONAS: Record<string, { roles: Array<{ roleName: string; scopeJournalId: string | null; scopeJournalName: string | null }>; expected: Capability[] }> = {
   'SuperAdmin': {
     roles: [{ roleName: 'SuperAdmin', scopeJournalId: null, scopeJournalName: null }],
-    expected: ['member:manage', 'role:assign', 'role:grant_superadmin'],
+    expected: ['member:manage', 'role:assign', 'role:grant_superadmin', 'journal:manage', 'manuscript:read_all'],
   },
   'JournalManager (whole system)': {
     roles: [{ roleName: 'JournalManager', scopeJournalId: null, scopeJournalName: null }],
-    expected: ['member:manage', 'role:assign'],
+    expected: ['member:manage', 'role:assign', 'journal:manage', 'manuscript:read_all'],
   },
   'JournalManager (one journal)': {
     roles: [{ roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'STD' }],

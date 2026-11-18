@@ -113,11 +113,12 @@ describe('Manuscript Lifecycle State Machine & Transactional Outbox', () => {
       expect(insertedOutboxRecord.payload.reason).toBe('Bản thảo đã hoàn thiện, gửi nộp tòa soạn');
     });
 
-    it('Editor transitions SUBMITTED -> IN_REVIEW and IN_REVIEW -> ACCEPTED', async () => {
+    it('Journal manager transitions SUBMITTED -> IN_REVIEW and IN_REVIEW -> ACCEPTED', async () => {
       setupMockManuscript({ status: 'SUBMITTED', version: 2 });
 
+      // editorial decisions belong to the journal manager (an Editor role alone has no blanket access)
       const editorAbility = await abilityFactory.createForUser(editorUserId, {
-        roles: [{ name: 'Editor', scopeJournalId: journalId }],
+        roles: [{ name: 'JournalManager', scopeJournalId: journalId }],
       });
 
       let insertedOutboxRecord: any = null;

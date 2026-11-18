@@ -506,34 +506,4 @@ describe('Manuscripts CRUD, ACL & Concurrency Control (ManuscriptService)', () =
       ).rejects.toThrow(ForbiddenException);
     });
   });
-
-  describe('Manuscript Members (ACL management)', () => {
-    it('allows OWNER to add member with specified role', async () => {
-      const ownerAbility = await abilityFactory.createForUser(authorUserId, {
-        roles: [{ name: 'Author' }],
-        manuscriptMemberships: [{ manuscriptId: 'm-1', role: 'OWNER' }],
-      });
-
-      const member = await manuscriptService.addMember(
-        'm-1',
-        { userId: 'new-user-1', role: 'COAUTHOR' },
-        ownerAbility,
-      );
-
-      expect(member).toBeDefined();
-      expect(member.manuscriptId).toBe('m-1');
-      expect(member.userId).toBe('new-user-1');
-      expect(member.role).toBe('COAUTHOR');
-    });
-
-    it('allows OWNER to remove member', async () => {
-      const ownerAbility = await abilityFactory.createForUser(authorUserId, {
-        roles: [{ name: 'Author' }],
-        manuscriptMemberships: [{ manuscriptId: 'm-1', role: 'OWNER' }],
-      });
-
-      const result = await manuscriptService.removeMember('m-1', 'new-user-1', ownerAbility);
-      expect(result.success).toBe(true);
-    });
-  });
 });

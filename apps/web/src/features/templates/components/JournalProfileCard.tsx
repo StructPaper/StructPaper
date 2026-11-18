@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sliders, ArrowRight } from 'lucide-react';
 import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
+import { useAccess } from '@/lib/access';
 
 interface JournalProfileCardProps {
   managed: ManagedJournalProfile;
@@ -19,6 +20,8 @@ export const JournalProfileCard: React.FC<JournalProfileCardProps> = ({
   onCreatePaper,
 }) => {
   const router = useRouter();
+  // Without journal:manage the card is read-only: no hover effect, no click-through, no editor link.
+  const canManage = useAccess().can('journal:manage');
   const { id, status, profile } = managed;
   const brandColor = profile.color || '#000099';
   const nameVi = profile.names?.vi || 'Tạp chí ĐHQG-HCM';
@@ -34,14 +37,21 @@ export const JournalProfileCard: React.FC<JournalProfileCardProps> = ({
 
   return (
     <motion.div
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button, a')) return;
-        router.push(`/templates/journal/${id}`);
-      }}
-      whileHover={isTest ? undefined : { scale: 1.02 }}
-      whileTap={isTest ? undefined : { scale: 0.98 }}
+      data-readonly={canManage ? undefined : 'true'}
+      onClick={
+        canManage
+          ? (e) => {
+              if ((e.target as HTMLElement).closest('button, a')) return;
+              router.push(`/templates/journal/${id}`);
+            }
+          : undefined
+      }
+      whileHover={isTest || !canManage ? undefined : { scale: 1.02 }}
+      whileTap={isTest || !canManage ? undefined : { scale: 0.98 }}
       transition={isTest ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
-      className="w-full bg-gray-200/40 border-8 border-gray-200 p-5 rounded-[38px] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] group select-none min-h-[252px]"
+      className={`w-full bg-gray-200/40 border-8 border-gray-200 p-5 rounded-[38px] transition-all duration-300 flex flex-col justify-between group select-none min-h-[252px] ${
+        canManage ? 'cursor-pointer hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]' : 'cursor-default'
+      }`}
     >
       <div>
         {/* Top Badges matching UploadView */}
@@ -76,15 +86,19 @@ export const JournalProfileCard: React.FC<JournalProfileCardProps> = ({
 
       {/* Action Footer matching UploadView exactly */}
       <div className="mt-3 pt-2.5 border-t border-gray-300/50 flex items-center justify-between text-xs font-bold text-zinc-800">
-        <Link
-          href={`/templates/journal/${id}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 font-semibold transition-colors"
-          title="Tùy chỉnh thông số tạp chí"
-        >
-          <Sliders className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Tùy chỉnh</span>
-        </Link>
+        {canManage ? (
+          <Link
+            href={`/templates/journal/${id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 font-semibold transition-colors"
+            title="Tùy chỉnh thông số tạp chí"
+          >
+            <Sliders className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Tùy chỉnh</span>
+          </Link>
+        ) : (
+          <span />
+        )}
 
         <button
           type="button"

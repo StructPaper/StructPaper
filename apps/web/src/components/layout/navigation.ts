@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { FolderArchive, BookOpen, ShieldCheck, Settings, User } from 'lucide-react';
+import { FolderArchive, BookOpen, ShieldCheck, User } from 'lucide-react';
 import type { Capability } from '@structpaper/contracts';
 import type { Access } from '@/lib/access';
 
@@ -48,14 +48,6 @@ export const MAIN_NAV: NavItem[] = [
     description: 'Quản lý vai trò & thành viên',
     icon: ShieldCheck,
     activeOn: ['/permissions'],
-  },
-  {
-    path: '/settings',
-    label: 'Cài đặt',
-    description: 'Quy chuẩn & xuất bản',
-    icon: Settings,
-    activeOn: ['/settings'],
-    bottomBarLabel: 'Cài đặt',
   },
 ];
 

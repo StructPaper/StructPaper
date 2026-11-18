@@ -14,4 +14,6 @@ export const AccountProfileCapabilitiesItem = {
   'member:manage': 'member:manage',
   'role:assign': 'role:assign',
   'role:grant_superadmin': 'role:grant_superadmin',
+  'journal:manage': 'journal:manage',
+  'manuscript:read_all': 'manuscript:read_all',
 } as const;

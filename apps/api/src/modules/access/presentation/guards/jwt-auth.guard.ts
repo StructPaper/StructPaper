@@ -9,6 +9,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../../../identity/application/auth.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { IS_OPTIONAL_AUTH_KEY } from '../decorators/optional-auth.decorator';
 
 /**
  * Registered as a GLOBAL guard (APP_GUARD in AppModule): every route needs a valid access token
@@ -34,6 +35,14 @@ export class JwtAuthGuard implements CanActivate {
     const authHeader =
       request.headers?.authorization ||
       request.headers?.Authorization;
+
+    const isOptional = this.reflector?.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isOptional && !authHeader) {
+      return true; // guest: the handler applies the anonymous rules
+    }
 
     if (!authHeader || typeof authHeader !== 'string' || !/^Bearer\s+/i.test(authHeader)) {
       throw new UnauthorizedException('Missing or invalid Authorization header');

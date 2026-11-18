@@ -14,6 +14,11 @@ import { PaperTable } from './PaperTable';
 import { PaperTableShimmer } from './PaperTableShimmer';
 import { PaperQuickEditModal } from './PaperQuickEditModal';
 import { PaperDeleteConfirmModal } from './PaperDeleteConfirmModal';
+import { ShareManuscriptModal } from '@/features/sharing';
+import { getManuscriptTitle } from './types';
+import { useAccess } from '@/lib/access';
+import { LIBRARY_LABELS, type LibraryMode } from '../hooks/useLibraryPapers';
+import { LibraryFetcher, NO_LIBRARY, type LibraryState } from './LibraryFetcher';
 import { EmptyPapersState } from './EmptyPapersState';
 import { CreatePaperModal } from './CreatePaperModal';
 import { StickyHubToolbar } from '@/components/layout/StickyHubToolbar';
@@ -22,6 +27,17 @@ export const PaperHubView: React.FC = () => {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deletingPaper, setDeletingPaper] = useState<ManuscriptRecord | null>(null);
+  const [sharingPaper, setSharingPaper] = useState<ManuscriptRecord | null>(null);
+  const [libraryMode, setLibraryMode] = useState<LibraryMode>('mine');
+  const [library, setLibrary] = useState<LibraryState>(NO_LIBRARY);
+  // Switching lists shows a loading state at once instead of the previous list.
+  const changeLibraryMode = (mode: LibraryMode) => {
+    setLibrary(mode === 'mine' ? NO_LIBRARY : { records: [], isLoading: true });
+    setLibraryMode(mode);
+  };
+  // Whoever can already read every paper does not need the public library / shared-with-me shortcuts.
+  const access = useAccess();
+  const showLibrary = access.status === 'ready' && !access.can('manuscript:read_all');
 
   const {
     records,
@@ -49,7 +65,7 @@ export const PaperHubView: React.FC = () => {
     handleDuplicate,
     handleExportBackup,
     handleDelete,
-  } = usePapersHub();
+  } = usePapersHub({ libraryRecords: library.records, libraryLoading: library.isLoading });
 
   // Close menus on click outside
   useEffect(() => {
@@ -60,6 +76,7 @@ export const PaperHubView: React.FC = () => {
 
   return (
     <LayoutGroup id="paper-hub-layout-group">
+      {libraryMode !== 'mine' && <LibraryFetcher mode={libraryMode} onState={setLibrary} />}
       <div className="w-full max-w-7xl mx-auto space-y-7 pb-16 pt-4 px-4 sm:px-6">
         {/* 1. Top Horizontal Recent Papers Row */}
         <RecentPapersRow
@@ -85,6 +102,9 @@ export const PaperHubView: React.FC = () => {
                 onViewModeChange={setViewMode}
                 countsByStatus={countsByStatus}
                 onCreateFromTemplate={() => setIsCreateModalOpen(true)}
+                libraryMode={libraryMode}
+                onLibraryModeChange={changeLibraryMode}
+                showLibrary={showLibrary}
               />
             </StickyHubToolbar>
 
@@ -102,6 +122,10 @@ export const PaperHubView: React.FC = () => {
                   <PaperTableShimmer rowCount={8} />
                 </div>
               )
+            ) : filteredPapers.length === 0 && libraryMode !== 'mine' ? (
+              <p data-testid="library-empty" className="py-16 text-center text-sm font-semibold text-zinc-500">
+                {LIBRARY_LABELS[libraryMode].empty}
+              </p>
             ) : filteredPapers.length === 0 ? (
               <EmptyPapersState
                 isFiltered={Boolean(searchQuery || statusFilter !== 'all' || journalFilter !== 'all')}
@@ -132,6 +156,7 @@ export const PaperHubView: React.FC = () => {
                     onTogglePin={handleTogglePin}
                     onDuplicate={handleDuplicate}
                     onExportBackup={handleExportBackup}
+                    onShare={(p) => setSharingPaper(p)}
                     onDelete={(id) => {
                       const target = records.find((r) => r.info.id === id);
                       if (target) {
@@ -157,6 +182,7 @@ export const PaperHubView: React.FC = () => {
                 onTogglePin={handleTogglePin}
                 onDuplicate={handleDuplicate}
                 onExportBackup={handleExportBackup}
+                onShare={(p) => setSharingPaper(p)}
                 onDelete={(id) => {
                   const target = records.find((r) => r.info.id === id);
                   if (target) {
@@ -196,6 +222,13 @@ export const PaperHubView: React.FC = () => {
           isOpen={Boolean(deletingPaper)}
           onClose={() => setDeletingPaper(null)}
           onConfirm={handleDelete}
+        />
+
+        <ShareManuscriptModal
+          isOpen={Boolean(sharingPaper)}
+          onClose={() => setSharingPaper(null)}
+          manuscriptId={sharingPaper?.info.id ?? ''}
+          manuscriptTitle={sharingPaper ? getManuscriptTitle(sharingPaper) : undefined}
         />
 
         {/* 7. 2-Step Create Paper Modal (Upload DOCX / Blank -> Select Template -> Editor) */}

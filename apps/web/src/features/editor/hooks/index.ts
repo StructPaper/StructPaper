@@ -69,3 +69,4 @@ export {
   type UseAssetUploadOptions,
   type UseAssetUploadReturn,
 } from './useAssetUpload';
+export * from './useServerPdfPreview';

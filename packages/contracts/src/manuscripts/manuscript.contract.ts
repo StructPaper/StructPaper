@@ -19,7 +19,33 @@ export const ManuscriptMemberRoleEnum = z.enum([
   'COAUTHOR',
   'EDITOR',
   'REVIEWER',
+  'VIEWER',
 ]);
+
+/** Who, besides the members, may open a manuscript (Google-Docs style "general access"). */
+export const GeneralAccessEnum = z.enum(['RESTRICTED', 'VIEWER', 'EDITOR']);
+export type GeneralAccess = z.infer<typeof GeneralAccessEnum>;
+
+/** Statuses from which the creator can no longer delete a manuscript. */
+export const NON_DELETABLE_STATUSES: ManuscriptStatus[] = [
+  'IN_REVIEW',
+  'PROOFING',
+  'READY',
+  'ACCEPTED',
+  'PUBLISHED',
+];
+
+export const UpdateGeneralAccessSchema = z.object({ generalAccess: GeneralAccessEnum });
+export type UpdateGeneralAccess = z.infer<typeof UpdateGeneralAccessSchema>;
+
+export const PeopleSearchQuerySchema = z.object({ q: z.string().trim().min(2).max(100) });
+
+export const ManuscriptAccessSchema = z.object({
+  canEdit: z.boolean(),
+  canShare: z.boolean(),
+  canDelete: z.boolean(),
+});
+export type ManuscriptAccess = z.infer<typeof ManuscriptAccessSchema>;
 
 export type ManuscriptMemberRole = z.infer<typeof ManuscriptMemberRoleEnum>;
 
@@ -63,6 +89,8 @@ export const ManuscriptQuerySchema = z.object({
   search: z.string().optional(),
   journalId: z.string().uuid().optional(),
   status: ManuscriptStatusEnum.optional(),
+  /** mine (default): papers I am a member of; public: every paper shared with anyone; shared: public papers I opened through a link. */
+  scope: z.enum(['mine', 'public', 'shared']).optional().default('mine'),
   sortBy: z.string().optional().default('updatedAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
@@ -91,6 +119,8 @@ export const ManuscriptResponseSchema = z.object({
   title: z.string(),
   abstract: z.string().nullable().optional(),
   status: ManuscriptStatusEnum,
+  generalAccess: GeneralAccessEnum.optional(),
+  access: ManuscriptAccessSchema.optional(),
   createdBy: z.string().uuid(),
   currentServerRev: z.number().int().nonnegative(),
   version: z.number().int().positive(),

@@ -54,25 +54,18 @@ describe('AbilityFactory (CASL RBAC & Manuscript ACL)', () => {
       expect(ability.can('manage', 'all')).toBe(false);
     });
 
-    it('Editor can read and update manuscripts only within their scoped journal', async () => {
+    it('Editor has NO blanket access to manuscripts, only journal visibility and the right to create', async () => {
       const ability = await factory.createForUser('user-ed-1', {
         roles: [{ name: 'Editor', scopeJournalId: journalA }],
       });
+      const others = subject('Manuscript', { journalId: journalA, id: 'm-1', createdBy: 'someone-else' });
 
-      expect(
-        ability.can('read', subject('Manuscript', { journalId: journalA, id: 'm-1' })),
-      ).toBe(true);
-      expect(
-        ability.can('update', subject('Manuscript', { journalId: journalA, id: 'm-1' })),
-      ).toBe(true);
-
-      // Denied for journal B
-      expect(
-        ability.can('read', subject('Manuscript', { journalId: journalB, id: 'm-2' })),
-      ).toBe(false);
-      expect(
-        ability.can('update', subject('Manuscript', { journalId: journalB, id: 'm-2' })),
-      ).toBe(false);
+      expect(ability.can('read', others)).toBe(false);
+      expect(ability.can('update', others)).toBe(false);
+      expect(ability.can('create', 'Manuscript')).toBe(true);
+      expect(ability.can('read', subject('Journal', { id: journalA }))).toBe(true);
+      expect(ability.can('update', subject('Journal', { id: journalA }))).toBe(false);
+      expect(ability.can('manage', subject('Journal', { id: journalA }))).toBe(false);
     });
   });
 

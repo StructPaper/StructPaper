@@ -51,14 +51,14 @@ const EmptySectionsStateBase: React.FC<EmptySectionsStateProps> = ({
         Chưa có khối nội dung nào trong bài báo.
       </p>
       <div className="flex items-center justify-center gap-2">
-        <button
+        <button data-edit-only
           type="button"
           onClick={() => onAddHeading('h1')}
           className="btn-pill-lime text-xs"
         >
           + Thêm tiêu đề H1
         </button>
-        <button
+        <button data-edit-only
           type="button"
           onClick={() => onAddParagraph()}
           className="btn-pill-subtle text-xs"

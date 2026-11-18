@@ -17,11 +17,24 @@ export const canAssignRoles = (ability: AppAbility): boolean =>
 
 export const canGrantSuperAdmin = (ability: AppAbility): boolean => ability.can('manage', 'all');
 
+/** True when some rule lets the user read EVERY manuscript (no condition), not just their own. */
+export const canReadAllManuscripts = (ability: AppAbility): boolean =>
+  ability.rules.some((rule: any) => {
+    if (rule.inverted || rule.conditions) return false;
+    const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+    const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+    return subjects.some((x: string) => x === 'Manuscript' || x === 'all') && actions.some((a: string) => a === 'read' || a === 'manage');
+  });
+
+export const canManageJournals = (ability: AppAbility): boolean => ability.can('create', 'Journal');
+
 /** One rule per capability: adding a key to CAPABILITIES without a rule does not compile. */
 export const CAPABILITY_RULES: Record<Capability, (ability: AppAbility) => boolean> = {
   'member:manage': canManageMembers,
   'role:assign': canAssignRoles,
   'role:grant_superadmin': canGrantSuperAdmin,
+  'journal:manage': canManageJournals,
+  'manuscript:read_all': canReadAllManuscripts,
 };
 
 /** The capabilities an ability grants (stable order, same as the catalogue). */

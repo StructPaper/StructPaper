@@ -35,7 +35,7 @@ import {
   normalizeWorkflowStatus,
 } from '../components/types';
 
-function remoteManuscriptToRecord(item: any): ManuscriptRecord {
+export function remoteManuscriptToRecord(item: any): ManuscriptRecord {
   const workflowStatus = normalizeWorkflowStatus(
     item.status || item.workflowStatus || item.metadata?.workflowStatus
   );
@@ -85,7 +85,13 @@ function remoteManuscriptToRecord(item: any): ManuscriptRecord {
   } as any;
 }
 
-export function usePapersHub() {
+export interface UsePapersHubOptions {
+  /** When set, the page shows these server papers (public library / shared with me) instead of "my papers". */
+  libraryRecords?: ManuscriptRecord[] | null;
+  libraryLoading?: boolean;
+}
+
+export function usePapersHub({ libraryRecords = null, libraryLoading = false }: UsePapersHubOptions = {}) {
   const router = useRouter();
   const { setPaper, setCurrentJournal } = usePaper();
 
@@ -441,7 +447,7 @@ export function usePapersHub() {
   const filteredPapers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return records
+    return (libraryRecords ?? records)
       .filter((r) => {
         // Search query
         if (query) {
@@ -495,12 +501,12 @@ export function usePapersHub() {
         const timeB = new Date(b.info.updatedAt || b.info.createdAt).getTime();
         return timeB - timeA;
       });
-  }, [records, searchQuery, statusFilter, journalFilter, sortBy]);
+  }, [records, libraryRecords, searchQuery, statusFilter, journalFilter, sortBy]);
 
   return {
     records,
     filteredPapers,
-    isLoading,
+    isLoading: libraryRecords ? libraryLoading : isLoading,
     error,
     searchQuery,
     statusFilter,

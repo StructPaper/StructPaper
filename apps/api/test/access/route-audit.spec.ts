@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { APP_GUARD } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { JwtAuthGuard } from '../../src/modules/access/presentation/guards/jwt-auth.guard';
+import { IS_OPTIONAL_AUTH_KEY } from '../../src/modules/access/presentation/decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../../src/modules/access/presentation/decorators/public.decorator';
 
 /**
@@ -46,6 +47,7 @@ const controllerModules = import.meta.glob('../../src/modules/**/*.controller.ts
 interface RouteInfo {
   label: string;
   isPublic: boolean;
+  isOptionalAuth: boolean;
 }
 
 function collectRoutes(): RouteInfo[] {
@@ -75,6 +77,7 @@ function collectRoutes(): RouteInfo[] {
       const full = ['', prefix, path].join('/').replace(/\/+/g, '/').replace(/\/$/, '') || '/';
       routes.push({
         label: `${HTTP_METHODS[method] ?? method} ${full}`,
+        isOptionalAuth: Boolean(Reflect.getMetadata(IS_OPTIONAL_AUTH_KEY, handler)),
         isPublic: classPublic || Boolean(Reflect.getMetadata(IS_PUBLIC_KEY, handler)),
       });
     }
@@ -104,6 +107,11 @@ describe('Secure-by-default route audit', () => {
       .sort();
 
     expect(publicRoutes).toEqual(EXPECTED_PUBLIC_ROUTES);
+  });
+
+  it('only reading ONE manuscript (and its PDF) by link works without a token (guests)', () => {
+    const optional = collectRoutes().filter((r) => r.isOptionalAuth).map((r) => r.label);
+    expect(optional).toEqual(['GET /manuscripts/:id', 'GET /manuscripts/:id/preview']);
   });
 
   it('never leaves user, role, asset, manuscript or compile routes public', () => {
