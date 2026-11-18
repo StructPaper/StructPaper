@@ -129,7 +129,7 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
       {isOpen && (
         <motion.div
           key="layout-drawer-root"
-          className="fixed inset-0 z-[1000] flex justify-start p-3 sm:p-3 overflow-hidden pointer-events-auto"
+          className="fixed inset-0 z-[1000] flex justify-start px-3 pb-3 pt-[calc(var(--titlebar-height,38px)+0.75rem)] overflow-hidden pointer-events-auto"
         >
           {/* Backdrop with smooth Eatzy-like fade and blur */}
           <motion.div
@@ -178,7 +178,7 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 divide-y divide-zinc-200/70 [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0 custom-scrollbar">
               {/* 1. MẪU TẠP CHÍ ĐÍCH (VNUHCM) */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -199,21 +199,12 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
               </div>
 
               {/* 2. CÀI ĐẶT ĐÁNH SỐ TRANG (WORD-STYLE PAGE NUMBERING) */}
-              <div className="p-4 rounded-3xl bg-white border border-[#E2E4E9] shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <Hash className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-extrabold text-zinc-900 block">
-                        Đánh số trang (Page Numbering)
-                      </span>
-                      <span className="text-[10px] text-zinc-400 font-medium">
-                        Cấu hình linh hoạt chuẩn Microsoft Word
-                      </span>
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-zinc-500" />
+                    Đánh số trang (Page Numbering)
+                  </label>
 
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -229,7 +220,7 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
                 {pageNum.enabled && (
                   <div className="space-y-4 animate-in fade-in pt-1">
                     {/* Live Preview Pill */}
-                    <div className="p-3 bg-zinc-50 border border-zinc-200/80 rounded-2xl flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                         <span className="text-[11px] text-zinc-600 font-medium">Mẫu hiển thị thực tế:</span>
@@ -359,7 +350,7 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
 
                     {/* Different First Page Checkbox */}
                     <div className="pt-1">
-                      <label className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-zinc-50 hover:bg-zinc-100/80 border border-zinc-200/70 cursor-pointer transition-colors">
+                      <label className="flex items-start gap-2.5 py-1 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
                           checked={pageNum.suppressOnFirstPage}
@@ -585,13 +576,11 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
               </div>
 
               {/* 5. THÔNG SỐ NÂNG CAO */}
-              <div className="p-4 rounded-3xl bg-white border border-[#EAECEF] space-y-4 shadow-2xs">
-                <div className="flex items-center gap-2 pb-2 border-b border-zinc-100">
-                  <Type className="w-4 h-4 text-zinc-500" />
-                  <span className="text-xs font-extrabold text-zinc-800">
-                    Quy chuẩn phông chữ & khoảng cách
-                  </span>
-                </div>
+              <div className="space-y-3">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-zinc-500" />
+                  Quy chuẩn phông chữ & khoảng cách
+                </label>
 
                 {/* Cỡ chữ */}
                 <div className="space-y-1.5">

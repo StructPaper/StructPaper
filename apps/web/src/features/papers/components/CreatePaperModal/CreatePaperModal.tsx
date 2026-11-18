@@ -11,11 +11,11 @@ import { StepUploadFile } from './StepUploadFile';
 import { StepSelectTemplate } from './StepSelectTemplate';
 import { BatchImportPanel } from './BatchImportPanel';
 import { StepBatchTemplates } from './StepBatchTemplates';
-import { toBatchJournal } from '@/lib/batch-import/journals';
+import { toBatchJournal, managedJournalFor } from '@/lib/batch-import/journals';
 import { useBatchImport } from '../../hooks/useBatchImport';
 import { summarize } from '@/lib/batch-import/summary';
 import type { BatchItem } from '@/lib/batch-import/types';
-import { ManagedJournalProfile } from '@/lib/templates/journal-storage';
+import { ManagedJournalProfile, getDefaultVnuhcmJournals } from '@/lib/templates/journal-storage';
 import { createEmptyPaper, CompletePaper } from '@/types/paper';
 import { usePaper } from '@/context/PaperContext';
 import { usePaperStorage, ImportValidationModal } from '@/features/editor';
@@ -247,8 +247,13 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   };
 
   /** One template per file (they may all be the same). */
-  const startBatch = (choices: ManagedJournalProfile[], files: File[], skipped: number) =>
-    batch.start(files, toBatchJournal(choices[0]), skipped, choices.map(toBatchJournal));
+  const startBatch = (choices: Array<ManagedJournalProfile | null>, files: File[], skipped: number) =>
+    batch.start(
+      files,
+      toBatchJournal(getDefaultVnuhcmJournals()[0]), // for files whose journal can not be told
+      skipped,
+      choices.map((c) => (c ? toBatchJournal(c) : null)),
+    );
 
   // Two or more Word files: pick the journal template once (or use the preselected one) and import them all
   const handleBatchPick = async (files: File[], skipped: number) => {
@@ -262,8 +267,10 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   };
 
   // Step 2 completed
-  const handleStep2Complete = async (managed: ManagedJournalProfile) => {
-    await finalizeCreation(managed, isBlank ? null : parsedPaper);
+  const handleStep2Complete = async (managed: ManagedJournalProfile | null) => {
+    // no template chosen: the journal the file states, else the generic one
+    const resolved = managed ?? managedJournalFor(isBlank ? undefined : parsedPaper?.metadata?.journalId) ?? getDefaultVnuhcmJournals()[0];
+    await finalizeCreation(resolved, isBlank ? null : parsedPaper);
   };
 
   const closeModal = () => {
@@ -415,7 +422,6 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                     setBatchFiles([]);
                     setStep(1);
                   }}
-                  selectedJournalId={parsedPaper?.metadata?.journalId?.replace('VNUHCM-', '').toLowerCase()}
                 />
                 )}
               </motion.div>

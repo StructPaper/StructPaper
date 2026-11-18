@@ -9,6 +9,7 @@ import {
 import type { DocumentSaveState } from '@/lib/editor/save-status';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 import type { ExportFormat } from '@/features/editor';
+import type { PageLanguage } from '@/lib/page-labels';
 
 export interface EditorDocumentSession {
   paperId?: string;
@@ -36,6 +37,9 @@ export interface EditorSessionContextValue {
   pdfFocusMode: boolean;
   setPdfFocusMode: (enabled: boolean) => void;
   togglePdfFocusMode: () => void;
+  /** Language the PDF preview is laid out in (its closing page is the other language). */
+  pdfLanguage: PageLanguage;
+  setPdfLanguage: (language: PageLanguage) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -47,6 +51,8 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   pdfFocusMode: false,
   setPdfFocusMode: () => {},
   togglePdfFocusMode: () => {},
+  pdfLanguage: 'vi',
+  setPdfLanguage: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -67,6 +73,22 @@ export function EditorSessionProvider({
       return false;
     }
   });
+
+  const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>(() => {
+    try {
+      return localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi';
+    } catch {
+      return 'vi';
+    }
+  });
+  const setPdfLanguage = useCallback((language: PageLanguage) => {
+    setPdfLanguageState(language);
+    try {
+      localStorage.setItem('structpaper_pdf_language', language);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     setAutoSaveEnabledState(readAutoSavePreference());
@@ -119,8 +141,10 @@ export function EditorSessionProvider({
       pdfFocusMode,
       setPdfFocusMode,
       togglePdfFocusMode,
+      pdfLanguage,
+      setPdfLanguage,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage]
   );
 
   return (

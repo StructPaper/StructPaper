@@ -1,6 +1,7 @@
 import type { CompletePaper } from '@/types/paper';
 import { getUniquePaperTitle } from '@/lib/storage/paper-naming';
 import { abortError, createLimiter, isAbortError } from './limiter';
+import { autoBatchJournal } from './journals';
 import type { BatchItem, BatchOptions } from './types';
 
 /** More files than this in one go would make the list and the server crawl; the dialog tells the user. */
@@ -78,7 +79,8 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
   await Promise.all(
     files.map(async (file, i) => {
       if (signal?.aborted) return patch(i, { stage: 'cancelled' });
-      const journal = opts.journals?.[i] ?? opts.journal;
+      const picked = opts.journals?.[i]; // undefined: no entry (use `journal`); null: automatic
+      let journal = picked ?? opts.journal;
       let paper: CompletePaper | null;
       try {
         const parsed = await parseLimiter.run(async () => {
@@ -89,6 +91,7 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
           return result;
         }, signal);
         if (signal?.aborted) throw abortError(); // cancelled while this file was being read: do not create it
+        if (picked === null) journal = autoBatchJournal(parsed.metadata?.journalId, opts.journal);
         const title = getUniquePaperTitle(parsed.metadata?.title?.trim() || baseName(file.name), reserved);
         reserved.push(title);
         paper = {

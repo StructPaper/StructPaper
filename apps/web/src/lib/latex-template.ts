@@ -13,6 +13,7 @@ import { resolvePublication, hasPublicationValue, UNKNOWN } from './publication'
 import { qrBlockFor } from './qr-latex';
 import { buildEnglishPage, hasEnglishPageContent, toAsciiName } from './latex-english-page';
 import { articleTypeEnglish } from './article-types';
+import { ENGLISH_LABELS, VIETNAMESE_LABELS, labelsFor, relabelPreamble, type PageLanguage } from './page-labels';
 import {
   resolveLatexFigureFilename,
   appendFigureImagesToZip,
@@ -75,8 +76,19 @@ const OFFICIAL_SIDEBOX_TEMPLATE: string = "\\newsavebox{\\temp}\n        \\sbox{
  * Official LaTeX Template Generator for VNUHCM Scientific Journals.
  * Dynamically applies colors, headers, metadata, math, tables, and figures.
  */
-export function generateFullJournalLatex(paper: CompletePaper, customSettings?: LayoutSettings): string {
+export interface LatexOptions {
+  /**
+   * Language the paper is laid out in: its title, abstract, keywords, article type and the printed
+   * labels (first page, references). The closing summary page is then printed in the OTHER language.
+   */
+  primaryLanguage?: PageLanguage;
+}
+
+export function generateFullJournalLatex(paper: CompletePaper, customSettings?: LayoutSettings, options: LatexOptions = {}): string {
   const { metadata, sections, references } = paper;
+  const lang: PageLanguage = options.primaryLanguage ?? 'vi';
+  const en = lang === 'en';
+  const labels = labelsFor(lang);
   const tmpl = getJournalTemplate(metadata.journalId);
   const customColor = (customSettings as any)?.color || (paper as any)?.color || (metadata as any)?.journalColor;
   const journalColor = customColor || tmpl.color;
@@ -203,6 +215,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     );
   }
 
+  if (en) preamblePart1 = relabelPreamble(preamblePart1, ENGLISH_LABELS);
+
   if (tmpl.officialAbbvEn) {
     // "… Earth Sci." already ends with a period; do not print "Sci.."
     preamblePart1 = preamblePart1.replace('\\textit{Sci. Tech. Dev. J.\\journalabbv}', `\\textit{${tmpl.officialAbbvEn.replace(/\.$/, '')}.}`);
@@ -217,13 +231,14 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     preamblePart1 += `\\IfFontExistsTF{${theme.headingFont}}{\\setsansfont{${theme.headingFont}}}{}\n`;
   }
 
-  const safeTitle = (metadata.title || '').trim() || 'TIÊU ĐỀ BÀI BÁO (BẢN THẢO)';
-  const safeAbstract = (metadata.abstract || '').trim() || 'Tóm tắt bài báo chưa được nhập. Vui lòng cập nhật tóm tắt tại mục Tóm tắt để hoàn thiện bản thảo.';
+  const viTitle = (metadata.title || '').trim() || 'TIÊU ĐỀ BÀI BÁO (BẢN THẢO)';
+  const safeTitle = en ? (metadata.titleEn || '').trim() || viTitle : viTitle;
+  const viAbstract = (metadata.abstract || '').trim() || 'Tóm tắt bài báo chưa được nhập. Vui lòng cập nhật tóm tắt tại mục Tóm tắt để hoàn thiện bản thảo.';
   // a trailing '.' on the last keyword would print as ".." because the template appends one
   const cleanKw = (ks?: string[]) => (ks || []).map((k) => k.trim().replace(/\.+$/, '')).filter(Boolean);
-  const safeKeywords = cleanKw(metadata.keywords).length > 0
-    ? cleanKw(metadata.keywords)
-    : ['Bản thảo', 'Từ khóa'];
+  const viKeywords = cleanKw(metadata.keywords).length > 0 ? cleanKw(metadata.keywords) : ['Bản thảo', 'Từ khóa'];
+  const safeAbstract = en ? (metadata.abstractEn || '').trim() || viAbstract : viAbstract;
+  const safeKeywords = en && cleanKw(metadata.keywordsEn).length > 0 ? cleanKw(metadata.keywordsEn) : viKeywords;
 
   const rawAuthors = metadata.authors && metadata.authors.length > 0
     ? metadata.authors
@@ -309,33 +324,40 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
 \\def\\cmPublished{${escapeLatex(publishedText)}}
 \\def\\cmfirstpage{${escapeLatex(pub.firstPage)}}
 \\def\\cmlastpage{${escapeLatex(pub.lastPage)}}
-\\def\\citeauthor{${escapeLatex(citeAuthors)}}
-\\def\\citetitle{\\textbf{${escapeLatex(safeTitle)}}}\\def\\journalname{${escapeLatex(journalSuffix)}}\\def\\actualjournal{${escapeLatex(mainJournalName)}}\\renewcommand{\\refname}{Tài liệu tham khảo}
+\\def\\citeauthor{${escapeLatex(en ? toAsciiName(citeAuthors) : citeAuthors)}}
+\\def\\citetitle{\\textbf{${escapeLatex(safeTitle)}}}\\def\\journalname{${escapeLatex(journalSuffix)}}\\def\\actualjournal{${escapeLatex(mainJournalName)}}\\renewcommand{\\refname}{${labels.references}}
 `;
 
   const buildAffbox = (affs: string, name: string, aff: string, email: string) => `        \\gdef\\affbox{\\parbox{4.4cm}{
         {~\\\\[.5pc]\\raggedright {\\fontsize{8pt}{8pt}\\selectfont\\itshape ${affs}\\\\[.5pc]} }{\\ttfamily\\bfseries\\color{titlecolor}\\fontsize{7pt}{7pt}\\selectfont \\Correspondence}\\\\[.35pc]
         {\\ttfamily\\fontsize{7pt}{8pt}\\selectfont\\textbf{\\prolight ${name}}, ${aff}\\\\[.35pc]Email: ${email}.\\\\[.3pc]}}}`;
-  const dynamicAffbox = buildAffbox(affiliationsFormatted, corrName, corrAff, corrEmail);
+  const affiliationsEnFormatted = rawAffiliations
+    .map((aff) => `${hasMultipleAffs && aff.id ? `\\textsuperscript{${aff.id}}` : ''}${escapeLatex((aff.nameEn || aff.name).trim())}`)
+    .join('\\\\[.35pc]\n');
+  const corrAffEn = escapeLatex((rawAffiliations[0]?.nameEn || metadata.corresponding?.affiliation || rawAffiliations[0]?.name || '').trim());
+  // first page: the primary language (English prints names without diacritics)
+  const dynamicAffbox = en
+    ? buildAffbox(affiliationsEnFormatted, toAsciiName(corrName), corrAffEn, corrEmail)
+    : buildAffbox(affiliationsFormatted, corrName, corrAff, corrEmail);
 
   const sidebox = OFFICIAL_SIDEBOX_TEMPLATE.replace(
     /\\gdef\\affbox\{[\s\S]*?\\newdimen\\fooa/,
     `${dynamicAffbox}\n\n\\newdimen\\fooa`
   );
 
-  const titleBlock = `\n\n\\articletype{${escapeLatex(metadata.articleType || 'Bài nghiên cứu')}}
+  const titleBlock = `\n\n\\articletype{${escapeLatex(en ? articleTypeEnglish(metadata) : metadata.articleType || 'Bài nghiên cứu')}}
 \\title{${escapeLatex(safeTitle)}}
-\\author{{\\bfseries\\sffamily ${authorsFormatted}}}
+\\author{{\\bfseries\\sffamily ${en ? toAsciiName(authorsFormatted) : authorsFormatted}}}
 
 ${sidebox}
 \\newgeometry{left=15.4pc,right=3.1pc,footskip=0cm,bottom=${(theme.margins.bottom + 1.4).toFixed(1)}cm,paperheight=${paperHeightStr},paperwidth=${paperWidthStr},headsep=.2cm,top=${theme.margins.top}cm}    
 ${isOneColumn
   ? `\\onecolumn \\maketitle {\\vspace*{-1pc}\\begin{mdframed}[innerrightmargin=1pc,innerleftmargin=1pc,innertopmargin=1pc,backgroundcolor=unitednationsblue,hidealllines=true]\\begin{textblock*}{.3\\textwidth}(-5cm,0cm)\\begin{center}\\vspace*{-1.15pc} \\hspace*{-.75pc}${qrBlock}\\\\\n\\vspace*{-.35pc}{\\fontsize{8pt}{9pt}\\selectfont\\hspace*{-.75pc}\\color{gray}{Use your smartphone to scan~this}\\\\\n\\vspace*{-.15pc}\\hspace*{-.75pc}\\color{gray}{QR code and download this article}}\\end{center}\\end{textblock*}\\begin{onecolabstract}\\def\\baselinestretch{1.06}\\fontsize{9.5pt}{9.5pt}\\selectfont ${escapeLatex(safeAbstract)}\\def\\keywordstitle{Keywords}
 
-\\noindent\\prolight\\textbf{Từ khoá: }{${escapeLatex(safeKeywords.join(', '))}\\newline}\\end{onecolabstract}\\end{mdframed}}\\vspace*{.8pc}\\saythanks \\baselineskip=\\the\\baselineskip plus.5pt minus.5pt`
+\\noindent\\prolight\\textbf{${labels.keywords}: }{${escapeLatex(safeKeywords.join(', '))}\\newline}\\end{onecolabstract}\\end{mdframed}}\\vspace*{.8pc}\\saythanks \\baselineskip=\\the\\baselineskip plus.5pt minus.5pt`
   : `\\twocolumn[ \\maketitle {\\vspace*{-1pc}\\begin{mdframed}[innerrightmargin=1pc,innerleftmargin=1pc,innertopmargin=1pc,backgroundcolor=unitednationsblue,hidealllines=true]\\begin{textblock*}{.3\\textwidth}(-5cm,0cm)\\begin{center}\\vspace*{-1.15pc} \\hspace*{-.75pc}${qrBlock}\\\\\n\\vspace*{-.35pc}{\\fontsize{8pt}{9pt}\\selectfont\\hspace*{-.75pc}\\color{gray}{Use your smartphone to scan~this}\\\\\n\\vspace*{-.15pc}\\hspace*{-.75pc}\\color{gray}{QR code and download this article}}\\end{center}\\end{textblock*}\\begin{onecolabstract}\\def\\baselinestretch{1.06}\\fontsize{9.5pt}{9.5pt}\\selectfont ${escapeLatex(safeAbstract)}\\def\\keywordstitle{Keywords}
 
-\\noindent\\prolight\\textbf{Từ khoá: }{${escapeLatex(safeKeywords.join(', '))}\\newline}\\end{onecolabstract}\\end{mdframed}}\\vspace*{.8pc}]\\saythanks \\baselineskip=\\the\\baselineskip plus.5pt minus.5pt`}
+\\noindent\\prolight\\textbf{${labels.keywords}: }{${escapeLatex(safeKeywords.join(', '))}\\newline}\\end{onecolabstract}\\end{mdframed}}\\vspace*{.8pc}]\\saythanks \\baselineskip=\\the\\baselineskip plus.5pt minus.5pt`}
 
 `;
 
@@ -436,39 +458,57 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
   if (references.length > 0) {
     const balanceCmd = layoutTracker.oneColumn ? '' : '\\beforepage{\\balance} \n\n';
     // polyglossia resets \refname to "References" at \begin{document}; set the printed heading here
-    bibLatex = `\n${balanceCmd}{\\sffamily\\fontsize{7}{8}\\selectfont \n\n\\renewcommand{\\refname}{Tài liệu tham khảo}\n\\begin{thebibliography}{10}\n\n` +
+    bibLatex = `\n${balanceCmd}{\\sffamily\\fontsize{7}{8}\\selectfont \n\n\\renewcommand{\\refname}{${labels.references}}\n\\begin{thebibliography}{10}\n\n` +
       references
         .map((r) => `\\bibitem{ref${r.id}}\n${escapeLatex(r.raw)}`)
         .join('\n\n') +
       `\n\n\\end{thebibliography}\n}\n`;
   }
 
-  // Closing English summary page (English title / abstract / affiliation), like the printed journal.
-  const englishPage =
-    theme.englishSummaryPage && hasEnglishPageContent({ titleEn: metadata.titleEn, abstractEn: metadata.abstractEn })
+  // Closing summary page, like the printed journal: English after a Vietnamese paper, Vietnamese after an English one.
+  const closingPage = !theme.englishSummaryPage
+    ? null
+    : en
       ? buildEnglishPage({
-          titleEn: metadata.titleEn || '',
-          abstractEn: metadata.abstractEn || '',
-          keywordsEn: cleanKw(metadata.keywordsEn),
-          articleTypeEn: articleTypeEnglish(metadata),
-          // the English page prints names without diacritics ("Vo Thi Nguyen")
-          authorsFormatted: toAsciiName(authorsFormatted),
-          citeAuthorsEn: escapeLatex(toAsciiName(citeAuthors)),
+          titleEn: viTitle,
+          abstractEn: viAbstract,
+          keywordsEn: viKeywords,
+          articleTypeEn: metadata.articleType || 'Bài nghiên cứu',
+          authorsFormatted,
+          citeAuthorsEn: escapeLatex(citeAuthors),
           qrBlock,
-          affiliationsEnFormatted: rawAffiliations
-            .map((aff) => `${hasMultipleAffs && aff.id ? `\\textsuperscript{${aff.id}}` : ''}${escapeLatex((aff.nameEn || aff.name).trim())}`)
-            .join('\\\\[.35pc]\n'),
-          corrName: toAsciiName(corrName),
-          corrAffEn: escapeLatex((rawAffiliations[0]?.nameEn || metadata.corresponding?.affiliation || rawAffiliations[0]?.name || '').trim()),
+          affiliationsEnFormatted: affiliationsFormatted,
+          corrName,
+          corrAffEn: corrAff,
           corrEmail,
           isOneColumn,
           sideboxTemplate: OFFICIAL_SIDEBOX_TEMPLATE,
           preambleWithMaketitle: OFFICIAL_PREAMBLE_PART1 + OFFICIAL_PREAMBLE_PART2,
           buildAffbox,
+          labels: VIETNAMESE_LABELS,
         })
-      : null;
+      : hasEnglishPageContent({ titleEn: metadata.titleEn, abstractEn: metadata.abstractEn })
+        ? buildEnglishPage({
+            titleEn: metadata.titleEn || '',
+            abstractEn: metadata.abstractEn || '',
+            keywordsEn: cleanKw(metadata.keywordsEn),
+            articleTypeEn: articleTypeEnglish(metadata),
+            // the English page prints names without diacritics ("Vo Thi Nguyen")
+            authorsFormatted: toAsciiName(authorsFormatted),
+            citeAuthorsEn: escapeLatex(toAsciiName(citeAuthors)),
+            qrBlock,
+            affiliationsEnFormatted,
+            corrName: toAsciiName(corrName),
+            corrAffEn,
+            corrEmail,
+            isOneColumn,
+            sideboxTemplate: OFFICIAL_SIDEBOX_TEMPLATE,
+            preambleWithMaketitle: OFFICIAL_PREAMBLE_PART1 + OFFICIAL_PREAMBLE_PART2,
+            buildAffbox,
+          })
+        : null;
 
-  return `${preamblePart1}${metaBlock}${OFFICIAL_PREAMBLE_PART2}${titleBlock}${bodyLatex}${bibLatex}${layoutTracker.close()}${englishPage ?? ''}\n\\end{document}\n`;
+  return `${preamblePart1}${metaBlock}${OFFICIAL_PREAMBLE_PART2}${titleBlock}${bodyLatex}${bibLatex}${layoutTracker.close()}${closingPage ?? ''}\n\\end{document}\n`;
 }
 
 export const exportToLatex = generateFullJournalLatex;

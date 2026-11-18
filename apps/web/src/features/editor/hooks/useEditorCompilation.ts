@@ -16,6 +16,7 @@ import { toast } from '@/components/toast';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
 import { getAuthHeaders } from '@/lib/auth-headers';
 import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
+import { useEditorSession } from '@/context/EditorSessionContext';
 import { CompileStats, CompileErrorInfo } from '../components/types';
 
 export interface UseEditorCompilationOptions {
@@ -45,6 +46,8 @@ export function useEditorCompilation({
   autoCompile = true,
   publishPreview = true,
 }: UseEditorCompilationOptions) {
+  // The language the PDF is laid out in is chosen in the title bar.
+  const { pdfLanguage } = useEditorSession();
   const isDefaultHs630 =
     formData.id === 'hs630' || formData.metadata?.doi?.includes('630');
   const defaultPdf = isDefaultHs630
@@ -191,7 +194,7 @@ export function useEditorCompilation({
         setIsCompilingPdf(true);
         setCompileStartedAt(Date.now());
         setCompileErrorInfo(null);
-        const texContent = exportToLatex(paperToCompile, settings);
+        const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage });
         const images = await extractPaperImagesAsync(paperToCompile);
 
         const scheduler = ensureInfra();
@@ -276,7 +279,7 @@ export function useEditorCompilation({
         }
       }
     },
-    [formData]
+    [formData, pdfLanguage]
   );
 
   // Sync with paper changes and compile initial
@@ -289,6 +292,15 @@ export function useEditorCompilation({
       if (autoCompile) compileLatexToPdf(paper);
     }
   }, [paper.id]);
+
+  // Choosing the other language lays the PDF out again (not on first render: the paper compiles then anyway).
+  const languageRef = useRef(pdfLanguage);
+  useEffect(() => {
+    if (languageRef.current === pdfLanguage) return;
+    languageRef.current = pdfLanguage;
+    if (autoCompile) void compileLatexToPdf(formData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfLanguage]);
 
   const handleRecompile = useCallback(
     async (customPaper?: CompletePaper) => {

@@ -15,6 +15,7 @@ import { DocumentStatusIndicator } from './DocumentStatusIndicator';
 import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
 import { ShareManuscriptButton } from '@/features/sharing';
+import { PdfLanguageSelect } from './PdfLanguageSelect';
 
 /**
  * Top-level application chrome bar.
@@ -110,7 +111,7 @@ export const DesktopTitleBar: React.FC = () => {
           </span>
         ) : null}
 
-        {isEditorRoute && <ShareManuscriptButton manuscriptId={documentSession?.paperId} />}
+        {canEditHere && <PdfLanguageSelect />}
 
         {canEditHere && (
           <button
@@ -133,6 +134,8 @@ export const DesktopTitleBar: React.FC = () => {
             <span>Focus định vị</span>
           </button>
         )}
+
+        {isEditorRoute && <ShareManuscriptButton manuscriptId={documentSession?.paperId} />}
       </div>
 
       {isDesktop && <WindowControls />}

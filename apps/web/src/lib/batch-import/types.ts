@@ -60,7 +60,8 @@ export interface BatchOptions {
   /** Template for every file that has no entry in `journals`. */
   journal: BatchJournal;
   /** Template per file (same order as `files`); a file may use a different journal than the others. */
-  journals?: BatchJournal[];
+  /** null = automatic: the journal the file states, else `journal`. */
+  journals?: Array<BatchJournal | null>;
   deps: BatchDeps;
   /** Word files read at the same time (browser CPU). Default 2. */
   parseLimit?: number;

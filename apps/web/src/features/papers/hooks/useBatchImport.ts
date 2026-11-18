@@ -19,7 +19,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
   const [skipped, setSkipped] = useState(0);
   const filesRef = useRef<File[]>([]);
   const journalRef = useRef<BatchJournal | null>(null);
-  const journalsRef = useRef<BatchJournal[] | undefined>(undefined);
+  const journalsRef = useRef<Array<BatchJournal | null> | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
   const latestRef = useRef<BatchItem[]>([]);
   const finishedRef = useRef(onFinished);
@@ -58,7 +58,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
   );
 
   const start = useCallback(
-    (files: File[], journal: BatchJournal, skippedCount = 0, journals?: BatchJournal[]) => {
+    (files: File[], journal: BatchJournal, skippedCount = 0, journals?: Array<BatchJournal | null>) => {
       if (abortRef.current) return Promise.resolve(); // a run is already going
       filesRef.current = files;
       journalRef.current = journal;
