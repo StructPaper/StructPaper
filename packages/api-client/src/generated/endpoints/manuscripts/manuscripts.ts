@@ -27,6 +27,7 @@ import type {
 import type {
   AddManuscriptMemberRequest,
   CreateManuscriptRequest,
+  FindManuscriptDuplicatesParams,
   ListManuscriptsParams,
   Manuscript,
   ManuscriptMember,
@@ -35,6 +36,7 @@ import type {
   ProblemResponseResponse,
   SearchManuscriptPeopleParams,
   SuccessMessageResponse,
+  TitleDuplicate,
   UpdateGeneralAccessRequest,
   UpdateManuscriptRequest
 } from '../../model';
@@ -704,6 +706,99 @@ export const useSetManuscriptGeneralAccess = <TError = ProblemResponseResponse,
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * @summary Papers already uploaded with this title, and who uploaded them
+ */
+export const findManuscriptDuplicates = (
+    params: FindManuscriptDuplicatesParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TitleDuplicate[]>(
+      {url: `/api/v1/manuscripts/duplicates`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getFindManuscriptDuplicatesQueryKey = (params?: FindManuscriptDuplicatesParams,) => {
+    return [
+    `/api/v1/manuscripts/duplicates`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getFindManuscriptDuplicatesQueryOptions = <TData = Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError = unknown>(params: FindManuscriptDuplicatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getFindManuscriptDuplicatesQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof findManuscriptDuplicates>>> = ({ signal }) => findManuscriptDuplicates(params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type FindManuscriptDuplicatesQueryResult = NonNullable<Awaited<ReturnType<typeof findManuscriptDuplicates>>>
+export type FindManuscriptDuplicatesQueryError = unknown
+
+
+export function useFindManuscriptDuplicates<TData = Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError = unknown>(
+ params: FindManuscriptDuplicatesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findManuscriptDuplicates>>,
+          TError,
+          Awaited<ReturnType<typeof findManuscriptDuplicates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFindManuscriptDuplicates<TData = Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError = unknown>(
+ params: FindManuscriptDuplicatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findManuscriptDuplicates>>,
+          TError,
+          Awaited<ReturnType<typeof findManuscriptDuplicates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFindManuscriptDuplicates<TData = Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError = unknown>(
+ params: FindManuscriptDuplicatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Papers already uploaded with this title, and who uploaded them
+ */
+
+export function useFindManuscriptDuplicates<TData = Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError = unknown>(
+ params: FindManuscriptDuplicatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findManuscriptDuplicates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getFindManuscriptDuplicatesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
  * @summary Search active members by email or name (to share a manuscript with)
  */
 export const searchManuscriptPeople = (

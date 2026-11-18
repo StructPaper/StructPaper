@@ -842,6 +842,30 @@
           "generalAccess"
         ]
       },
+      "TitleDuplicate": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "uploaderName": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mine": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "uploaderName",
+          "uploadedAt",
+          "mine"
+        ]
+      },
       "PersonResult": {
         "type": "object",
         "properties": {
@@ -2314,6 +2338,104 @@
           },
           "403": {
             "$ref": "#/components/responses/ProblemResponse"
+          }
+        }
+      }
+    },
+    "/api/v1/compile/status": {
+      "get": {
+        "tags": [
+          "Compile"
+        ],
+        "summary": "How busy the compilers are and how many of my papers are running or waiting",
+        "operationId": "getCompileStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "running": {
+                      "type": "integer"
+                    },
+                    "concurrency": {
+                      "type": "integer"
+                    },
+                    "queued": {
+                      "type": "integer"
+                    },
+                    "mine": {
+                      "type": "object",
+                      "properties": {
+                        "running": {
+                          "type": "integer"
+                        },
+                        "queued": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "running",
+                        "queued"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "running",
+                    "concurrency",
+                    "queued",
+                    "mine"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscripts/duplicates": {
+      "get": {
+        "tags": [
+          "Manuscripts"
+        ],
+        "summary": "Papers already uploaded with this title, and who uploaded them",
+        "operationId": "findManuscriptDuplicates",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching uploads (names and dates only)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TitleDuplicate"
+                  }
+                }
+              }
+            }
           }
         }
       }

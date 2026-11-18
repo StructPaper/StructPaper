@@ -40,7 +40,7 @@ import {
   type WorkflowStatus,
 } from '@/features/papers';
 import { useDocumentAutosave } from '../hooks/useDocumentAutosave';
-import { DocumentApi } from '@/lib/documents/document-api';
+import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
 import { autosaveStatusFromSaveState } from '@/lib/editor/autosave-status';
 import {
   useEditorCompilation,
@@ -157,11 +157,11 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     else if (saveState === 'dirty') setIsDirty(true);
   }, [saveState]);
 
-  // Archive each produced deliverable on the server (best-effort; the download already happened).
+  // A compiled PDF becomes the copy readers see (best-effort and silent; the download already happened).
   const handleExported = useCallback(
-    (format: ExportFormat, blob: Blob, fileName: string) => {
-      if (!remoteSync) return;
-      new DocumentApi().uploadExport(formData.id, blob, format, fileName).catch(() => undefined);
+    (format: ExportFormat, blob: Blob) => {
+      if (!remoteSync || format !== 'pdf') return;
+      void publishPdfPreview(formData.id, blob);
     },
     [formData.id, remoteSync]
   );

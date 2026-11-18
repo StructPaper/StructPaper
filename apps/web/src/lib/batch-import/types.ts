@@ -22,6 +22,8 @@ export interface BatchItem {
   title?: string;
   /** Journal template this paper was made with (abbreviation), e.g. 'HS'. */
   journalAbbv?: string;
+  /** Names of the people who uploaded a paper with this title before (it was renamed "Title (n)"). */
+  duplicateOf?: string[];
   /** Import checks (same rules as the single-file import gate). */
   errors: number;
   warnings: number;
@@ -41,6 +43,8 @@ export interface BatchDeps {
   parse(file: File): Promise<CompletePaper>;
   /** Titles already in use (so new papers get "Title (1)" instead of duplicates). */
   existingTitles(): Promise<string[]>;
+  /** Papers already uploaded with this title (any user), with who uploaded them. Optional. */
+  findDuplicates?(title: string): Promise<Array<{ title: string; uploaderName: string; mine: boolean }>>;
   /** Persist locally; false = failed. */
   save(paper: CompletePaper): Promise<boolean>;
   /** Read a saved paper back (so a paper waiting for a typesetting slot need not stay in memory). */

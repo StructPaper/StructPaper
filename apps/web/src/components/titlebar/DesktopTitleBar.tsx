@@ -16,6 +16,7 @@ import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
 import { ShareManuscriptButton } from '@/features/sharing';
 import { PdfLanguageSelect } from './PdfLanguageSelect';
+import { CompileActivityPill } from './CompileActivityPill';
 
 /**
  * Top-level application chrome bar.
@@ -84,9 +85,10 @@ export const DesktopTitleBar: React.FC = () => {
       <div
         data-testid="titlebar-drag-region"
         data-tauri-drag-region={isDesktop ? '' : undefined}
-        className="flex-1 h-full min-w-[24px]"
-        aria-hidden="true"
-      />
+        className="flex-1 h-full min-w-[24px] flex items-center justify-center"
+      >
+        <CompileActivityPill />
+      </div>
 
       <div className="flex items-center gap-1.5 shrink-0 h-full pr-1">
         {storage.isLocalAvailable && isLocalOnly ? (

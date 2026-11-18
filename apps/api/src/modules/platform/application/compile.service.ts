@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
+import { CompileQueue } from './compile-queue';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -25,6 +26,8 @@ export class CompileService {
   private readonly compileCache = new Map<string, { buffer: Buffer; timestamp: number }>();
   private static readonly MAX_CACHE_ENTRIES = 50;
   private static readonly CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
+
+  constructor(@Optional() @Inject(CompileQueue) private readonly queue: CompileQueue = new CompileQueue()) {}
 
   /**
    * Generates a minimal, specification-compliant 1-page PDF buffer
@@ -56,7 +59,11 @@ startxref
     return Buffer.from(minimalPdf, 'utf-8');
   }
 
-  public async compile(options: CompileLatexRequest): Promise<CompileLatexResult> {
+  /**
+   * Compiles one request. A cached result is returned at once; a real compile waits for a free
+   * compiler in the shared queue (round-robin between users).
+   */
+  public async compile(options: CompileLatexRequest, userId = 'anonymous'): Promise<CompileLatexResult> {
     const texContent = options.tex || options.texContent || '';
     if (!texContent.trim()) {
       return {
@@ -81,6 +88,10 @@ startxref
       };
     }
 
+    return this.queue.run(userId, () => this.compileUncached(options, texContent, cacheKey));
+  }
+
+  private async compileUncached(options: CompileLatexRequest, texContent: string, cacheKey: string): Promise<CompileLatexResult> {
     const runId = crypto.randomUUID();
     const tempDir = path.join(os.tmpdir(), `structpaper-api-compile-${runId}`);
 

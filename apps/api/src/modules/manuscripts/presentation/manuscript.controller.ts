@@ -27,6 +27,7 @@ import {
   AddManuscriptMemberSchema,
   UpdateGeneralAccessSchema,
   PeopleSearchQuerySchema,
+  DuplicateQuerySchema,
   type CreateManuscript,
   type UpdateManuscript,
   type ChangeManuscriptStatus,
@@ -41,6 +42,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { ManuscriptService } from '../application/manuscript.service';
 import { ManuscriptSharingService } from '../application/manuscript-sharing.service';
 import { ManuscriptPreviewService } from '../application/manuscript-preview.service';
+import { ManuscriptDuplicatesService } from '../application/manuscript-duplicates.service';
 
 /** Ids of papers that only exist on the user's machine (paper_123) are not UUIDs: answer 404, never a database error. */
 const ManuscriptIdPipe = {
@@ -66,6 +68,8 @@ export class ManuscriptController {
     private readonly sharing?: ManuscriptSharingService,
     @Inject(ManuscriptPreviewService)
     private readonly previews?: ManuscriptPreviewService,
+    @Inject(ManuscriptDuplicatesService)
+    private readonly duplicates?: ManuscriptDuplicatesService,
   ) {}
 
   @Post()
@@ -91,6 +95,13 @@ export class ManuscriptController {
   @UsePipes(new ZodValidationPipe(PeopleSearchQuerySchema))
   async searchPeople(@Query() query: { q: string }, @Req() req: any) {
     return this.sharing!.searchPeople(query.q, req.user?.id);
+  }
+
+  /** Papers already uploaded with this title, and by whom (names and dates only). */
+  @Get('duplicates')
+  @UsePipes(new ZodValidationPipe(DuplicateQuerySchema))
+  async findDuplicates(@Query() query: { title: string }, @Req() req: any) {
+    return this.duplicates!.findByTitle(query.title, req.user?.id);
   }
 
   /** Readable by guests when the owner shared it with "anyone with the link". */

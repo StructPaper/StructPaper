@@ -366,6 +366,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
         paperTitle={duplicatePrompt?.paperTitle || ''}
         suggestedTitle={duplicatePrompt?.suggestedTitle || ''}
         matchCount={duplicatePrompt?.matchCount || 1}
+        uploaders={duplicatePrompt?.uploaders}
         journalId={duplicatePrompt?.journalId}
         onClose={handleCloseDuplicate}
         onConfirmUpload={handleConfirmDuplicate}

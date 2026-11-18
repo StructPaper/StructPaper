@@ -4,6 +4,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createBatchDeps } from '@/lib/batch-import/default-deps';
 import { retryFailed, runBatchImport, initialItems } from '@/lib/batch-import/run-batch';
 import type { BatchDeps, BatchItem, BatchJournal } from '@/lib/batch-import/types';
+import { summarize } from '@/lib/batch-import/summary';
+import { batchActivity } from '@/lib/batch-import/activity';
+import { toast } from '@/components/toast';
+
+const TOAST_ID = 'batch-import-progress';
+
+/** One loading toast per run, updated as files finish: it stays visible after the dialog is closed. */
+function showProgress(items: BatchItem[]) {
+  const sum = summarize(items);
+  batchActivity.set({ total: sum.total, finished: sum.finished });
+  toast.loading(`Đang nhập ${sum.finished}/${sum.total} bài báo…`, 'Bạn có thể đóng hộp thoại, quá trình vẫn chạy ngầm.', { id: TOAST_ID, dismissible: false });
+}
 
 export interface UseBatchImportOptions {
   /** Called once when a run (or a retry) has finished or been cancelled, with the final items. */
@@ -40,6 +52,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
       try {
         final = await job(abortRef.current.signal, (it) => {
           latestRef.current = it;
+          showProgress(it);
           if (mounted.current) setItems(it);
         });
       } catch (e) {
@@ -51,6 +64,8 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
           setRunning(false);
         }
         abortRef.current = null;
+        batchActivity.set(null);
+        toast.dismiss(TOAST_ID);
         finishedRef.current?.(final);
       }
     },

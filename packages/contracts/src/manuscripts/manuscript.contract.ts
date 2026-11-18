@@ -38,6 +38,8 @@ export const NON_DELETABLE_STATUSES: ManuscriptStatus[] = [
 export const UpdateGeneralAccessSchema = z.object({ generalAccess: GeneralAccessEnum });
 export type UpdateGeneralAccess = z.infer<typeof UpdateGeneralAccessSchema>;
 
+export const DuplicateQuerySchema = z.object({ title: z.string().trim().min(1).max(500) });
+
 export const PeopleSearchQuerySchema = z.object({ q: z.string().trim().min(2).max(100) });
 
 export const ManuscriptAccessSchema = z.object({

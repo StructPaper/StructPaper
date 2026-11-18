@@ -471,6 +471,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
       paperTitle={duplicatePrompt?.paperTitle || ''}
       suggestedTitle={duplicatePrompt?.suggestedTitle || ''}
       matchCount={duplicatePrompt?.matchCount || 1}
+      uploaders={duplicatePrompt?.uploaders}
       journalId={duplicatePrompt?.journalId}
       zIndex={120}
       onClose={handleCloseDuplicate}

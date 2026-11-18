@@ -80,6 +80,11 @@ export const BatchImportPanel: React.FC<BatchImportPanelProps> = ({ items, runni
                 {it.title ? `${it.fileName} · ` : ''}
                 {kb(it.size)}
               </div>
+              {it.duplicateOf && it.duplicateOf.length > 0 && (
+                <div data-testid="batch-item-duplicate" className="text-[11px] font-semibold text-amber-700 mt-0.5">
+                  Trùng tiêu đề, đã được tải lên bởi {[...new Set(it.duplicateOf)].join(', ')}: bài này được đặt tên "{it.title}"
+                </div>
+              )}
               <div
                 data-testid="batch-item-status"
                 className={`text-[11px] font-semibold mt-0.5 ${it.stage === 'error' ? 'text-rose-600' : it.compileError ? 'text-amber-600' : it.stage === 'done' ? 'text-lime-700' : 'text-slate-600'}`}

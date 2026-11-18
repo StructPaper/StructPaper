@@ -34,6 +34,7 @@ services:
       dockerfile: apps/api/Dockerfile
       target: dev
     container_name: structpaper-api-staging
+    init: true # reaps finished compiler processes (no zombies)
     restart: unless-stopped
     ports:
       - '3001:3001'

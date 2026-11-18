@@ -92,8 +92,16 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
         }, signal);
         if (signal?.aborted) throw abortError(); // cancelled while this file was being read: do not create it
         if (picked === null) journal = autoBatchJournal(parsed.metadata?.journalId, opts.journal);
-        const title = getUniquePaperTitle(parsed.metadata?.title?.trim() || baseName(file.name), reserved);
+        const wanted = parsed.metadata?.title?.trim() || baseName(file.name);
+        let duplicates: Array<{ title: string; uploaderName: string; mine: boolean }> = [];
+        try {
+          duplicates = (await deps.findDuplicates?.(wanted)) ?? [];
+        } catch {
+          /* informative only: naming still works against this run and this device */
+        }
+        const title = getUniquePaperTitle(wanted, [...reserved, ...duplicates.map((d) => d.title)]);
         reserved.push(title);
+        if (duplicates.length > 0) patch(i, { duplicateOf: duplicates.map((d) => (d.mine ? 'Bạn' : d.uploaderName)) });
         paper = {
           ...parsed,
           id: `paper_${stamp}_${i}`, // parsers number papers by the clock; files parsed together must not collide
@@ -126,13 +134,15 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
         if (isAbortError(e)) return patch(i, { stage: 'cancelled', paperId: undefined, title: undefined });
         return patch(i, { stage: 'error', error: message(e, 'Không lưu được bài báo') });
       }
+      const savedId = paper.id; // saving may have given the paper its server id: that is the one to open and reload
+      if (savedId !== id) patch(i, { paperId: savedId });
       const pushed = quietly(() => deps.push?.(paper!));
       const held = deps.load ? null : paper;
       paper = null; // drop our reference: a paper waiting for a typesetting slot costs no memory
 
       if (signal?.aborted) return patch(i, { stage: 'done', compileError: 'Đã hủy biên dịch PDF' });
       patch(i, { stage: 'waiting' });
-      await typeset(i, held, id, title, pushed);
+      await typeset(i, held, savedId, title, pushed);
     })
   );
   return items.map((it) => ({ ...it }));
