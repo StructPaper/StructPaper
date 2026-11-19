@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module';
+import { RevisionsModule } from '../manuscripts/revisions.module';
 import { JournalService } from './application/journal.service';
 import { JournalAdminService } from './application/journal-admin.service';
 import { ProfileService } from './application/profile.service';
@@ -10,7 +11,7 @@ import { JournalController } from './presentation/journal.controller';
 import { JournalAdminController } from './presentation/journal-admin.controller';
 
 @Module({
-  imports: [AccessModule],
+  imports: [AccessModule, RevisionsModule],
   controllers: [JournalController, JournalAdminController],
   providers: [JournalService, JournalAdminService, ArticleTypeService, ProfileService, ProfileResolveService, ProfileBulkService],
   exports: [JournalService, ProfileService, ProfileResolveService, ArticleTypeService],

@@ -6,10 +6,11 @@ import { ManuscriptService } from './application/manuscript.service';
 import { ManuscriptSharingService } from './application/manuscript-sharing.service';
 import { ManuscriptPreviewService } from './application/manuscript-preview.service';
 import { ManuscriptDuplicatesService } from './application/manuscript-duplicates.service';
+import { RevisionsModule } from './revisions.module';
 import { ManuscriptController } from './presentation/manuscript.controller';
 
 @Module({
-  imports: [AccessModule, AssetsModule, JournalsModule],
+  imports: [AccessModule, AssetsModule, JournalsModule, RevisionsModule],
   controllers: [ManuscriptController],
   providers: [ManuscriptService, ManuscriptSharingService, ManuscriptPreviewService, ManuscriptDuplicatesService],
   exports: [ManuscriptService],

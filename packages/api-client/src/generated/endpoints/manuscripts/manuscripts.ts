@@ -29,7 +29,10 @@ import type {
   ArticleTypeChangeResult,
   ChangeArticleTypeRequest,
   CreateManuscriptRequest,
+  CreateRevisionRequest,
+  DeleteRevisionResult,
   FindManuscriptDuplicatesParams,
+  ListManuscriptRevisionsParams,
   ListManuscriptsParams,
   Manuscript,
   ManuscriptMember,
@@ -38,11 +41,16 @@ import type {
   ProblemDetails,
   ProblemResponseResponse,
   ProfileUpgradeResult,
+  RestoreRevisionResult,
+  Revision,
+  RevisionList,
+  RevisionSummary,
   SearchManuscriptPeopleParams,
   SuccessMessageResponse,
   TitleDuplicate,
   UpdateGeneralAccessRequest,
-  UpdateManuscriptRequest
+  UpdateManuscriptRequest,
+  UpdateRevisionRequest
 } from '../../model';
 
 import { customInstance } from '../../../http';
@@ -1018,6 +1026,523 @@ export const useUpgradeManuscriptProfile = <TError = ProblemDetails,
       > => {
 
       const mutationOptions = getUpgradeManuscriptProfileMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary The versions of a paper, newest first
+ */
+export const listManuscriptRevisions = (
+    id: string,
+    params?: ListManuscriptRevisionsParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<RevisionList>(
+      {url: `/api/v1/manuscripts/${id}/revisions`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getListManuscriptRevisionsQueryKey = (id?: string,
+    params?: ListManuscriptRevisionsParams,) => {
+    return [
+    `/api/v1/manuscripts/${id}/revisions`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getListManuscriptRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof listManuscriptRevisions>>, TError = ProblemDetails>(id: string,
+    params?: ListManuscriptRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListManuscriptRevisionsQueryKey(id,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listManuscriptRevisions>>> = ({ signal }) => listManuscriptRevisions(id,params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListManuscriptRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listManuscriptRevisions>>>
+export type ListManuscriptRevisionsQueryError = ProblemDetails
+
+
+export function useListManuscriptRevisions<TData = Awaited<ReturnType<typeof listManuscriptRevisions>>, TError = ProblemDetails>(
+ id: string,
+    params: undefined |  ListManuscriptRevisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManuscriptRevisions>>,
+          TError,
+          Awaited<ReturnType<typeof listManuscriptRevisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListManuscriptRevisions<TData = Awaited<ReturnType<typeof listManuscriptRevisions>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListManuscriptRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManuscriptRevisions>>,
+          TError,
+          Awaited<ReturnType<typeof listManuscriptRevisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListManuscriptRevisions<TData = Awaited<ReturnType<typeof listManuscriptRevisions>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListManuscriptRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary The versions of a paper, newest first
+ */
+
+export function useListManuscriptRevisions<TData = Awaited<ReturnType<typeof listManuscriptRevisions>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListManuscriptRevisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManuscriptRevisions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListManuscriptRevisionsQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Keep the paper as it is now under a name
+ */
+export const createManuscriptRevision = (
+    id: string,
+    createRevisionRequest: CreateRevisionRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<RevisionSummary>(
+      {url: `/api/v1/manuscripts/${id}/revisions`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createRevisionRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getCreateManuscriptRevisionMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManuscriptRevision>>, TError,{id: string;data: CreateRevisionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof createManuscriptRevision>>, TError,{id: string;data: CreateRevisionRequest}, TContext> => {
+
+const mutationKey = ['createManuscriptRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createManuscriptRevision>>, {id: string;data: CreateRevisionRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createManuscriptRevision(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateManuscriptRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof createManuscriptRevision>>>
+    export type CreateManuscriptRevisionMutationBody = CreateRevisionRequest
+    export type CreateManuscriptRevisionMutationError = ProblemDetails
+
+    /**
+ * @summary Keep the paper as it is now under a name
+ */
+export const useCreateManuscriptRevision = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManuscriptRevision>>, TError,{id: string;data: CreateRevisionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createManuscriptRevision>>,
+        TError,
+        {id: string;data: CreateRevisionRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateManuscriptRevisionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary One version with the paper as it was
+ */
+export const getManuscriptRevision = (
+    id: string,
+    revisionId: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<Revision>(
+      {url: `/api/v1/manuscripts/${id}/revisions/${revisionId}`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetManuscriptRevisionQueryKey = (id?: string,
+    revisionId?: string,) => {
+    return [
+    `/api/v1/manuscripts/${id}/revisions/${revisionId}`
+    ] as const;
+    }
+
+    
+export const getGetManuscriptRevisionQueryOptions = <TData = Awaited<ReturnType<typeof getManuscriptRevision>>, TError = ProblemDetails>(id: string,
+    revisionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetManuscriptRevisionQueryKey(id,revisionId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getManuscriptRevision>>> = ({ signal }) => getManuscriptRevision(id,revisionId, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id && revisionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetManuscriptRevisionQueryResult = NonNullable<Awaited<ReturnType<typeof getManuscriptRevision>>>
+export type GetManuscriptRevisionQueryError = ProblemDetails
+
+
+export function useGetManuscriptRevision<TData = Awaited<ReturnType<typeof getManuscriptRevision>>, TError = ProblemDetails>(
+ id: string,
+    revisionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getManuscriptRevision>>,
+          TError,
+          Awaited<ReturnType<typeof getManuscriptRevision>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetManuscriptRevision<TData = Awaited<ReturnType<typeof getManuscriptRevision>>, TError = ProblemDetails>(
+ id: string,
+    revisionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getManuscriptRevision>>,
+          TError,
+          Awaited<ReturnType<typeof getManuscriptRevision>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetManuscriptRevision<TData = Awaited<ReturnType<typeof getManuscriptRevision>>, TError = ProblemDetails>(
+ id: string,
+    revisionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary One version with the paper as it was
+ */
+
+export function useGetManuscriptRevision<TData = Awaited<ReturnType<typeof getManuscriptRevision>>, TError = ProblemDetails>(
+ id: string,
+    revisionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getManuscriptRevision>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetManuscriptRevisionQueryOptions(id,revisionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Rename a version or change its description
+ */
+export const updateManuscriptRevision = (
+    id: string,
+    revisionId: string,
+    updateRevisionRequest: UpdateRevisionRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<RevisionSummary>(
+      {url: `/api/v1/manuscripts/${id}/revisions/${revisionId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateRevisionRequest
+    },
+      options);
+    }
+  
+
+
+export const getUpdateManuscriptRevisionMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateManuscriptRevision>>, TError,{id: string;revisionId: string;data: UpdateRevisionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateManuscriptRevision>>, TError,{id: string;revisionId: string;data: UpdateRevisionRequest}, TContext> => {
+
+const mutationKey = ['updateManuscriptRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateManuscriptRevision>>, {id: string;revisionId: string;data: UpdateRevisionRequest}> = (props) => {
+          const {id,revisionId,data} = props ?? {};
+
+          return  updateManuscriptRevision(id,revisionId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateManuscriptRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof updateManuscriptRevision>>>
+    export type UpdateManuscriptRevisionMutationBody = UpdateRevisionRequest
+    export type UpdateManuscriptRevisionMutationError = ProblemDetails
+
+    /**
+ * @summary Rename a version or change its description
+ */
+export const useUpdateManuscriptRevision = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateManuscriptRevision>>, TError,{id: string;revisionId: string;data: UpdateRevisionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateManuscriptRevision>>,
+        TError,
+        {id: string;revisionId: string;data: UpdateRevisionRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateManuscriptRevisionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Delete a named version
+ */
+export const deleteManuscriptRevision = (
+    id: string,
+    revisionId: string,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<DeleteRevisionResult>(
+      {url: `/api/v1/manuscripts/${id}/revisions/${revisionId}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getDeleteManuscriptRevisionMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext> => {
+
+const mutationKey = ['deleteManuscriptRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteManuscriptRevision>>, {id: string;revisionId: string}> = (props) => {
+          const {id,revisionId} = props ?? {};
+
+          return  deleteManuscriptRevision(id,revisionId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteManuscriptRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteManuscriptRevision>>>
+    
+    export type DeleteManuscriptRevisionMutationError = ProblemDetails
+
+    /**
+ * @summary Delete a named version
+ */
+export const useDeleteManuscriptRevision = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteManuscriptRevision>>,
+        TError,
+        {id: string;revisionId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getDeleteManuscriptRevisionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Put the paper back to a version (adds a version, rewrites nothing)
+ */
+export const restoreManuscriptRevision = (
+    id: string,
+    revisionId: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<RestoreRevisionResult>(
+      {url: `/api/v1/manuscripts/${id}/revisions/${revisionId}/restore`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getRestoreManuscriptRevisionMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext> => {
+
+const mutationKey = ['restoreManuscriptRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreManuscriptRevision>>, {id: string;revisionId: string}> = (props) => {
+          const {id,revisionId} = props ?? {};
+
+          return  restoreManuscriptRevision(id,revisionId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreManuscriptRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreManuscriptRevision>>>
+    
+    export type RestoreManuscriptRevisionMutationError = ProblemDetails
+
+    /**
+ * @summary Put the paper back to a version (adds a version, rewrites nothing)
+ */
+export const useRestoreManuscriptRevision = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreManuscriptRevision>>,
+        TError,
+        {id: string;revisionId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getRestoreManuscriptRevisionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary A new paper made from a version
+ */
+export const duplicateManuscriptRevision = (
+    id: string,
+    revisionId: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<Manuscript>(
+      {url: `/api/v1/manuscripts/${id}/revisions/${revisionId}/duplicate`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getDuplicateManuscriptRevisionMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof duplicateManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof duplicateManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext> => {
+
+const mutationKey = ['duplicateManuscriptRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof duplicateManuscriptRevision>>, {id: string;revisionId: string}> = (props) => {
+          const {id,revisionId} = props ?? {};
+
+          return  duplicateManuscriptRevision(id,revisionId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DuplicateManuscriptRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof duplicateManuscriptRevision>>>
+    
+    export type DuplicateManuscriptRevisionMutationError = ProblemDetails
+
+    /**
+ * @summary A new paper made from a version
+ */
+export const useDuplicateManuscriptRevision = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof duplicateManuscriptRevision>>, TError,{id: string;revisionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof duplicateManuscriptRevision>>,
+        TError,
+        {id: string;revisionId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getDuplicateManuscriptRevisionMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

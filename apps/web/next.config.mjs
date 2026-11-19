@@ -13,6 +13,7 @@ const nextConfig = {
     '@structpaper/storage',
     '@structpaper/ingest-docx',
     '@structpaper/journal-profiles',
+    '@structpaper/doc-diff',
     '@structpaper/qc-engine',
     '@structpaper/exporters',
     '@structpaper/compiler-client',

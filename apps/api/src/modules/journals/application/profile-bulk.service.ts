@@ -23,6 +23,7 @@ import type { AppAbility } from '../../access/domain/ability.factory';
 import { PasswordService } from '../../identity/domain/password.service';
 import { JournalService } from './journal.service';
 import { ProfileResolveService } from './profile-resolve.service';
+import { RevisionService } from '../../manuscripts/application/revision.service';
 
 const KEYS = ['base', 'journal', 'articleType'] as const;
 
@@ -37,6 +38,7 @@ export class ProfileBulkService {
     @Inject(ProfileResolveService) private readonly resolver: ProfileResolveService,
     @Inject(PasswordService) private readonly passwords: PasswordService,
     @Optional() @Inject('DRIZZLE') private readonly db?: DbClient,
+    @Optional() @Inject(RevisionService) private readonly revisions?: RevisionService,
   ) {}
 
   async applyToAllPapers(
@@ -72,6 +74,17 @@ export class ProfileBulkService {
       if (!latest.has(key)) latest.set(key, await this.resolver.pinFor(journal, typeId ? codeById.get(typeId) : undefined));
       return latest.get(key)!;
     };
+
+    // every paper that is about to move keeps a safety copy of what it is now (it cannot be undone in one step)
+    if (this.revisions) {
+      for (const paper of papers) {
+        const next = await latestFor(paper.articleTypeId ?? null);
+        const current = (paper.profilePin ?? {}) as Record<string, number | undefined>;
+        if (!KEYS.every((k) => current[k] === (next.pin as any)[k])) {
+          await this.revisions.snapshotCurrent(paper, 'profile-upgrade', 'Trước khi áp dụng quy tắc mới cho mọi bài', userId);
+        }
+      }
+    }
 
     let updated = 0;
     let unchanged = 0;

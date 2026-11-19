@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { journalSchemas, journalPaths } from './openapi-journals';
+import { revisionSchemas, revisionPaths } from './openapi-revisions';
 
 /**
  * Generates an OpenAPI 3.1 JSON document containing all StructPaper API endpoints,
@@ -1251,6 +1252,8 @@ export function buildOpenApiSpec() {
 
   Object.assign(spec.components.schemas, journalSchemas);
   Object.assign(spec.paths, journalPaths);
+  Object.assign(spec.components.schemas, revisionSchemas);
+  Object.assign(spec.paths, revisionPaths);
 
   return spec;
 }

@@ -24,6 +24,8 @@ export interface EditorDocumentSession {
   onOpen?: () => void;
   onExport?: (format: ExportFormat) => void;
   onKeepMine?: () => Promise<void> | void;
+  /** Opens the version history page of the paper (only papers the server knows have one). */
+  onOpenHistory?: () => void;
   /** View-only access: the title bar hides every editing control. */
   readOnly?: boolean;
 }
@@ -54,6 +56,24 @@ export interface PaperProfileInfo {
   onUpgrade: () => void;
 }
 
+/** The paper's undo/redo, for the title bar's two buttons. */
+export interface EditorHistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+  undoLabel: string | null;
+  redoLabel: string | null;
+  undo: () => void;
+  redo: () => void;
+}
+
+/** The title bar on a paper's history page: the paper's title and the way back to the editor. */
+export interface PaperHistoryBarState {
+  title: string;
+  onBack: () => void;
+  /** Keeps the paper under a name; absent for someone who may not change the paper. */
+  onSaveVersion?: () => void;
+}
+
 export interface EditorSessionContextValue {
   autoSaveEnabled: boolean;
   setAutoSaveEnabled: (enabled: boolean) => void;
@@ -70,6 +90,10 @@ export interface EditorSessionContextValue {
   setJournalBar: (state: JournalBarState | null) => void;
   paperProfile: PaperProfileInfo | null;
   setPaperProfile: (info: PaperProfileInfo | null) => void;
+  history: EditorHistoryState | null;
+  setHistory: (state: EditorHistoryState | null) => void;
+  paperHistoryBar: PaperHistoryBarState | null;
+  setPaperHistoryBar: (state: PaperHistoryBarState | null) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -87,6 +111,10 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   setJournalBar: () => {},
   paperProfile: null,
   setPaperProfile: () => {},
+  history: null,
+  setHistory: () => {},
+  paperHistoryBar: null,
+  setPaperHistoryBar: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -103,6 +131,8 @@ export function EditorSessionProvider({
   const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
   const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
   const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
+  const [history, setHistory] = useState<EditorHistoryState | null>(null);
+  const [paperHistoryBar, setPaperHistoryBar] = useState<PaperHistoryBarState | null>(null);
 
   useEffect(() => {
     try {
@@ -178,8 +208,12 @@ export function EditorSessionProvider({
       setJournalBar,
       paperProfile,
       setPaperProfile,
+      history,
+      setHistory,
+      paperHistoryBar,
+      setPaperHistoryBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar]
   );
 
   return (

@@ -41,6 +41,8 @@ import { subject, type AppAbility } from '../../access/domain/ability.factory';
 import { accessOf } from '../domain/manuscript-access';
 import { journalSummary } from '../domain/journal-summary';
 import { ProfileResolveService } from '../../journals/application/profile-resolve.service';
+import { RevisionService } from './revision.service';
+import { docFromStored, storedFromDoc } from '@structpaper/doc-diff';
 
 export interface CursorPayload {
   id: string;
@@ -56,6 +58,9 @@ export class ManuscriptService {
     @Optional()
     @Inject(ProfileResolveService)
     private readonly profiles?: ProfileResolveService,
+    @Optional()
+    @Inject(RevisionService)
+    private readonly revisions?: RevisionService,
   ) {}
 
   /**
@@ -196,6 +201,7 @@ export class ManuscriptService {
     const same = ['base', 'journal', 'articleType'].every((k) => (current as any)[k] === (latest.pin as any)[k]);
     if (same) return { upgraded: false, profilePin: current, version: manuscript.version || 1 };
 
+    await this.revisions?.snapshotCurrent(manuscript, 'profile-upgrade', 'Trước khi nâng cấp quy tắc');
     await this.db.transaction(async (tx: any) => {
       await tx.update(manuscripts).set({ profilePin: latest.pin, updatedAt: new Date() }).where(eq(manuscripts.id, id));
       await tx.insert(manuscriptProfileSnapshots).values({
@@ -245,6 +251,7 @@ export class ManuscriptService {
     }
 
     const next = await this.profiles.pinFor(journalRow, articleTypeCode ?? undefined, { base: current.base, journal: current.journal });
+    await this.revisions?.snapshotCurrent(manuscript, 'pre-risk', 'Trước khi đổi loại bài');
     await this.db.transaction(async (tx: any) => {
       await tx.update(manuscripts).set({ articleTypeId: typeId, profilePin: next.pin, updatedAt: new Date() }).where(eq(manuscripts.id, id));
       await tx.insert(manuscriptProfileSnapshots).values({
@@ -512,6 +519,7 @@ export class ManuscriptService {
     dto: UpdateManuscript,
     ifMatch?: string,
     userAbility?: AppAbility,
+    userId?: string,
   ): Promise<ManuscriptResponse> {
     const manuscript = await this.findManuscriptById(id);
     if (!manuscript) {
@@ -536,6 +544,11 @@ export class ManuscriptService {
 
     const newVersion = currentVersion + 1;
     const now = new Date();
+
+    // history: the content about to be replaced may end a burst of editing; the workflow may be moving on
+    // (the save merges its metadata into what is stored, so the paper after the save is that merge)
+    const afterSave = dto.metadata !== undefined ? docFromStored({ ...(typeof manuscript.metadata === 'object' && manuscript.metadata ? manuscript.metadata : {}), ...dto.metadata }) : undefined;
+    await this.revisions?.beforeSave(manuscript, { doc: afterSave, status: dto.status }, userId, now);
 
     const updates: Record<string, any> = {
       version: newVersion,
@@ -692,6 +705,9 @@ export class ManuscriptService {
       }
     }
 
+    // the paper as it goes into its next stage is kept as a named version
+    await this.revisions?.beforeSave(manuscript, { status: newStatus }, userId);
+
     const currentVersion = manuscript.version || 1;
     const newVersion = currentVersion + 1;
     const now = new Date();
@@ -758,6 +774,37 @@ export class ManuscriptService {
       previousStatus: currentStatus,
       newStatus,
     };
+  }
+
+  /**
+   * A new paper made from a version of this one: the same content under a new title, the original untouched.
+   * The copy belongs to the caller and starts with the original's journal and article type.
+   */
+  async duplicateFromRevision(
+    id: string,
+    revisionId: string,
+    userId: string,
+    userAbility?: AppAbility,
+  ): Promise<ManuscriptResponse> {
+    if (!this.revisions) throw new BadRequestException('History is not available');
+    const original = await this.findManuscriptById(id);
+    if (!original) throw new NotFoundException(`Manuscript with ID ${id} not found`);
+    const { doc, label } = await this.revisions.docOfRevision(id, revisionId, userAbility);
+    const baseTitle = original.title || (doc as any)?.metadata?.title || 'Bản thảo';
+    const title = `${baseTitle} (bản sao từ ${label})`.slice(0, 500);
+    const copyDoc = { ...(doc as any), id: undefined, metadata: { ...((doc as any)?.metadata ?? {}), title } };
+    delete (copyDoc as any).id;
+    return this.createManuscript(
+      {
+        title,
+        journalId: original.journal?.slug ?? original.journalId,
+        // stored the way the original is, so the app reads the copy the way it reads any paper
+        metadata: storedFromDoc(copyDoc, original.metadata),
+        articleType: original.articleType ?? undefined,
+      } as CreateManuscript,
+      userId,
+      userAbility,
+    );
   }
 
   private async findManuscriptById(id: string): Promise<any> {

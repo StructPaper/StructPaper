@@ -7,6 +7,9 @@ import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
 import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
 import { usePaperProfile, usePaperProfileSession, useArticleTypeSync } from '@/features/journals';
+import { useEditorHistory } from '../hooks/useEditorHistory';
+import { isUuid } from '@/features/papers/components/types';
+import { PANEL_ATTR } from '@/lib/history/focus';
 import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
 import { getJournalTemplate } from '@/lib/templates';
@@ -291,6 +294,13 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     paperId: formData.id, displayName: formData.displayName, autosaveStatus, isDirty, saveSuccess,
     rawSaveState: saveState, savedAt, exporting, onManualSave: async () => { await handleSave(); },
     onRename: handleRename, onNew: () => setIsNewDialog(true), onOpen: () => setIsOpenDialog(true), onExport: requestExport, onKeepMine: resolveKeepMine,
+    // a paper the server knows has a history; what was just typed is saved first so the history page shows it
+    onOpenHistory: isUuid(formData.id)
+      ? async () => {
+          await handleSave();
+          router.push(`/papers/${formData.id}/history`);
+        }
+      : undefined,
   });
 
   // Back Navigation Guard handlers
@@ -387,6 +397,24 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   const { focusRequest, paneProps } = usePreviewLinks({ formData, setFormData, setIsDirty, setActiveSubTab, recompile: handleRecompile });
 
+  // one undo/redo for the whole paper: Ctrl+Z puts the content back and the cursor in the field it was made in
+  const [historyFocus, setHistoryFocus] = useState<{ id: string; n: number; edit: boolean } | null>(null);
+  useEffect(() => setHistoryFocus(null), [focusRequest]);
+  const showSection = useCallback((id: string, edit: boolean) => setHistoryFocus((r) => ({ id, edit, n: (r?.n ?? 0) + 1 })), []);
+  const editorHistory = useEditorHistory({ formData, setFormData, setIsDirty, setActiveTab: setActiveSubTab, showSection });
+  const { setHistory } = useEditorSession();
+  useEffect(() => {
+    setHistory({
+      canUndo: editorHistory.canUndo,
+      canRedo: editorHistory.canRedo,
+      undoLabel: editorHistory.undoLabel,
+      redoLabel: editorHistory.redoLabel,
+      undo: editorHistory.undo,
+      redo: editorHistory.redo,
+    });
+  }, [editorHistory.canUndo, editorHistory.canRedo, editorHistory.undoLabel, editorHistory.redoLabel, editorHistory.undo, editorHistory.redo, setHistory]);
+  useEffect(() => () => setHistory(null), [setHistory]);
+
   const handleSectionsChange = useCallback((sections: PaperSection[]) => {
     setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(sections) }));
     setIsDirty(true);
@@ -437,7 +465,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
           preflight={preflight}
         />
       </div>
-      <div className="flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden" {...{ [PANEL_ATTR]: activeSubTab }}>
         {activeSubTab === 'metadata' && (
           <MetadataTab
             metadata={formData.metadata}
@@ -455,7 +483,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
             sections={formData.sections}
             onChange={handleSectionsChange}
             metadata={formData.metadata}
-            references={formData.references} focusRequest={focusRequest}
+            references={formData.references} focusRequest={historyFocus ?? focusRequest}
           />
         )}
         {activeSubTab === 'refs' && <ReferencesTab references={formData.references} onChange={(r) => { setFormData((p) => ({ ...p, references: r })); setIsDirty(true); }} />}

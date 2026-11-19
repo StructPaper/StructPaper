@@ -12,6 +12,7 @@ import { ProfileResolveService, parsePin } from '../../src/modules/journals/appl
 import { ManuscriptService } from '../../src/modules/manuscripts/application/manuscript.service';
 import { ProfileBulkService } from '../../src/modules/journals/application/profile-bulk.service';
 import { PasswordService } from '../../src/modules/identity/domain/password.service';
+import { RevisionService } from '../../src/modules/manuscripts/application/revision.service';
 import { lockTestDatabase } from './db-lock';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -50,7 +51,7 @@ describe.skipIf(!url)('article types and profile pinning (real database)', () =>
     resolver = new ProfileResolveService(reads, db as any);
     papers = new ManuscriptService(db as any, resolver);
     const passwords = new PasswordService();
-    bulk = new ProfileBulkService(reads, resolver, passwords, db as any);
+    bulk = new ProfileBulkService(reads, resolver, passwords, db as any, new RevisionService(db as any));
     await profiles.onModuleInit();
 
     const factory = new AbilityFactory();
