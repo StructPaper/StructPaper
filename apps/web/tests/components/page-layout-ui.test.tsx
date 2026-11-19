@@ -129,7 +129,8 @@ describe('SectionCardHeader page layout badge', () => {
   it('shows no badge without a marker', () => {
     render(<SectionCardHeader {...baseProps} sec={{ id: 'a', type: 'paragraph', content: '' }} />);
     expect(screen.queryByTestId('page-layout-badge')).toBeNull();
-    expect(screen.getByTestId('page-layout-button')).toBeTruthy();
+    // the page layout is not set from a block's card any more (no button on any kind of block)
+    expect(screen.queryByTestId('page-layout-button')).toBeNull();
   });
 
   it('shows the badge summary when a marker is set', () => {

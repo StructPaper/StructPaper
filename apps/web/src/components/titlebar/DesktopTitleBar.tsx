@@ -18,8 +18,9 @@ import { ShareManuscriptButton } from '@/features/sharing';
 import { PdfLanguageSelect } from './PdfLanguageSelect';
 import { CompileActivityPill } from './CompileActivityPill';
 import { UndoRedoButtons } from './UndoRedoButtons';
-import { PaperHistoryTitleBarInfo, PaperHistorySaveButton } from './PaperHistoryTitleBarInfo';
+import { PaperHistoryTitleBarInfo, PaperHistorySaveButton, PaperHistoryDetailToggle } from './PaperHistoryTitleBarInfo';
 import { TrashTitleBarInfo, TrashTitleBarActions } from './TrashTitleBarInfo';
+import { SaveVersionButton } from './SaveVersionButton';
 import { JournalTitleBarInfo, JournalHistoryButton } from './JournalTitleBarInfo';
 import { PaperProfileInfoButton } from '@/features/journals/components/PaperProfileInfoButton';
 
@@ -153,9 +154,11 @@ export const DesktopTitleBar: React.FC = () => {
           </button>
         )}
 
+        {isHistoryRoute && <PaperHistoryDetailToggle />}
         {isHistoryRoute && <PaperHistorySaveButton />}
         {isTrashRoute && <TrashTitleBarActions />}
         {isEditorRoute && <ShareManuscriptButton manuscriptId={documentSession?.paperId} />}
+        {isEditorRoute && <SaveVersionButton />}
         {isEditorRoute && <PaperProfileInfoButton />}
       </div>
 

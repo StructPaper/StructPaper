@@ -4,7 +4,7 @@ import React from 'react';
 import { PaperSection, PaperTable, PaperFigure } from '@/types/paper';
 import { FigureSettingsModal } from '../FigureSettingsModal';
 import { TableSettingsModal } from '../TableSettingsModal';
-import { PageLayoutBadge, PageLayoutControl } from './PageLayoutControl';
+import { PageLayoutBadge } from './PageLayoutControl';
 import { AnimatePresence } from 'framer-motion';
 import {
   Table as TableIcon,
@@ -134,15 +134,6 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
               <TableIcon className="w-3 h-3" />
               Bảng số liệu {sec.table?.num ? `(Bảng ${sec.table.num})` : ''}
             </span>
-            <button
-              type="button"
-              onClick={() => sec.table && onOpenTableZoom(idx, sec.table)}
-              className="px-2 py-0.5 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 text-[10px] font-bold border border-lime-200 flex items-center gap-1 shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              title="Phóng to bảng số liệu toàn màn hình & chỉnh sửa kiểu Excel"
-            >
-              <Maximize2 className="w-2.5 h-2.5 text-lime-600" />
-              <span>Soạn thảo</span>
-            </button>
           </div>
         )}
 
@@ -244,7 +235,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
 
       {/* Right Action Icons (Reorder, Page Break & Delete) */}
       <div data-edit-only className="flex items-center gap-1.5 ml-auto">
-        <PageLayoutControl sec={sec} idx={idx} onUpdateSection={onUpdateSection} />
+        {/* the page layout of a block is not set from here; the badge on the left shows one that was set earlier */}
 
         {/* Page Break Toggle */}
         <button

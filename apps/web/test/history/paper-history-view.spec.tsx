@@ -23,7 +23,7 @@ vi.mock('@/components/toast', () => ({ toast: { success: vi.fn(), error: vi.fn()
 
 import { PaperHistoryView } from '@/features/history';
 import { EditorSessionProvider } from '@/context/EditorSessionContext';
-import { PaperHistoryTitleBarInfo, PaperHistorySaveButton } from '@/components/titlebar/PaperHistoryTitleBarInfo';
+import { PaperHistoryTitleBarInfo, PaperHistorySaveButton, PaperHistoryDetailToggle } from '@/components/titlebar/PaperHistoryTitleBarInfo';
 import { toast } from '@/components/toast';
 
 const stats = (over: Record<string, number | boolean> = {}) => ({ blocksAdded: 0, blocksRemoved: 0, blocksModified: 0, blocksMoved: 0, wordsDelta: 0, refsDelta: 0, fieldsChanged: 0, itemsChanged: 0, layoutChanged: false, ...over });
@@ -54,6 +54,7 @@ const renderView = () =>
       <EditorSessionProvider>
         {/* the way back and the save button live in the title bar */}
         <PaperHistoryTitleBarInfo />
+        <PaperHistoryDetailToggle />
         <PaperHistorySaveButton />
         <PaperHistoryView paperId="p" />
       </EditorSessionProvider>
@@ -67,6 +68,23 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('the history page of a paper', () => {
+  it('switches to the detailed way of reading from the title bar, and back', async () => {
+    renderView();
+    await screen.findByTestId('document-diff-view');
+    expect(screen.queryByTestId('detailed-diff-view')).toBeNull();
+    const toggle = await screen.findByTestId('history-detail-toggle');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(toggle);
+    expect(await screen.findByTestId('detailed-diff-view')).toBeTruthy();
+    expect(screen.queryByTestId('document-diff-view')).toBeNull();
+    expect(screen.getByTestId('history-detail-toggle').getAttribute('aria-pressed')).toBe('true');
+    // the tabs of the editor, with the changes counted
+    expect(screen.getByTestId('detail-tab-layout')).toBeTruthy();
+    expect(screen.getByTestId('detail-count-metadata').textContent).toBe('1');
+    fireEvent.click(screen.getByTestId('history-detail-toggle'));
+    expect(await screen.findByTestId('document-diff-view')).toBeTruthy();
+  });
+
   it('lists the versions with the current one first, and opens on the newest version', async () => {
     renderView();
     await screen.findByTestId('revision-r2');

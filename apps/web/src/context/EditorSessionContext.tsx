@@ -85,6 +85,9 @@ export interface PaperHistoryBarState {
   onBack: () => void;
   /** Keeps the paper under a name; absent for someone who may not change the paper. */
   onSaveVersion?: () => void;
+  /** The detailed way of reading a version (tabs like the editor's, with settings) is on. */
+  detailed?: boolean;
+  onToggleDetailed?: () => void;
 }
 
 export interface EditorSessionContextValue {

@@ -1,5 +1,6 @@
 'use client';
 
+import { BlockSettingChips, tableSettingChips } from './BlockSettingChips';
 import React, { useMemo, useCallback } from 'react';
 import { PaperSection, PaperTable, normalizePaperTable } from '@/types/paper';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
@@ -142,37 +143,12 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
         />
       )}
 
-      {/* Table Footer Controls */}
-      <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
-        <button data-edit-only
-          type="button"
-          onClick={() => onOpenTableZoom(idx, table)}
-          className="px-2.5 py-1 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-lime-200 shadow-2xs hover:scale-105 active:scale-95"
-          title="Phóng to bảng số liệu toàn màn hình & soạn thảo"
-        >
-          <Maximize2 className="w-3 h-3 text-lime-600" />
-          <span>Soạn thảo</span>
-        </button>
-
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              table.columnSpan === '2-column' || table.isFullWidth !== false
-                ? 'bg-[#EEF2FF] text-[#3730A3]'
-                : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
-            {table.columnSpan === '2-column' || table.isFullWidth !== false ? '2 Cột' : '1 Cột'}
-          </span>
-          {table.isRotated && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-              Xoay 90°
-            </span>
-          )}
-          <span className="text-zinc-400 text-[10px] font-medium ml-1">
-            {totalRows} hàng × {colCount} cột
-          </span>
-        </div>
+      {/* the settings that matter at a glance (read-only; changed in the block's settings) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <BlockSettingChips chips={tableSettingChips(table)} testId="table-settings-chips" />
+        <span className="text-zinc-400 text-[10px] font-medium">
+          {totalRows} hàng × {colCount} cột
+        </span>
       </div>
     </div>
   );

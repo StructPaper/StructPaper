@@ -14,6 +14,7 @@ import { useCurrentDoc, useRevision, useRevisionActions, useRevisions, type Revi
 import { kindLabel, revisionTitle } from '../lib/group-revisions';
 import { CURRENT, RevisionList } from './RevisionList';
 import { DocumentDiffView } from './DocumentDiffView';
+import { DetailedDiffView } from './DetailedDiffView';
 import { VersionNameModal } from './VersionNameModal';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -39,6 +40,9 @@ export const PaperHistoryView: React.FC<{ paperId: string }> = ({ paperId }) => 
   const [filter, setFilter] = useState<RevisionFilter>('all');
   const [selected, setSelected] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(true);
+  // the detailed way of reading a version (tabs like the editor's, with settings), switched in the title bar
+  const [detailed, setDetailed] = useState(false);
+  const toggleDetailed = useCallback(() => setDetailed((v) => !v), []);
   const [saveOpen, setSaveOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -54,6 +58,7 @@ export const PaperHistoryView: React.FC<{ paperId: string }> = ({ paperId }) => 
     if (selected === null && !list.isLoading) setSelected(revisions[0]?.id ?? CURRENT);
   }, [selected, list.isLoading, revisions]);
 
+  const Diff = detailed ? DetailedDiffView : DocumentDiffView;
   const selectedId = selected ?? CURRENT;
   const isCurrent = selectedId === CURRENT;
   const index = revisions.findIndex((r) => r.id === selectedId);
@@ -71,9 +76,9 @@ export const PaperHistoryView: React.FC<{ paperId: string }> = ({ paperId }) => 
   const canManage = current.data?.manuscript.access?.canEdit !== false;
   const openSave = useCallback(() => setSaveOpen(true), []);
   useEffect(() => {
-    setPaperHistoryBar({ title, onBack: () => routerRef.current.push(`/papers/${paperId}`), onSaveVersion: canManage ? openSave : undefined });
+    setPaperHistoryBar({ title, onBack: () => routerRef.current.push(`/papers/${paperId}`), onSaveVersion: canManage ? openSave : undefined, detailed, onToggleDetailed: toggleDetailed });
     return () => setPaperHistoryBar(null);
-  }, [title, paperId, canManage, openSave, setPaperHistoryBar]);
+  }, [title, paperId, canManage, openSave, detailed, toggleDetailed, setPaperHistoryBar]);
 
   const saveVersion = (v: { name: string; description: string }) =>
     actions.save.mutate(v, {
@@ -221,7 +226,7 @@ export const PaperHistoryView: React.FC<{ paperId: string }> = ({ paperId }) => 
                 <Shimmer className="h-24 w-full rounded-2xl" />
               </div>
             ) : (
-              <DocumentDiffView
+              <Diff
                 doc={shownDoc}
                 compareTo={showChanges && previous ? compareDoc : null}
                 showChanges={showChanges && !!previous && !!compareDoc}

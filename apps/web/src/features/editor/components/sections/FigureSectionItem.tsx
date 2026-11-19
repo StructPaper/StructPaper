@@ -1,5 +1,6 @@
 'use client';
 
+import { BlockSettingChips, figureSettingChips } from './BlockSettingChips';
 import React, { useRef, useCallback, useEffect } from 'react';
 import { PaperSection, PaperFigure } from '@/types/paper';
 import {
@@ -234,6 +235,9 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
           </div>
         )}
       </div>
+
+      {/* the settings that matter at a glance (read-only; changed in the block's settings) */}
+      <BlockSettingChips chips={figureSettingChips(sec.figure)} testId="figure-settings-chips" />
     </div>
   );
 };
