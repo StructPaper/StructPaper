@@ -4,6 +4,9 @@ import { extractDisplayEquations, insertEquations, isWhereDefinitionLine } from 
 import { attachTableFooterLine, placeLeftoverTable, placeAbbreviationTable, landscapeResolver, applyTableLayoutHints } from './docx-table-extras';
 import { mergeBilingualAffiliations } from './docx-affiliations';
 import { findEnglishBackMatter, splitKeywords } from './docx-english-backmatter';
+import { identifyJournal } from './journal-identify';
+import { detectPrimaryLanguage, findVietnameseBackMatter, foldVietnamese } from './docx-language';
+import { findArticleTypePreset } from './article-types';
 import { enrichScriptRuns } from './docx-richtext';
 import { loadFigureImages } from './docx-figure-images';
 import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } from './docx-figure-tables';
@@ -12,7 +15,7 @@ import { articleIdFromFileName } from './publication';
 import { normalizeImportedTitle } from './title-case';
 import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
-import { JOURNAL_TEMPLATES, getJournalTemplate } from './templates';
+import { findJournalTemplate, getJournalTemplate } from './templates';
 
 /**
  * Decode XML entities
@@ -56,62 +59,17 @@ export function normalizeVietnameseWordSpacing(name: string): string {
 export { ommlToLatex };
 
 /**
- * Journal auto-detector prioritizing specific series before fallback STDJ
+ * The journal a manuscript says it belongs to (DOI prefix, ISSN, printed name or header line).
+ * Subject words do not count: when nothing explicit is stated the generic journal is returned, and
+ * the template step lets the user pick (or leaves it automatic).
  */
 export function detectJournalFromContent(
   textSnippet: string,
   fileName?: string
 ): { journalId: string; journalName: string; journalAbbv: string } {
-  const norm = ((textSnippet || '') + ' ' + (fileName || '')).toLowerCase();
-
-  if (norm.includes('health') || norm.includes('sức khỏe') || norm.includes('hs')) {
-    return {
-      journalId: 'VNUHCM-HS',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-HS'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-HS'].shortName,
-    };
-  }
-  if (norm.includes('arns') || norm.includes('natural sci') || norm.includes('1421') || norm.includes('hóa học') || norm.includes('vật lý') || norm.includes('xylose')) {
-    return {
-      journalId: 'VNUHCM-ARNS',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-ARNS'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-ARNS'].shortName,
-    };
-  }
-  if (norm.includes('ebl') || norm.includes('stdjelm') || norm.includes('1750') || norm.includes('kinh tế') || norm.includes('luật') || norm.includes('logistics')) {
-    return {
-      journalId: 'VNUHCM-EBL',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-EBL'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-EBL'].shortName,
-    };
-  }
-  if (norm.includes('ees') || norm.includes('850') || norm.includes('trái đất') || norm.includes('môi trường') || norm.includes('earth') || norm.includes('environment')) {
-    return {
-      journalId: 'VNUHCM-EES',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-EES'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-EES'].shortName,
-    };
-  }
-  if (norm.includes('ssh') || norm.includes('1102') || norm.includes('xã hội') || norm.includes('nhân văn') || norm.includes('social') || norm.includes('humanities')) {
-    return {
-      journalId: 'VNUHCM-SSH',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-SSH'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-SSH'].shortName,
-    };
-  }
-  if (norm.includes('vnuhcmj-et') || norm.includes('1563') || norm.includes('kỹ thuật') || norm.includes('engineering') || norm.includes('sóng cắt') || norm.includes('đầu dò uốn')) {
-    return {
-      journalId: 'VNUHCM-ET',
-      journalName: JOURNAL_TEMPLATES['VNUHCM-ET'].name,
-      journalAbbv: JOURNAL_TEMPLATES['VNUHCM-ET'].shortName,
-    };
-  }
-
-  return {
-    journalId: 'VNUHCM-STDJ',
-    journalName: JOURNAL_TEMPLATES['VNUHCM-STDJ'].name,
-    journalAbbv: JOURNAL_TEMPLATES['VNUHCM-STDJ'].shortName,
-  };
+  const id = identifyJournal(textSnippet, fileName) ?? 'VNUHCM-STDJ';
+  const template = findJournalTemplate(id) ?? getJournalTemplate('VNUHCM-STDJ');
+  return { journalId: id, journalName: template.name, journalAbbv: template.shortName };
 }
 
 export interface XmlRun {
@@ -655,6 +613,9 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
                 // Runs of one name are contiguous ("Nguy" + "ễ" + "n Thanh H"): keep the raw text,
                 // do not insert a space between runs (that produced "Nguyễ n").
                 curName += parts[partIdx].replace(/[\d*()]/g, '');
+              } else if (curName) {
+                // a run holding only a space ("Viên Vinh" + " " + "Phú") still separates two words
+                curName += parts[partIdx];
               }
             }
           }
@@ -906,11 +867,12 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     }
   }
 
-  const journalInfo = detectJournalFromContent(rawLines[0] || '', fileName);
+  const journalInfo = detectJournalFromContent(rawLines.slice(0, 40).join('\n'), fileName);
 
   let title = '';
   let titleEn = '';
   let articleType = 'Bài báo nghiên cứu';
+  let articleTypeEn: string | undefined;
   let abstract = '';
   let abstractEn = '';
   const keywords: string[] = [];
@@ -964,17 +926,21 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
   let isFrontMatterDone = false;
   let tableCursor = 0;
   // English summary page after the references ("Research Article", title, authors, ABSTRACT, Keywords)
-  const enBack = findEnglishBackMatter(rawLines);
+  // The template labels the first page in ONE language; the other language is the closing page.
+  const primaryLanguage = detectPrimaryLanguage(rawLines);
+  const enBack = primaryLanguage === 'vi' ? findEnglishBackMatter(rawLines) : null;
+  const viBack = primaryLanguage === 'en' ? findVietnameseBackMatter(rawLines) : null;
+  const back = enBack ?? viBack;
 
   for (; i < rawLines.length; i++) {
     const line = rawLines[i];
     if (!line) continue;
-    if (enBack && i === enBack.start) {
+    if (back && i === back.start) {
       isReadingReferences = false;
       isReadingAbstract = false;
       isReadingAbstractEn = false;
       isFrontMatterDone = true;
-      i = enBack.end;
+      i = back.end;
       continue;
     }
 
@@ -1428,6 +1394,39 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
   enrichScriptRuns(sections, openXmlParagraphs);
   applyTableLayoutHints(sections, Object.fromEntries(openXmlTables.map((t) => [t.id, !!t.landscape])));
 
+  if (primaryLanguage === 'en') {
+    // An English paper: what the loop read from the first page is the ENGLISH version, and the Vietnamese
+    // version is the closing page. Put each text into the slot of its own language.
+    const enTitle = titleEn || title;
+    const enAbstract = abstractEn || abstract;
+    const enKeywords = keywordsEn.length > 0 ? [...keywordsEn] : [...keywords];
+    title = viBack?.title || enTitle;
+    titleEn = enTitle;
+    abstract = viBack?.abstract || enAbstract;
+    abstractEn = enAbstract;
+    keywords.splice(0, keywords.length, ...(viBack?.keywords.length ? viBack.keywords : enKeywords));
+    keywordsEn.splice(0, keywordsEn.length, ...enKeywords);
+
+    // "Article type: Research Article" -> the Vietnamese name of that type, and keep the English one
+    const preset = findArticleTypePreset(articleType);
+    if (preset) {
+      articleType = preset.vi;
+      articleTypeEn = preset.en;
+    }
+
+    // Names and institution: the first page has them without marks / in English; the closing page has them in Vietnamese
+    if (viBack) {
+      authors.forEach((a, idx) => {
+        const viName = viBack.authorNames.find((n) => foldVietnamese(n) === foldVietnamese(a.name)) ?? (viBack.authorNames.length === authors.length ? viBack.authorNames[idx] : undefined);
+        if (viName && foldVietnamese(viName) === foldVietnamese(a.name)) a.name = viName;
+      });
+      if (viBack.institution && affiliations.length === 1) {
+        affiliations[0].nameEn = affiliations[0].nameEn || affiliations[0].name;
+        affiliations[0].name = viBack.institution;
+      }
+    }
+  }
+
   if (enBack) {
     if (!titleEn) titleEn = enBack.titleEn;
     if (!abstractEn) abstractEn = enBack.abstractEn;
@@ -1468,6 +1467,7 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     titleOriginal: normalizedTitle.original,
     titleEn,
     articleType,
+    ...(articleTypeEn ? { articleTypeEn } : {}),
     journalId: journalInfo.journalId,
     journalName: journalInfo.journalName,
     journalAbbv: journalInfo.journalAbbv,
@@ -1997,10 +1997,11 @@ export async function parseDocxFileWithAi(
         if (aiData.title && aiData.title.trim()) basePaper.metadata.title = aiData.title.trim();
         if (aiData.titleEn && aiData.titleEn.trim()) basePaper.metadata.titleEn = aiData.titleEn.trim();
         if (aiData.articleType && aiData.articleType.trim()) basePaper.metadata.articleType = aiData.articleType.trim();
-        if (aiData.journalId && JOURNAL_TEMPLATES[aiData.journalId]) {
+        const aiJournal = findJournalTemplate(aiData.journalId);
+        if (aiData.journalId && aiJournal) {
           basePaper.metadata.journalId = aiData.journalId;
-          basePaper.metadata.journalName = JOURNAL_TEMPLATES[aiData.journalId].name;
-          basePaper.metadata.journalAbbv = JOURNAL_TEMPLATES[aiData.journalId].shortName;
+          basePaper.metadata.journalName = aiJournal.name;
+          basePaper.metadata.journalAbbv = aiJournal.shortName;
         }
         if (Array.isArray(aiData.authors) && aiData.authors.length > 0) {
           basePaper.metadata.authors = aiData.authors.map((a: any, idx: number) => ({

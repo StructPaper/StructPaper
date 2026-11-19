@@ -1,12 +1,14 @@
-import { DEFAULT_LAYOUT_SETTINGS, normalizeCompletePaper } from '@/types/paper';
+import { normalizeCompletePaper } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
+import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
+import { fetchTitleDuplicates } from '@/lib/storage/title-duplicates';
 import { parseDocxFile } from '@/lib/docx-parser';
 import { exportToLatex } from '@/lib/exporters';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
 import { validateForImport } from '@/lib/validation/validators';
-import { loadPaperFromIndexedDb, savePaperToIndexedDb } from '@/lib/storage/paper-sync';
+import { getUnifiedStorage } from '@/lib/storage/storage-factory';
 import { collectAllExistingTitles } from '@/lib/storage/paper-naming';
 import { DocumentApi } from '@/lib/documents/document-api';
-import { DocumentSync } from '@/lib/documents/document-sync';
 import { defaultDatabase, IndexedDbManuscriptRepo } from '@structpaper/storage';
 import { abortError } from './limiter';
 import { getAuthHeaders } from '../auth-headers';
@@ -54,7 +56,6 @@ const remoteSync = () => process.env.NODE_ENV !== 'test' && process.env.NEXT_PUB
 
 export function createBatchDeps(): BatchDeps {
   const api = remoteSync() ? new DocumentApi() : null;
-  const sync = api ? new DocumentSync({ api }) : null;
   return {
     async parse(file) {
       try {
@@ -68,9 +69,14 @@ export function createBatchDeps(): BatchDeps {
       if (typeof indexedDB === 'undefined') return [];
       return collectAllExistingTitles(await new IndexedDbManuscriptRepo(defaultDatabase).listRecords());
     },
-    save: (paper) => savePaperToIndexedDb(paper),
-    load: (id) => loadPaperFromIndexedDb(id),
-    push: sync ? async (paper) => void (await sync.push(paper)) : undefined,
+    findDuplicates: (title) => fetchTitleDuplicates(title),
+    // Same storage as the papers page and the editor: this device and the server (or the server alone when
+    // local storage is off). The server may give the paper its own id; `paper.id` is updated by the save.
+    async save(paper) {
+      await getUnifiedStorage().savePaper(paper);
+      return true;
+    },
+    load: (id) => getUnifiedStorage().loadPaper(id),
     check(paper) {
       const r = validateForImport(paper);
       return { errors: r.errorCount, warnings: r.warningCount };
@@ -78,10 +84,11 @@ export function createBatchDeps(): BatchDeps {
     async compile(paper, signal) {
       const started = performance.now();
       const ready = normalizeCompletePaper(paper);
-      const tex = exportToLatex(ready, ready.layoutSettings || DEFAULT_LAYOUT_SETTINGS);
+      const tex = exportToLatex(ready, resolvePaperLayout(ready));
       const blob = await compileToPdf(tex, referencedImages(tex, await extractPaperImagesAsync(ready)), signal);
       return { blob, ms: Math.round(performance.now() - started) };
     },
-    archive: api ? async (paper, pdf, fileName) => void (await api.uploadExport(paper.id, pdf, 'pdf', fileName)) : undefined,
+    // The PDF becomes the copy readers see (only for papers that are on the server; silent when not allowed)
+    archive: api ? (paper, pdf) => publishPdfPreview(paper.id, pdf) : undefined,
   };
 }

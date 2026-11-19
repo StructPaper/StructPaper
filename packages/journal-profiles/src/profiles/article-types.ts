@@ -65,6 +65,14 @@ export const ALL_ARTICLE_TYPES: JournalArticleType[] = [
     },
     requiredSections: ['heading.abstract', 'h1', 'heading.references'],
   },
+  {
+    id: 'special-topic',
+    label: {
+      vi: 'Chuyên đề đặc biệt',
+      en: 'Special Topic',
+    },
+    requiredSections: ['heading.abstract', 'h1', 'heading.references'],
+  },
 ];
 
 export const ARTICLE_TYPE_DEFINITIONS: Record<string, ArticleTypeProfile> = {
@@ -141,6 +149,14 @@ export const ARTICLE_TYPE_DEFINITIONS: Record<string, ArticleTypeProfile> = {
     },
     requiredSections: ['heading.abstract', 'h1', 'heading.references'],
   },
+  'special-topic': {
+    id: 'special-topic',
+    label: {
+      vi: 'Chuyên đề đặc biệt',
+      en: 'Special Topic',
+    },
+    requiredSections: ['heading.abstract', 'h1', 'heading.references'],
+  },
 };
 
 export const ARTICLE_TYPE_ALIASES: Record<string, string> = {
@@ -158,6 +174,9 @@ export const ARTICLE_TYPE_ALIASES: Record<string, string> = {
   'case-report': 'case-report',
   'case_report': 'case-report',
   casereport: 'case-report',
+  'special-topic': 'special-topic',
+  special_topic: 'special-topic',
+  specialtopic: 'special-topic',
 };
 
 export function normalizeArticleTypeId(rawId: string): string {

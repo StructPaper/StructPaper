@@ -129,6 +129,8 @@ export function manuscriptToCompletePaper(ms: Manuscript): CompletePaper {
     sections: doc?.sections || rawMeta?.sections || [],
     references: doc?.references || rawMeta?.references || [],
     layoutSettings: doc?.layoutSettings || rawMeta?.layoutSettings,
+    profilePin: (ms as any).profilePin,
+    articleTypeCode: (ms as any).articleType ?? undefined,
     templateId: doc?.templateId || rawMeta?.templateId || journalCode.toLowerCase(),
     templateName: doc?.templateName || rawMeta?.templateName || journalName,
     status: normalizeWorkflowStatus(ms.status || (ms as any).workflowStatus),

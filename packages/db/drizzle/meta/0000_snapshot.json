@@ -1,9 +1,113 @@
 {
-  "id": "715b3b49-9672-4746-9411-d3ae8ef14791",
+  "id": "54478898-a150-4616-b26b-d12bfc02bce1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.article_types": {
+      "name": "article_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "journal_id": {
+          "name": "journal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "labels": {
+          "name": "labels",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_article_types_code": {
+          "name": "uq_article_types_code",
+          "columns": [
+            {
+              "expression": "journal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "article_types_journal_id_journals_id_fk": {
+          "name": "article_types_journal_id_journals_id_fk",
+          "tableFrom": "article_types",
+          "tableTo": "journals",
+          "columnsFrom": [
+            "journal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chk_article_types_status": {
+          "name": "chk_article_types_status",
+          "value": "\"article_types\".\"status\" in ('active','archived')"
+        },
+        "chk_article_types_code": {
+          "name": "chk_article_types_code",
+          "value": "\"article_types\".\"code\" ~ '^[a-z][a-z0-9-]{1,49}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.journals": {
       "name": "journals",
       "schema": "",
@@ -21,24 +125,62 @@
           "primaryKey": false,
           "notNull": true
         },
+        "code": {
+          "name": "code",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
-        "issn": {
-          "name": "issn",
-          "type": "varchar(50)",
+        "name_en": {
+          "name": "name_en",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
-        "settings": {
-          "name": "settings",
-          "type": "jsonb",
+        "short_name": {
+          "name": "short_name",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "varchar(7)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issn": {
+          "name": "issn",
+          "type": "varchar(9)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latex_cls": {
+          "name": "latex_cls",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'{}'::jsonb"
+          "default": "'structpaper-std.cls'"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "version": {
           "name": "version",
@@ -62,7 +204,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_journals_sort": {
+          "name": "idx_journals_sort",
+          "columns": [
+            {
+              "expression": "sort_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -72,10 +230,302 @@
           "columns": [
             "slug"
           ]
+        },
+        "journals_code_unique": {
+          "name": "journals_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "chk_journals_status": {
+          "name": "chk_journals_status",
+          "value": "\"journals\".\"status\" in ('draft','published','archived')"
+        },
+        "chk_journals_color": {
+          "name": "chk_journals_color",
+          "value": "\"journals\".\"color\" ~ '^#[0-9A-Fa-f]{6}$'"
+        },
+        "chk_journals_issn": {
+          "name": "chk_journals_issn",
+          "value": "\"journals\".\"issn\" is null or \"journals\".\"issn\" ~ '^[0-9]{4}-[0-9]{3}[0-9Xx]$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.profile_versions": {
+      "name": "profile_versions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "scope_type": {
+          "name": "scope_type",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "journal_id": {
+          "name": "journal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "article_type_id": {
+          "name": "article_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schema_version": {
+          "name": "schema_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "change_note": {
+          "name": "change_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "uq_profile_version_journal": {
+          "name": "uq_profile_version_journal",
+          "columns": [
+            {
+              "expression": "journal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"scope_type\" = 'journal'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_profile_version_article_type": {
+          "name": "uq_profile_version_article_type",
+          "columns": [
+            {
+              "expression": "article_type_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"scope_type\" = 'article_type'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_profile_version_base": {
+          "name": "uq_profile_version_base",
+          "columns": [
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"scope_type\" = 'base'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_profile_published_journal": {
+          "name": "uq_profile_published_journal",
+          "columns": [
+            {
+              "expression": "journal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"state\" = 'published' and \"profile_versions\".\"scope_type\" = 'journal'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_profile_published_article_type": {
+          "name": "uq_profile_published_article_type",
+          "columns": [
+            {
+              "expression": "article_type_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"state\" = 'published' and \"profile_versions\".\"scope_type\" = 'article_type'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_profile_published_base": {
+          "name": "uq_profile_published_base",
+          "columns": [
+            {
+              "expression": "scope_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"profile_versions\".\"state\" = 'published' and \"profile_versions\".\"scope_type\" = 'base'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_profile_versions_journal": {
+          "name": "idx_profile_versions_journal",
+          "columns": [
+            {
+              "expression": "journal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "profile_versions_journal_id_journals_id_fk": {
+          "name": "profile_versions_journal_id_journals_id_fk",
+          "tableFrom": "profile_versions",
+          "tableTo": "journals",
+          "columnsFrom": [
+            "journal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "profile_versions_article_type_id_article_types_id_fk": {
+          "name": "profile_versions_article_type_id_article_types_id_fk",
+          "tableFrom": "profile_versions",
+          "tableTo": "article_types",
+          "columnsFrom": [
+            "article_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "profile_versions_created_by_users_id_fk": {
+          "name": "profile_versions_created_by_users_id_fk",
+          "tableFrom": "profile_versions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chk_profile_scope_type": {
+          "name": "chk_profile_scope_type",
+          "value": "\"profile_versions\".\"scope_type\" in ('base','journal','article_type')"
+        },
+        "chk_profile_state": {
+          "name": "chk_profile_state",
+          "value": "\"profile_versions\".\"state\" in ('draft','validated','published','archived')"
+        },
+        "chk_profile_scope": {
+          "name": "chk_profile_scope",
+          "value": "(\"profile_versions\".\"scope_type\" = 'base' and \"profile_versions\".\"journal_id\" is null and \"profile_versions\".\"article_type_id\" is null)\n        or (\"profile_versions\".\"scope_type\" = 'journal' and \"profile_versions\".\"journal_id\" is not null and \"profile_versions\".\"article_type_id\" is null)\n        or (\"profile_versions\".\"scope_type\" = 'article_type' and \"profile_versions\".\"journal_id\" is null and \"profile_versions\".\"article_type_id\" is not null)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.user_tokens": {
@@ -606,6 +1056,166 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.manuscript_profile_snapshots": {
+      "name": "manuscript_profile_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "manuscript_id": {
+          "name": "manuscript_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pin": {
+          "name": "pin",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved": {
+          "name": "resolved",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_profile_snapshots_ms": {
+          "name": "idx_profile_snapshots_ms",
+          "columns": [
+            {
+              "expression": "manuscript_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "manuscript_profile_snapshots_manuscript_id_manuscripts_id_fk": {
+          "name": "manuscript_profile_snapshots_manuscript_id_manuscripts_id_fk",
+          "tableFrom": "manuscript_profile_snapshots",
+          "tableTo": "manuscripts",
+          "columnsFrom": [
+            "manuscript_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.manuscript_visits": {
+      "name": "manuscript_visits",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manuscript_id": {
+          "name": "manuscript_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_opened_at": {
+          "name": "last_opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "manuscript_visits_user_id_users_id_fk": {
+          "name": "manuscript_visits_user_id_users_id_fk",
+          "tableFrom": "manuscript_visits",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "manuscript_visits_manuscript_id_manuscripts_id_fk": {
+          "name": "manuscript_visits_manuscript_id_manuscripts_id_fk",
+          "tableFrom": "manuscript_visits",
+          "tableTo": "manuscripts",
+          "columnsFrom": [
+            "manuscript_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "manuscript_visits_user_id_manuscript_id_pk": {
+          "name": "manuscript_visits_user_id_manuscript_id_pk",
+          "columns": [
+            "user_id",
+            "manuscript_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.manuscripts": {
       "name": "manuscripts",
       "schema": "",
@@ -622,6 +1232,19 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "article_type_id": {
+          "name": "article_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_pin": {
+          "name": "profile_pin",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "title": {
           "name": "title",
@@ -641,6 +1264,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'DRAFT'"
+        },
+        "general_access": {
+          "name": "general_access",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'RESTRICTED'"
         },
         "created_by": {
           "name": "created_by",
@@ -684,7 +1314,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_manuscripts_journal": {
+          "name": "idx_manuscripts_journal",
+          "columns": [
+            {
+              "expression": "journal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "manuscripts_journal_id_journals_id_fk": {
           "name": "manuscripts_journal_id_journals_id_fk",
@@ -697,6 +1343,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "manuscripts_article_type_id_article_types_id_fk": {
+          "name": "manuscripts_article_type_id_article_types_id_fk",
+          "tableFrom": "manuscripts",
+          "tableTo": "article_types",
+          "columnsFrom": [
+            "article_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "manuscripts_created_by_users_id_fk": {
@@ -716,7 +1375,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "chk_manuscripts_profile_pin": {
+          "name": "chk_manuscripts_profile_pin",
+          "value": "jsonb_typeof(\"manuscripts\".\"profile_pin\") = 'object'"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.manuscript_docs": {

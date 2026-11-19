@@ -25,6 +25,7 @@ const EXPECTED_PUBLIC_ROUTES = [
   'GET /journals',
   'GET /journals/:id',
   'GET /journals/:id/article-types',
+  'GET /profiles/published',
   'GET /profiles/resolve',
 ].sort();
 

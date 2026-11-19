@@ -38,7 +38,7 @@ describe('Task 2: 3-Tier Journal Profiles Inheritance', () => {
       },
       {
         id: 'et',
-        color: '#0F4761',
+        color: '#000000',
         short: 'VNUHCM-ET',
         vi: 'Tạp chí Phát triển KH&CN - Kỹ thuật và Công nghệ',
       },
@@ -147,7 +147,7 @@ describe('Task 2: 3-Tier Journal Profiles Inheritance', () => {
 
       expect(custom.layout.columns).toBe(1);
       expect(custom.layout.columnGap).toBe(10);
-      expect(custom.layout.paperSize).toBe('A4');
+      expect(custom.layout.paperSize).toBe(BASE_PROFILE.layout.paperSize); // untouched fields keep the base value
       expect(JSON.stringify(BASE_PROFILE)).toBe(baseBefore);
     });
 

@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RefreshCw, Save, Sliders, Eye, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Save, RotateCcw, Eye, LogOut } from 'lucide-react';
+import type { ProfileVersion } from '@structpaper/api-client';
 import { JournalProfile } from '@structpaper/journal-profiles';
 import {
   ManagedJournalProfile,
@@ -10,9 +11,18 @@ import {
 } from '@/lib/templates/journal-storage';
 import { toast } from '@/components/toast';
 import { useJournalEditorSave } from '../hooks/useJournalEditorSave';
+import {
+  useJournalAccess,
+  useProfileVersions,
+  useJournalVersionProfile,
+  describeChanges,
+  JournalVersionsModal,
+  JournalSaveDiffModal,
+} from '@/features/journals';
+import { useEditorSession } from '@/context/EditorSessionContext';
+import { useUnsavedNavigationGuard } from '../hooks/useUnsavedNavigationGuard';
 import { ActionConfirmModal } from '@/components/modals';
 import { JournalEditorDock } from './JournalEditorDock';
-import { JournalEditorTopBar } from './JournalEditorTopBar';
 import {
   JournalEditorTabNav,
   JournalEditorTabKey,
@@ -21,6 +31,7 @@ import { JournalGeneralTab } from './tabs/JournalGeneralTab';
 import { JournalFrontMatterTab } from './tabs/JournalFrontMatterTab';
 import { JournalArticleTypesTab } from './tabs/JournalArticleTypesTab';
 import { JournalLayoutTab } from './tabs/JournalLayoutTab';
+import { JournalPublicationTab } from './tabs/JournalPublicationTab';
 import { ResizableSplitLayout, LivePreviewPane, useEditorCompilation } from '@/features/editor';
 import { generateSamplePaperForJournal } from '@/lib/templates/sample-template-paper';
 import { CompletePaper } from '@/types/paper';
@@ -28,6 +39,8 @@ import { CompletePaper } from '@/types/paper';
 interface JournalDetailEditorProps {
   initialManaged: ManagedJournalProfile;
   isNew?: boolean;
+  /** The journal's version on the server (its ETag): a save from a stale editor is refused. */
+  serverVersion?: number;
 }
 
 function getPrecompiledPdfForJournal(id: string): string | null {
@@ -45,17 +58,39 @@ function getPrecompiledPdfForJournal(id: string): string | null {
 export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
   initialManaged,
   isNew = false,
+  serverVersion,
 }) => {
   const router = useRouter();
+  // the API decides who may edit which journal; the screen only shows what it would allow
+  const access = useJournalAccess(initialManaged.id, !isNew);
+  const canEdit = isNew ? access.canCreate : access.canEdit;
 
   const [managed, setManaged] = useState<ManagedJournalProfile>(initialManaged);
   const [activeTab, setActiveTab] = useState<JournalEditorTabKey>('general');
   const [isDirty, setIsDirty] = useState(false);
+  const { pdfLanguage, setJournalBar } = useEditorSession();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  /** A past version shown read-only; null = the version in force (the one being edited). */
+  const [viewing, setViewing] = useState<ProfileVersion | null>(null);
+  const guard = useUnsavedNavigationGuard(isDirty);
+
+  const versions = useProfileVersions(isNew ? undefined : managed.id, 'journal');
+  const currentVersion = versions.data?.find((v) => v.state === 'published')?.version;
+  const viewedRules = useJournalVersionProfile(managed.id, viewing?.version);
+  const isViewingOld = viewing !== null;
+  /** What the tabs and the preview show: the edited journal, or the rules of the past version on screen. */
+  const shown = useMemo<ManagedJournalProfile>(
+    () =>
+      viewing && viewedRules.data
+        ? { ...managed, profile: { ...viewedRules.data, id: managed.profile.id, names: managed.profile.names, color: managed.profile.color } }
+        : managed,
+    [managed, viewing, viewedRules.data],
+  );
 
   // Dynamic sample paper based on active in-memory profile
   const samplePaper = useMemo(
-    () => generateSamplePaperForJournal(managed.profile),
-    [managed.profile]
+    () => generateSamplePaperForJournal(shown.profile),
+    [shown.profile]
   );
   const [livePaper, setLivePaper] = useState<CompletePaper>(samplePaper);
 
@@ -75,6 +110,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
 
   // Tách biệt logic quản lý lưu, xác nhận và khôi phục template sang custom hook
   const {
+    getBaseline,
     isSaveWarningOpen,
     isResetWarningOpen,
     isSaving,
@@ -86,6 +122,8 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     confirmReset,
     cancelReset,
   } = useJournalEditorSave({
+    initialManaged,
+    serverVersion,
     managed,
     setManaged,
     setIsDirty,
@@ -98,12 +136,17 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
   });
 
   // Preload official precompiled PDF if available for instant display on mount
+  const preloaded = React.useRef(false);
   useEffect(() => {
+    if (preloaded.current) return;
+    preloaded.current = true;
     const precompiled = getPrecompiledPdfForJournal(managed.id);
-    if (precompiled && !compiledPdfUrl) {
+    // the shipped samples are Vietnamese-first: in English the preview is typeset instead
+    if (precompiled && !compiledPdfUrl && pdfLanguage === 'vi') {
       setCompiledPdfUrl(precompiled);
     }
-  }, [managed.id, compiledPdfUrl, setCompiledPdfUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [managed.id]);
 
   const handleUpdateProfile = useCallback((patch: Partial<JournalProfile>) => {
     setManaged((prev) => ({
@@ -116,73 +159,130 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     setIsDirty(true);
   }, []);
 
+  // published -> draft -> archived -> published again
   const handleToggleStatus = useCallback(() => {
     const nextStatus: JournalStatus =
-      managed.status === 'published' ? 'draft' : 'published';
+      managed.status === 'published' ? 'draft' : managed.status === 'archived' ? 'published' : 'archived';
     setManaged((prev) => ({ ...prev, status: nextStatus }));
     setIsDirty(true);
     toast.info(
       'Trạng thái mẫu',
       nextStatus === 'published'
         ? 'Chuyển sang: Đang phát hành (published)'
-        : 'Chuyển sang: Bản nháp (draft)'
+        : nextStatus === 'archived'
+          ? 'Chuyển sang: Lưu trữ (archived): tạp chí không còn được chọn cho bài mới'
+          : 'Chuyển sang: Bản nháp (draft)'
     );
   }, [managed.status]);
 
   const handleRecompile = useCallback(async () => {
-    const updated = generateSamplePaperForJournal(managed.profile);
+    const updated = generateSamplePaperForJournal(shown.profile);
     setLivePaper(updated);
     await compileLatexToPdf(updated);
-  }, [managed.profile, compileLatexToPdf]);
+  }, [shown.profile, compileLatexToPdf]);
+
+  // a past version: typeset the preview with its rules once they arrive
+  useEffect(() => {
+    if (!viewing || !viewedRules.data) return;
+    const sample = generateSamplePaperForJournal(shown.profile);
+    setLivePaper(sample);
+    void compileLatexToPdf(sample);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewing?.version, viewedRules.data]);
+
+  const handleViewVersion = useCallback(
+    (version: ProfileVersion | null) => {
+      setViewing(version);
+      if (!version) {
+        const sample = generateSamplePaperForJournal(managed.profile);
+        setLivePaper(sample);
+        void compileLatexToPdf(sample);
+      }
+    },
+    [managed.profile, compileLatexToPdf],
+  );
+
+  // the title bar shows which journal this is (in the PDF language) and which version is on screen
+  const openHistory = useCallback(() => setHistoryOpen(true), []);
+  useEffect(() => {
+    setJournalBar({
+      names: { vi: managed.profile.names?.vi ?? '', en: managed.profile.names?.en ?? '' },
+      short: managed.profile.names?.short || managed.profile.id?.toUpperCase() || 'JOURNAL',
+      color: managed.profile.color || '#000099',
+      viewing: currentVersion ? { version: viewing?.version ?? currentVersion, isCurrent: !viewing } : null,
+      onOpenHistory: isNew ? undefined : openHistory,
+    });
+  }, [managed.profile.names, managed.profile.id, managed.profile.color, currentVersion, viewing, isNew, openHistory, setJournalBar]);
+  useEffect(() => () => setJournalBar(null), [setJournalBar]);
+
+  const diffGroups = useMemo(
+    () =>
+      isSaveWarningOpen
+        ? describeChanges(isNew ? null : { status: getBaseline().status, profile: getBaseline().profile as any }, { status: managed.status, profile: managed.profile as any })
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSaveWarningOpen, managed, isNew],
+  );
 
   // Left Side: Editor Form Tabs with Header
   const leftEditorContent = (
     <div className="h-full flex flex-col min-h-0 min-w-0 w-full overflow-hidden space-y-2.5">
-      {/* Journal Header Bar: Title, Short code badge & English Subtitle */}
-      <div className="flex-shrink-0">
-        <JournalEditorTopBar
-          profile={managed.profile}
-          status={managed.status}
-          isNew={isNew}
-        />
-      </div>
+      {isViewingOld && (
+        <div
+          role="status"
+          data-testid="viewing-old-version-banner"
+          className="flex-shrink-0 flex items-center gap-2 rounded-2xl bg-amber-50 px-3.5 py-2 text-xs text-amber-900"
+        >
+          <Eye className="w-4 h-4 shrink-0" />
+          <span className="flex-1 font-semibold">
+            Đang xem phiên bản <b>v{viewing?.version}</b> (bản cũ, chỉ đọc). Bản đang áp dụng là v{currentVersion ?? '?'}.
+          </span>
+          <button
+            type="button"
+            onClick={() => handleViewVersion(null)}
+            className="shrink-0 px-3 py-1 rounded-full bg-amber-900 hover:bg-amber-800 text-white font-bold cursor-pointer transition-all active:scale-95"
+          >
+            Về bản hiện tại
+          </button>
+        </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="flex-shrink-0">
         <JournalEditorTabNav
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          articleTypesCount={managed.profile.articleTypes?.length}
+          articleTypesCount={shown.profile.articleTypes?.length}
         />
       </div>
 
-      <div className="flex-1 min-h-0 min-w-0 h-full w-full overflow-y-auto pr-1">
+      <fieldset disabled={isViewingOld || !canEdit} className="flex-1 min-h-0 min-w-0 h-full w-full overflow-y-auto pr-1 border-0 p-0 m-0">
         {activeTab === 'general' && (
           <JournalGeneralTab
-            profile={managed.profile}
+            profile={shown.profile}
             onChange={handleUpdateProfile}
             isNew={isNew}
           />
         )}
         {activeTab === 'frontmatter' && (
           <JournalFrontMatterTab
-            profile={managed.profile}
+            profile={shown.profile}
             onChange={handleUpdateProfile}
           />
         )}
         {activeTab === 'article-types' && (
-          <JournalArticleTypesTab
-            profile={managed.profile}
-            onChange={handleUpdateProfile}
-          />
+          <JournalArticleTypesTab profile={shown.profile} journalKey={managed.id} isNew={isNew} canEdit={canEdit && !isViewingOld} />
         )}
         {activeTab === 'layout' && (
           <JournalLayoutTab
-            profile={managed.profile}
+            profile={shown.profile}
             onChange={handleUpdateProfile}
           />
         )}
-      </div>
+        {activeTab === 'publication' && (
+          <JournalPublicationTab profile={shown.profile} onChange={handleUpdateProfile} />
+        )}
+      </fieldset>
     </div>
   );
 
@@ -214,6 +314,8 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         isSaving={isSaving}
         isDirty={isDirty}
         saveSuccess={saveSuccess}
+        readOnly={!canEdit || isViewingOld}
+        onBack={() => guard.guardedPush('/templates')}
       />
 
       {/* Main Workspace Area */}
@@ -222,10 +324,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         <div className="flex sm:hidden flex-shrink-0 items-center justify-between p-1.5 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200">
           <button
             type="button"
-            onClick={() => {
-              if (router) router.push('/templates');
-              else if (typeof window !== 'undefined') window.location.href = '/templates';
-            }}
+            onClick={() => guard.guardedPush('/templates')}
             aria-label="Quay lại danh mục tạp chí"
             className="p-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 font-bold text-xs flex items-center gap-1 shadow-2xs"
             title="Quay lại danh mục tạp chí"
@@ -273,38 +372,46 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         </div>
       </div>
 
-      {/* Warning Confirmation Modal when Saving Template */}
-      <ActionConfirmModal
+      {/* Before saving: what changed, as removed/added lines */}
+      <JournalSaveDiffModal
         isOpen={isSaveWarningOpen}
         onClose={cancelSave}
         onConfirm={confirmSave}
+        isSaving={isSaving}
+        isNew={isNew}
+        groups={diffGroups}
+        journalLabel={{
+          short: managed.profile.names?.short || managed.id.toUpperCase(),
+          name: managed.profile.names?.vi || managed.profile.names?.en || managed.id,
+          color: managed.profile.color || '#000099',
+        }}
+      />
+
+      {/* Version history: look at an older version, restore one, move every paper to the one in force */}
+      {!isNew && (
+        <JournalVersionsModal
+          isOpen={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          journalKey={managed.id}
+          canEdit={canEdit}
+          viewingVersion={viewing?.version ?? null}
+          onView={handleViewVersion}
+        />
+      )}
+
+      {/* Leaving with edits that were not saved */}
+      <ActionConfirmModal
+        isOpen={guard.isOpen}
+        onClose={guard.stay}
+        onConfirm={guard.leave}
         variant="warning"
-        title="Lưu cấu hình tạp chí?"
-        previewCard={
-          <div className="w-full bg-slate-50 border border-slate-200/70 rounded-3xl p-3.5 flex items-center gap-3 shadow-inner">
-            <span
-              className="shrink-0 px-2.5 py-1 rounded-xl text-[10.5px] font-extrabold text-white shadow-2xs"
-              style={{ backgroundColor: managed.profile.color || '#000099' }}
-            >
-              {managed.profile.names?.short || managed.id.toUpperCase()}
-            </span>
-            <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-slate-900 truncate">
-                {managed.profile.names?.vi || managed.profile.names?.en || managed.id}
-              </h4>
-              <p className="text-[10.5px] text-zinc-500 font-medium truncate">
-                Cập nhật cấu hình khuôn mẫu dàn trang & typography
-              </p>
-            </div>
-          </div>
-        }
-        description="Thay đổi cấu hình template này sẽ cập nhật trực tiếp quy chuẩn dàn trang PDF, Word và các bài báo đang áp dụng mẫu tạp chí này. Bạn có chắc chắn muốn lưu các thay đổi?"
-        cancelLabel="Hủy bỏ"
-        confirmLabel="Xác nhận lưu"
-        confirmIcon={<Save className="w-4 h-4" />}
-        isLoading={isSaving}
-        testId="template-save-confirm-modal"
-        confirmTestId="confirm-save-template-btn"
+        title="Có thay đổi chưa được lưu"
+        description="Bạn đã chỉnh sửa tạp chí này nhưng chưa lưu. Nếu rời đi bây giờ, các thay đổi sẽ bị mất."
+        cancelLabel="Ở lại chỉnh sửa"
+        confirmLabel="Rời đi, bỏ thay đổi"
+        confirmIcon={<LogOut className="w-4 h-4" />}
+        testId="template-unsaved-leave-modal"
+        confirmTestId="confirm-leave-template-btn"
       />
 
       {/* Reset Confirmation Modal */}
@@ -313,10 +420,10 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         onClose={cancelReset}
         onConfirm={confirmReset}
         variant="danger"
-        title="Khôi phục cấu hình gốc?"
-        description="Toàn bộ tùy chỉnh của tạp chí này sẽ bị hoàn tác về thông số gốc mặc định của hệ thống. Bạn có chắc chắn muốn tiếp tục?"
+        title="Bỏ các chỉnh sửa chưa lưu?"
+        description="Các chỉnh sửa chưa lưu sẽ bị bỏ và hồ sơ quay về quy định đang xuất bản. Bạn có chắc chắn muốn tiếp tục?"
         cancelLabel="Hủy bỏ"
-        confirmLabel="Khôi phục gốc"
+        confirmLabel="Bỏ chỉnh sửa"
         confirmIcon={<RotateCcw className="w-4 h-4" />}
         testId="template-reset-confirm-modal"
         confirmTestId="confirm-reset-template-btn"

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, FileDown, FilePlus2, FolderOpen, Loader2, Save } from 'lucide-react';
+import { ChevronDown, FileDown, FilePlus2, FolderOpen, History, Loader2, Save } from 'lucide-react';
 import type { ExportFormat } from '@/features/editor';
 
 const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -13,6 +13,8 @@ export interface TitleBarFileMenuProps {
   onOpen?: () => void;
   onSave?: () => Promise<void> | void;
   onExport?: (format: ExportFormat) => void;
+  /** Opens the paper's version history. */
+  onHistory?: () => void;
   exporting?: Partial<Record<ExportFormat, boolean>>;
 }
 
@@ -34,6 +36,7 @@ export const TitleBarFileMenu: React.FC<TitleBarFileMenuProps> = ({
   onOpen,
   onSave,
   onExport,
+  onHistory,
   exporting,
 }) => {
   const [open, setOpen] = useState(false);
@@ -79,7 +82,7 @@ export const TitleBarFileMenu: React.FC<TitleBarFileMenuProps> = ({
     };
   }, [open, updateMenuPosition]);
 
-  if (!onNew && !onOpen && !onSave && !onExport) {
+  if (!onNew && !onOpen && !onSave && !onExport && !onHistory) {
     return null;
   }
 
@@ -155,6 +158,21 @@ export const TitleBarFileMenu: React.FC<TitleBarFileMenuProps> = ({
                     <Save className="w-3.5 h-3.5 text-zinc-500" />
                     <span>Lưu</span>
                     <span className="ml-auto text-[10px] text-zinc-400">Ctrl+S</span>
+                  </button>
+                )}
+                {onHistory && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-testid="titlebar-file-history"
+                    onClick={() => {
+                      setOpen(false);
+                      onHistory();
+                    }}
+                    className={MENU_ITEM_CLASS}
+                  >
+                    <History className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Lịch sử phiên bản</span>
                   </button>
                 )}
                 {onExport && (

@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { checkPaperTitleDuplicate } from '@/lib/storage/paper-naming';
+import { checkPaperTitleDuplicate, getUniquePaperTitle } from '@/lib/storage/paper-naming';
+import { fetchTitleDuplicates, type TitleDuplicate } from '@/lib/storage/title-duplicates';
 
 export interface DuplicatePromptState {
   isOpen: boolean;
   paperTitle: string;
   suggestedTitle: string;
   matchCount: number;
+  /** Who uploaded a paper with this title before (every user, server side). */
+  uploaders: TitleDuplicate[];
   journalId?: string;
   onProceed: (resolvedTitle: string) => void | Promise<void>;
 }
@@ -34,7 +37,11 @@ export function usePaperDuplicateWarning() {
       }
     ) => {
       const normalizedTitle = targetTitle.trim() || 'Bản thảo bài báo';
-      const { count, uniqueTitle } = await checkPaperTitleDuplicate(normalizedTitle, options.excludeId);
+      const { count: localCount, uniqueTitle: localUnique } = await checkPaperTitleDuplicate(normalizedTitle, options.excludeId);
+      const uploaders = await fetchTitleDuplicates(normalizedTitle);
+      // numbered after the copies other people already have too: "Title (1)" may be taken by someone else
+      const uniqueTitle = getUniquePaperTitle(localUnique, uploaders.map((u) => u.title));
+      const count = Math.max(localCount, uploaders.length);
 
       if (count > 0) {
         setDuplicatePrompt({
@@ -42,6 +49,7 @@ export function usePaperDuplicateWarning() {
           paperTitle: normalizedTitle,
           suggestedTitle: uniqueTitle,
           matchCount: count,
+          uploaders,
           journalId: options.journalId,
           onProceed: options.onProceed,
         });

@@ -20,6 +20,7 @@
     "@structpaper/compiler-client": "workspace:*",
     "@structpaper/doc-model": "workspace:*",
     "@structpaper/editor-core": "workspace:*",
+    "@structpaper/doc-diff": "workspace:*",
     "@structpaper/journal-profiles": "workspace:*",
     "@structpaper/platform": "workspace:*",
     "@structpaper/platform-desktop": "workspace:*",

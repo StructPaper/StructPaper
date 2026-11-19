@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { CompletePaper } from './sample-papers';
-import { generateFullJournalLatex, generateLatexPackageZip } from './latex-template';
+import { generateFullJournalLatex, generateLatexPackageZip, type LatexOptions } from './latex-template';
 import { exportToJatsXml } from './jats-export';
 import {
   appendFigureImagesToZip,
@@ -23,8 +23,8 @@ export function downloadTextFile(content: string, filename: string, mimeType: st
 
 import { LayoutSettings } from '@/types/paper';
 
-export function exportToLatex(paper: CompletePaper, customSettings?: LayoutSettings): string {
-  return generateFullJournalLatex(paper, customSettings);
+export function exportToLatex(paper: CompletePaper, customSettings?: LayoutSettings, options?: LatexOptions): string {
+  return generateFullJournalLatex(paper, customSettings, options);
 }
 
 export function exportToJson(paper: CompletePaper): string {

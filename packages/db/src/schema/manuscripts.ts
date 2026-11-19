@@ -1,16 +1,24 @@
-import { pgTable, uuid, varchar, text, integer, jsonb, timestamp, primaryKey } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { journals } from './journals';
+import { pgTable, uuid, varchar, text, integer, jsonb, timestamp, primaryKey, index, check } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { journals, articleTypes } from './journals';
 import { users } from './users';
 import { manuscriptDocs, manuscriptOps, manuscriptRevisions } from './sync';
 import { assets } from './assets';
 import { compileJobs } from './compile';
 
-export const manuscripts = pgTable('manuscripts', {
+export const manuscripts = pgTable(
+  'manuscripts',
+  {
   id: uuid('id').defaultRandom().primaryKey(),
   journalId: uuid('journal_id')
     .notNull()
     .references(() => journals.id, { onDelete: 'cascade' }),
+  articleTypeId: uuid('article_type_id').references(() => articleTypes.id, { onDelete: 'set null' }),
+  /**
+   * The profile versions the paper was written under: { base, journal, articleType? }. Set when the paper is
+   * created and moved only by an explicit upgrade, so publishing new journal rules never changes an old paper.
+   */
+  profilePin: jsonb('profile_pin').$type<{ base?: number; journal?: number; articleType?: number }>().notNull().default({}),
   title: varchar('title', { length: 500 }).notNull(),
   abstract: text('abstract'),
   status: varchar('status', { length: 50 }).notNull().default('DRAFT'),
@@ -23,7 +31,33 @@ export const manuscripts = pgTable('manuscripts', {
   metadata: jsonb('metadata').$type<Record<string, any>>().notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+  },
+  (t) => [
+    check('chk_manuscripts_profile_pin', sql`jsonb_typeof(${t.profilePin}) = 'object'`),
+    index('idx_manuscripts_journal').on(t.journalId),
+  ],
+);
+
+/**
+ * The resolved profile a paper was typeset with, kept as it was: even if profile versions were ever pruned,
+ * the paper can still be laid out the way it was. One row per (re)pin.
+ */
+export const manuscriptProfileSnapshots = pgTable(
+  'manuscript_profile_snapshots',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    manuscriptId: uuid('manuscript_id')
+      .notNull()
+      .references(() => manuscripts.id, { onDelete: 'cascade' }),
+    pin: jsonb('pin').$type<{ base?: number; journal?: number; articleType?: number }>().notNull(),
+    resolved: jsonb('resolved').$type<Record<string, any>>().notNull(),
+    hash: varchar('hash', { length: 64 }).notNull(),
+    /** 'create' | 'profile_upgrade' */
+    reason: varchar('reason', { length: 30 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('idx_profile_snapshots_ms').on(t.manuscriptId, t.createdAt)],
+);
 
 export const manuscriptMembers = pgTable(
   'manuscript_members',

@@ -61,6 +61,7 @@ services:
 
   api:
     image: ${API_IMAGE:?set API_IMAGE in the env file}
+    init: true # reaps finished compiler processes (no zombies)
     restart: always
     init: true
     logging: *default-logging

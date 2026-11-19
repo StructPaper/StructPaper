@@ -63,7 +63,7 @@ export const ThemeSettingsSection: React.FC<Props> = ({ theme, journalColor, onC
     set({ margins: { ...(theme?.margins || {}), [side]: v } });
 
   return (
-    <div className="p-4 rounded-3xl bg-white border border-[#EAECEF] space-y-4 shadow-2xs" data-testid="theme-settings">
+    <div className="space-y-3" data-testid="theme-settings">
       <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
         <Palette className="w-3.5 h-3.5 text-zinc-500" />
         Màu sắc, phông chữ & lề

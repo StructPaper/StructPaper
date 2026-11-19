@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { journalSchemas, journalPaths } from './openapi-journals';
+import { revisionSchemas, revisionPaths } from './openapi-revisions';
 
 /**
  * Generates an OpenAPI 3.1 JSON document containing all StructPaper API endpoints,
@@ -181,21 +183,6 @@ export function buildOpenApiSpec() {
           },
           required: ['id', 'email', 'roles', 'invitedAt', 'expiresAt', 'status'],
         },
-        Journal: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-            slug: { type: 'string' },
-            code: { type: 'string' },
-            name: { type: 'string' },
-            shortName: { type: 'string' },
-            issn: { type: 'string', nullable: true },
-            color: { type: 'string' },
-            status: { type: 'string' },
-            articleTypes: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['id', 'slug', 'name'],
-        },
         ActivateAccountRequest: {
           type: 'object',
           properties: {
@@ -271,6 +258,8 @@ export function buildOpenApiSpec() {
             createdBy: { type: 'string', format: 'uuid' },
             currentServerRev: { type: 'integer' },
             version: { type: 'integer' },
+            profilePin: { $ref: '#/components/schemas/ProfilePin' },
+            articleType: { type: 'string', nullable: true, description: 'Code of the article type ("research")' },
             metadata: { type: 'object', additionalProperties: true },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
@@ -281,6 +270,8 @@ export function buildOpenApiSpec() {
           type: 'object',
           properties: {
             journalId: { type: 'string', format: 'uuid' },
+            articleType: { type: 'string', description: 'Code of one of the journal\'s article types' },
+            profilePin: { $ref: '#/components/schemas/ProfilePin' },
             title: { type: 'string' },
             abstract: { type: 'string', nullable: true },
             metadata: { type: 'object', additionalProperties: true },
@@ -344,6 +335,16 @@ export function buildOpenApiSpec() {
           type: 'object',
           properties: { generalAccess: { $ref: '#/components/schemas/GeneralAccess' } },
           required: ['generalAccess'],
+        },
+        TitleDuplicate: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            uploaderName: { type: 'string' },
+            uploadedAt: { type: 'string', format: 'date-time' },
+            mine: { type: 'boolean' },
+          },
+          required: ['title', 'uploaderName', 'uploadedAt', 'mine'],
         },
         PersonResult: {
           type: 'object',
@@ -673,23 +674,6 @@ export function buildOpenApiSpec() {
             '403': { $ref: '#/components/responses/ProblemResponse' },
             '404': { $ref: '#/components/responses/ProblemResponse' },
             '409': { $ref: '#/components/responses/ProblemResponse' },
-          },
-        },
-      },
-      '/api/v1/journals': {
-        get: {
-          tags: ['Journals'],
-          summary: 'List journals',
-          operationId: 'listJournals',
-          responses: {
-            '200': {
-              description: 'Journals',
-              content: {
-                'application/json': {
-                  schema: { type: 'array', items: { $ref: '#/components/schemas/Journal' } },
-                },
-              },
-            },
           },
         },
       },
@@ -1075,6 +1059,56 @@ export function buildOpenApiSpec() {
           },
         },
       },
+      '/api/v1/compile/status': {
+        get: {
+          tags: ['Compile'],
+          summary: 'How busy the compilers are and how many of my papers are running or waiting',
+          operationId: 'getCompileStatus',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Queue status',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      running: { type: 'integer' },
+                      concurrency: { type: 'integer' },
+                      queued: { type: 'integer' },
+                      mine: {
+                        type: 'object',
+                        properties: { running: { type: 'integer' }, queued: { type: 'integer' } },
+                        required: ['running', 'queued'],
+                      },
+                    },
+                    required: ['running', 'concurrency', 'queued', 'mine'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/manuscripts/duplicates': {
+        get: {
+          tags: ['Manuscripts'],
+          summary: 'Papers already uploaded with this title, and who uploaded them',
+          operationId: 'findManuscriptDuplicates',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'title', in: 'query', required: true, schema: { type: 'string', minLength: 1 } }],
+          responses: {
+            '200': {
+              description: 'Matching uploads (names and dates only)',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/TitleDuplicate' } },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/v1/manuscripts/people': {
         get: {
           tags: ['Manuscripts'],
@@ -1215,6 +1249,11 @@ export function buildOpenApiSpec() {
       },
     },
   };
+
+  Object.assign(spec.components.schemas, journalSchemas);
+  Object.assign(spec.paths, journalPaths);
+  Object.assign(spec.components.schemas, revisionSchemas);
+  Object.assign(spec.paths, revisionPaths);
 
   return spec;
 }

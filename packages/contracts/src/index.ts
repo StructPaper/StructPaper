@@ -3,6 +3,8 @@ export * from './auth/auth.contract';
 export * from './access/access.contract';
 export * from './access/capabilities';
 export * from './manuscripts/manuscript.contract';
+export * from './manuscripts/revision.contract';
 export * from './sync/sync.contract';
 export * from './assets/asset.contract';
 export * from './compile/compile.contract';
+export * from './journals/journal.contract';

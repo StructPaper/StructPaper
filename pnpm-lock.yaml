@@ -86,6 +86,9 @@ importers:
       '@structpaper/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@structpaper/doc-diff':
+        specifier: workspace:*
+        version: link:../../packages/doc-diff
       '@structpaper/journal-profiles':
         specifier: workspace:*
         version: link:../../packages/journal-profiles
@@ -132,6 +135,9 @@ importers:
       '@structpaper/compiler-client':
         specifier: workspace:*
         version: link:../../packages/compiler-client
+      '@structpaper/doc-diff':
+        specifier: workspace:*
+        version: link:../../packages/doc-diff
       '@structpaper/doc-model':
         specifier: workspace:*
         version: link:../../packages/doc-model
@@ -380,6 +386,8 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/doc-diff: {}
 
   packages/doc-model:
     dependencies:

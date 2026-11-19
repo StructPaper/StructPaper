@@ -6,22 +6,36 @@
  * OpenAPI spec version: 1.0.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  Journal
+  ApplyProfileToPapersRequest,
+  ApplyProfileToPapersResult,
+  ArticleType,
+  CreateArticleTypeRequest,
+  CreateJournalRequest,
+  Journal,
+  JournalAccess,
+  ListArticleTypesParams,
+  ProblemDetails,
+  UpdateArticleTypeRequest,
+  UpdateJournalRequest
 } from '../../model';
 
 import { customInstance } from '../../../http';
@@ -123,3 +137,611 @@ export function useListJournals<TData = Awaited<ReturnType<typeof listJournals>>
 
 
 
+/**
+ * @summary Create a journal
+ */
+export const createJournal = (
+    createJournalRequest: CreateJournalRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<Journal>(
+      {url: `/api/v1/journals`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createJournalRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getCreateJournalMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournal>>, TError,{data: CreateJournalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof createJournal>>, TError,{data: CreateJournalRequest}, TContext> => {
+
+const mutationKey = ['createJournal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createJournal>>, {data: CreateJournalRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createJournal(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateJournalMutationResult = NonNullable<Awaited<ReturnType<typeof createJournal>>>
+    export type CreateJournalMutationBody = CreateJournalRequest
+    export type CreateJournalMutationError = ProblemDetails
+
+    /**
+ * @summary Create a journal
+ */
+export const useCreateJournal = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournal>>, TError,{data: CreateJournalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createJournal>>,
+        TError,
+        {data: CreateJournalRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateJournalMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Get a journal by id, slug or key
+ */
+export const getJournal = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<Journal>(
+      {url: `/api/v1/journals/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetJournalQueryKey = (id?: string,) => {
+    return [
+    `/api/v1/journals/${id}`
+    ] as const;
+    }
+
+    
+export const getGetJournalQueryOptions = <TData = Awaited<ReturnType<typeof getJournal>>, TError = ProblemDetails>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJournalQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournal>>> = ({ signal }) => getJournal(id, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJournalQueryResult = NonNullable<Awaited<ReturnType<typeof getJournal>>>
+export type GetJournalQueryError = ProblemDetails
+
+
+export function useGetJournal<TData = Awaited<ReturnType<typeof getJournal>>, TError = ProblemDetails>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJournal>>,
+          TError,
+          Awaited<ReturnType<typeof getJournal>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetJournal<TData = Awaited<ReturnType<typeof getJournal>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJournal>>,
+          TError,
+          Awaited<ReturnType<typeof getJournal>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetJournal<TData = Awaited<ReturnType<typeof getJournal>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a journal by id, slug or key
+ */
+
+export function useGetJournal<TData = Awaited<ReturnType<typeof getJournal>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournal>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJournalQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Edit a journal (If-Match with its version)
+ */
+export const updateJournal = (
+    id: string,
+    updateJournalRequest: UpdateJournalRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<Journal>(
+      {url: `/api/v1/journals/${id}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateJournalRequest
+    },
+      options);
+    }
+  
+
+
+export const getUpdateJournalMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournal>>, TError,{id: string;data: UpdateJournalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJournal>>, TError,{id: string;data: UpdateJournalRequest}, TContext> => {
+
+const mutationKey = ['updateJournal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJournal>>, {id: string;data: UpdateJournalRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateJournal(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJournalMutationResult = NonNullable<Awaited<ReturnType<typeof updateJournal>>>
+    export type UpdateJournalMutationBody = UpdateJournalRequest
+    export type UpdateJournalMutationError = ProblemDetails
+
+    /**
+ * @summary Edit a journal (If-Match with its version)
+ */
+export const useUpdateJournal = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournal>>, TError,{id: string;data: UpdateJournalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateJournal>>,
+        TError,
+        {id: string;data: UpdateJournalRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateJournalMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary What the caller may do with a journal
+ */
+export const getJournalAccess = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<JournalAccess>(
+      {url: `/api/v1/journals/${id}/access`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetJournalAccessQueryKey = (id?: string,) => {
+    return [
+    `/api/v1/journals/${id}/access`
+    ] as const;
+    }
+
+    
+export const getGetJournalAccessQueryOptions = <TData = Awaited<ReturnType<typeof getJournalAccess>>, TError = ProblemDetails>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJournalAccessQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournalAccess>>> = ({ signal }) => getJournalAccess(id, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJournalAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getJournalAccess>>>
+export type GetJournalAccessQueryError = ProblemDetails
+
+
+export function useGetJournalAccess<TData = Awaited<ReturnType<typeof getJournalAccess>>, TError = ProblemDetails>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJournalAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getJournalAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetJournalAccess<TData = Awaited<ReturnType<typeof getJournalAccess>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJournalAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getJournalAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetJournalAccess<TData = Awaited<ReturnType<typeof getJournalAccess>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary What the caller may do with a journal
+ */
+
+export function useGetJournalAccess<TData = Awaited<ReturnType<typeof getJournalAccess>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJournalAccess>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJournalAccessQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Move every paper of the journal to the rules published now (irreversible, asks for the password)
+ */
+export const applyProfileToPapers = (
+    id: string,
+    applyProfileToPapersRequest: ApplyProfileToPapersRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ApplyProfileToPapersResult>(
+      {url: `/api/v1/journals/${id}/apply-profile-to-papers`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: applyProfileToPapersRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getApplyProfileToPapersMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext> => {
+
+const mutationKey = ['applyProfileToPapers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyProfileToPapers>>, {id: string;data: ApplyProfileToPapersRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  applyProfileToPapers(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyProfileToPapersMutationResult = NonNullable<Awaited<ReturnType<typeof applyProfileToPapers>>>
+    export type ApplyProfileToPapersMutationBody = ApplyProfileToPapersRequest
+    export type ApplyProfileToPapersMutationError = ProblemDetails
+
+    /**
+ * @summary Move every paper of the journal to the rules published now (irreversible, asks for the password)
+ */
+export const useApplyProfileToPapers = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyProfileToPapers>>, TError,{id: string;data: ApplyProfileToPapersRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof applyProfileToPapers>>,
+        TError,
+        {id: string;data: ApplyProfileToPapersRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getApplyProfileToPapersMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary The article types a journal accepts
+ */
+export const listArticleTypes = (
+    id: string,
+    params?: ListArticleTypesParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ArticleType[]>(
+      {url: `/api/v1/journals/${id}/article-types`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getListArticleTypesQueryKey = (id?: string,
+    params?: ListArticleTypesParams,) => {
+    return [
+    `/api/v1/journals/${id}/article-types`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getListArticleTypesQueryOptions = <TData = Awaited<ReturnType<typeof listArticleTypes>>, TError = ProblemDetails>(id: string,
+    params?: ListArticleTypesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListArticleTypesQueryKey(id,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listArticleTypes>>> = ({ signal }) => listArticleTypes(id,params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListArticleTypesQueryResult = NonNullable<Awaited<ReturnType<typeof listArticleTypes>>>
+export type ListArticleTypesQueryError = ProblemDetails
+
+
+export function useListArticleTypes<TData = Awaited<ReturnType<typeof listArticleTypes>>, TError = ProblemDetails>(
+ id: string,
+    params: undefined |  ListArticleTypesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listArticleTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listArticleTypes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListArticleTypes<TData = Awaited<ReturnType<typeof listArticleTypes>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListArticleTypesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listArticleTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listArticleTypes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListArticleTypes<TData = Awaited<ReturnType<typeof listArticleTypes>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListArticleTypesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary The article types a journal accepts
+ */
+
+export function useListArticleTypes<TData = Awaited<ReturnType<typeof listArticleTypes>>, TError = ProblemDetails>(
+ id: string,
+    params?: ListArticleTypesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listArticleTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListArticleTypesQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Add an article type to a journal
+ */
+export const createArticleType = (
+    id: string,
+    createArticleTypeRequest: CreateArticleTypeRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ArticleType>(
+      {url: `/api/v1/journals/${id}/article-types`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createArticleTypeRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getCreateArticleTypeMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createArticleType>>, TError,{id: string;data: CreateArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof createArticleType>>, TError,{id: string;data: CreateArticleTypeRequest}, TContext> => {
+
+const mutationKey = ['createArticleType'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createArticleType>>, {id: string;data: CreateArticleTypeRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createArticleType(id,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateArticleTypeMutationResult = NonNullable<Awaited<ReturnType<typeof createArticleType>>>
+    export type CreateArticleTypeMutationBody = CreateArticleTypeRequest
+    export type CreateArticleTypeMutationError = ProblemDetails
+
+    /**
+ * @summary Add an article type to a journal
+ */
+export const useCreateArticleType = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createArticleType>>, TError,{id: string;data: CreateArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createArticleType>>,
+        TError,
+        {id: string;data: CreateArticleTypeRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateArticleTypeMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Rename, reorder or archive an article type
+ */
+export const updateArticleType = (
+    id: string,
+    code: string,
+    updateArticleTypeRequest: UpdateArticleTypeRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<ArticleType>(
+      {url: `/api/v1/journals/${id}/article-types/${code}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateArticleTypeRequest
+    },
+      options);
+    }
+  
+
+
+export const getUpdateArticleTypeMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateArticleType>>, TError,{id: string;code: string;data: UpdateArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateArticleType>>, TError,{id: string;code: string;data: UpdateArticleTypeRequest}, TContext> => {
+
+const mutationKey = ['updateArticleType'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateArticleType>>, {id: string;code: string;data: UpdateArticleTypeRequest}> = (props) => {
+          const {id,code,data} = props ?? {};
+
+          return  updateArticleType(id,code,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateArticleTypeMutationResult = NonNullable<Awaited<ReturnType<typeof updateArticleType>>>
+    export type UpdateArticleTypeMutationBody = UpdateArticleTypeRequest
+    export type UpdateArticleTypeMutationError = ProblemDetails
+
+    /**
+ * @summary Rename, reorder or archive an article type
+ */
+export const useUpdateArticleType = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateArticleType>>, TError,{id: string;code: string;data: UpdateArticleTypeRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateArticleType>>,
+        TError,
+        {id: string;code: string;data: UpdateArticleTypeRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateArticleTypeMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    

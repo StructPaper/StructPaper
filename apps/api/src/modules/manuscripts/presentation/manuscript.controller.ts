@@ -24,9 +24,18 @@ import {
   UpdateManuscriptSchema,
   ChangeManuscriptStatusSchema,
   ManuscriptQuerySchema,
+  ChangeArticleTypeSchema,
+  type ChangeArticleType,
   AddManuscriptMemberSchema,
   UpdateGeneralAccessSchema,
   PeopleSearchQuerySchema,
+  CreateRevisionSchema,
+  UpdateRevisionSchema,
+  ListRevisionsQuerySchema,
+  type CreateRevision,
+  type UpdateRevision,
+  type ListRevisionsQuery,
+  DuplicateQuerySchema,
   type CreateManuscript,
   type UpdateManuscript,
   type ChangeManuscriptStatus,
@@ -41,6 +50,8 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { ManuscriptService } from '../application/manuscript.service';
 import { ManuscriptSharingService } from '../application/manuscript-sharing.service';
 import { ManuscriptPreviewService } from '../application/manuscript-preview.service';
+import { ManuscriptDuplicatesService } from '../application/manuscript-duplicates.service';
+import { RevisionService } from '../application/revision.service';
 
 /** Ids of papers that only exist on the user's machine (paper_123) are not UUIDs: answer 404, never a database error. */
 const ManuscriptIdPipe = {
@@ -66,6 +77,10 @@ export class ManuscriptController {
     private readonly sharing?: ManuscriptSharingService,
     @Inject(ManuscriptPreviewService)
     private readonly previews?: ManuscriptPreviewService,
+    @Inject(ManuscriptDuplicatesService)
+    private readonly duplicates?: ManuscriptDuplicatesService,
+    @Inject(RevisionService)
+    private readonly revisions?: RevisionService,
   ) {}
 
   @Post()
@@ -91,6 +106,13 @@ export class ManuscriptController {
   @UsePipes(new ZodValidationPipe(PeopleSearchQuerySchema))
   async searchPeople(@Query() query: { q: string }, @Req() req: any) {
     return this.sharing!.searchPeople(query.q, req.user?.id);
+  }
+
+  /** Papers already uploaded with this title, and by whom (names and dates only). */
+  @Get('duplicates')
+  @UsePipes(new ZodValidationPipe(DuplicateQuerySchema))
+  async findDuplicates(@Query() query: { title: string }, @Req() req: any) {
+    return this.duplicates!.findByTitle(query.title, req.user?.id);
   }
 
   /** Readable by guests when the owner shared it with "anyone with the link". */
@@ -121,7 +143,7 @@ export class ManuscriptController {
     @Res({ passthrough: true }) res: any,
   ) {
     const ability = await this.getAbility(req);
-    const updated = await this.manuscriptService.updateManuscript(id, body, ifMatch, ability);
+    const updated = await this.manuscriptService.updateManuscript(id, body, ifMatch, ability, req.user?.id);
     if (updated?.version !== undefined) {
       res.header('ETag', `"${updated.version}"`);
     }
@@ -194,6 +216,78 @@ export class ManuscriptController {
   ) {
     const ability = await this.getAbility(req);
     return this.sharing!.setGeneralAccess(id, body.generalAccess, ability);
+  }
+
+  /** Moves the paper to the rules now published for its journal and article type (it never moves on its own). */
+  @Post(':id/profile/upgrade')
+  @HttpCode(HttpStatus.OK)
+  async upgradeProfile(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.upgradeProfile(id, ability);
+  }
+
+  /** Moves the paper to another article type of its journal (null: none); the new type's rules apply. */
+  @Put(':id/article-type')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(ChangeArticleTypeSchema))
+  async changeArticleType(@Param('id', ManuscriptIdPipe) id: string, @Body() body: ChangeArticleType, @Req() req: any) {
+    const ability = await this.getAbility(req);
+    return this.manuscriptService.changeArticleType(id, body.articleType, ability);
+  }
+
+  // ---- history of the paper's content ----
+
+  @Get(':id/revisions')
+  async listRevisions(
+    @Param('id', ManuscriptIdPipe) id: string,
+    @Query(new ZodValidationPipe(ListRevisionsQuerySchema)) query: ListRevisionsQuery,
+    @Req() req: any,
+  ) {
+    return this.revisions!.list(id, query, await this.getAbility(req));
+  }
+
+  /** Keeps the paper as it is now under a name the author chose (kind "named"), or as a safety copy. */
+  @Post(':id/revisions')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(CreateRevisionSchema))
+  async createRevision(@Param('id', ManuscriptIdPipe) id: string, @Body() body: CreateRevision, @Req() req: any) {
+    return this.revisions!.createNamed(id, body, req.user?.id, await this.getAbility(req));
+  }
+
+  @Get(':id/revisions/:revisionId')
+  async getRevision(@Param('id', ManuscriptIdPipe) id: string, @Param('revisionId', ManuscriptIdPipe) revisionId: string, @Req() req: any) {
+    return this.revisions!.get(id, revisionId, await this.getAbility(req));
+  }
+
+  @Patch(':id/revisions/:revisionId')
+  @UsePipes(new ZodValidationPipe(UpdateRevisionSchema))
+  async updateRevision(
+    @Param('id', ManuscriptIdPipe) id: string,
+    @Param('revisionId', ManuscriptIdPipe) revisionId: string,
+    @Body() body: UpdateRevision,
+    @Req() req: any,
+  ) {
+    return this.revisions!.update(id, revisionId, body, await this.getAbility(req));
+  }
+
+  @Delete(':id/revisions/:revisionId')
+  @HttpCode(HttpStatus.OK)
+  async deleteRevision(@Param('id', ManuscriptIdPipe) id: string, @Param('revisionId', ManuscriptIdPipe) revisionId: string, @Req() req: any) {
+    return this.revisions!.remove(id, revisionId, await this.getAbility(req));
+  }
+
+  /** Puts the paper back to that version (the present state is kept first, and the restore is itself a version). */
+  @Post(':id/revisions/:revisionId/restore')
+  @HttpCode(HttpStatus.OK)
+  async restoreRevision(@Param('id', ManuscriptIdPipe) id: string, @Param('revisionId', ManuscriptIdPipe) revisionId: string, @Req() req: any) {
+    return this.revisions!.restore(id, revisionId, req.user?.id, await this.getAbility(req));
+  }
+
+  /** A new paper made from that version. */
+  @Post(':id/revisions/:revisionId/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  async duplicateRevision(@Param('id', ManuscriptIdPipe) id: string, @Param('revisionId', ManuscriptIdPipe) revisionId: string, @Req() req: any) {
+    return this.manuscriptService.duplicateFromRevision(id, revisionId, req.user?.id, await this.getAbility(req));
   }
 
   @Post(':id/status')

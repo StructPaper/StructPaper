@@ -78,7 +78,7 @@ export interface SectionsTabProps {
   commandBus?: CommandBus;
   onDispatch?: (command: unknown) => void;
   /** Open and highlight this section (a click in the PDF preview); a new `n` repeats it for the same id. */
-  focusRequest?: { id: string; n: number } | null;
+  focusRequest?: { id: string; n: number; /** open the block for typing (an undo puts the cursor back in it) */ edit?: boolean } | null;
 }
 
 export interface ReferencesTabProps {

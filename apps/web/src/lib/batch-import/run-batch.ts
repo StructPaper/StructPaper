@@ -1,6 +1,7 @@
 import type { CompletePaper } from '@/types/paper';
 import { getUniquePaperTitle } from '@/lib/storage/paper-naming';
 import { abortError, createLimiter, isAbortError } from './limiter';
+import { autoBatchJournal } from './journals';
 import type { BatchItem, BatchOptions } from './types';
 
 /** More files than this in one go would make the list and the server crawl; the dialog tells the user. */
@@ -78,7 +79,8 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
   await Promise.all(
     files.map(async (file, i) => {
       if (signal?.aborted) return patch(i, { stage: 'cancelled' });
-      const journal = opts.journals?.[i] ?? opts.journal;
+      const picked = opts.journals?.[i]; // undefined: no entry (use `journal`); null: automatic
+      let journal = picked ?? opts.journal;
       let paper: CompletePaper | null;
       try {
         const parsed = await parseLimiter.run(async () => {
@@ -89,8 +91,17 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
           return result;
         }, signal);
         if (signal?.aborted) throw abortError(); // cancelled while this file was being read: do not create it
-        const title = getUniquePaperTitle(parsed.metadata?.title?.trim() || baseName(file.name), reserved);
+        if (picked === null) journal = autoBatchJournal(parsed.metadata?.journalId, opts.journal, opts.catalog);
+        const wanted = parsed.metadata?.title?.trim() || baseName(file.name);
+        let duplicates: Array<{ title: string; uploaderName: string; mine: boolean }> = [];
+        try {
+          duplicates = (await deps.findDuplicates?.(wanted)) ?? [];
+        } catch {
+          /* informative only: naming still works against this run and this device */
+        }
+        const title = getUniquePaperTitle(wanted, [...reserved, ...duplicates.map((d) => d.title)]);
         reserved.push(title);
+        if (duplicates.length > 0) patch(i, { duplicateOf: duplicates.map((d) => (d.mine ? 'Bạn' : d.uploaderName)) });
         paper = {
           ...parsed,
           id: `paper_${stamp}_${i}`, // parsers number papers by the clock; files parsed together must not collide
@@ -123,13 +134,15 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
         if (isAbortError(e)) return patch(i, { stage: 'cancelled', paperId: undefined, title: undefined });
         return patch(i, { stage: 'error', error: message(e, 'Không lưu được bài báo') });
       }
+      const savedId = paper.id; // saving may have given the paper its server id: that is the one to open and reload
+      if (savedId !== id) patch(i, { paperId: savedId });
       const pushed = quietly(() => deps.push?.(paper!));
       const held = deps.load ? null : paper;
       paper = null; // drop our reference: a paper waiting for a typesetting slot costs no memory
 
       if (signal?.aborted) return patch(i, { stage: 'done', compileError: 'Đã hủy biên dịch PDF' });
       patch(i, { stage: 'waiting' });
-      await typeset(i, held, id, title, pushed);
+      await typeset(i, held, savedId, title, pushed);
     })
   );
   return items.map((it) => ({ ...it }));

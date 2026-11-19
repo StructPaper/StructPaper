@@ -169,6 +169,8 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
   const extensions = useMemo(
     () => [
       StarterKit.configure({
+        // the paper has one undo history for every tab (see useEditorHistory); a second one here would disagree with it
+        undoRedo: false,
         heading: false,
         codeBlock: false,
         bulletList: false,

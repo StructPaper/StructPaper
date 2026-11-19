@@ -1,3 +1,4 @@
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import type { CompletePaper } from '@/types/paper';
 
 /**
@@ -22,6 +23,8 @@ export interface BatchItem {
   title?: string;
   /** Journal template this paper was made with (abbreviation), e.g. 'HS'. */
   journalAbbv?: string;
+  /** Names of the people who uploaded a paper with this title before (it was renamed "Title (n)"). */
+  duplicateOf?: string[];
   /** Import checks (same rules as the single-file import gate). */
   errors: number;
   warnings: number;
@@ -41,6 +44,8 @@ export interface BatchDeps {
   parse(file: File): Promise<CompletePaper>;
   /** Titles already in use (so new papers get "Title (1)" instead of duplicates). */
   existingTitles(): Promise<string[]>;
+  /** Papers already uploaded with this title (any user), with who uploaded them. Optional. */
+  findDuplicates?(title: string): Promise<Array<{ title: string; uploaderName: string; mine: boolean }>>;
   /** Persist locally; false = failed. */
   save(paper: CompletePaper): Promise<boolean>;
   /** Read a saved paper back (so a paper waiting for a typesetting slot need not stay in memory). */
@@ -60,7 +65,10 @@ export interface BatchOptions {
   /** Template for every file that has no entry in `journals`. */
   journal: BatchJournal;
   /** Template per file (same order as `files`); a file may use a different journal than the others. */
-  journals?: BatchJournal[];
+  /** null = automatic: the journal the file states, else `journal`. */
+  journals?: Array<BatchJournal | null>;
+  /** Journals an automatic choice may pick from (the server's list); built-in when absent. */
+  catalog?: ManagedJournalProfile[];
   deps: BatchDeps;
   /** Word files read at the same time (browser CPU). Default 2. */
   parseLimit?: number;

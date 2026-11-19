@@ -1,5 +1,6 @@
 import { Document, Packer, Paragraph, SectionType, type ISectionOptions } from 'docx';
 import type { CompletePaper, PaperMetadata } from '@/types/paper';
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { resolveTheme } from './theme-config';
 import { getJournalTemplate } from './templates';
 import { hasPublicationValue, resolvePublication, UNKNOWN } from './publication';
@@ -136,7 +137,7 @@ export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOp
   const vi = frontMatterFor(paper, 'vi');
   const firstPage = parseInt(pub.firstPage, 10);
   const page = pageFor(false);
-  const ls = paper.layoutSettings;
+  const ls = resolvePaperLayout(paper);
 
   const segments = buildBody(paper.sections || [], paper.references || [], {
     theme,

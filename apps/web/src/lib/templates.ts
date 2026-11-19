@@ -1,6 +1,11 @@
+import { getRemoteJournalTier, remoteJournalKeys, type JournalTierProfile } from '@structpaper/journal-profiles';
 import { JournalTemplate } from '@/types/paper';
 
 /**
+ * What the app ships with, used where the server has not published anything (offline, first start).
+ * Read journals through findJournalTemplate / getJournalTemplate / listJournalTemplates: they prefer what
+ * the server published, so a journal an admin adds or edits is honoured by the parser and the PDF writer.
+ *
  * Official VNUHCM Journal Profiles and Precise Brand Colors
  * Extracted and calibrated directly against the production publication sample PDFs in:
  * "Yêu cầu phần mềm, Template, các file mẫu của Tạp chí"
@@ -81,7 +86,7 @@ export const JOURNAL_TEMPLATES: Record<string, JournalTemplate> = {
     name: 'Tạp chí Phát triển Khoa học & Công nghệ – Kỹ thuật & Công nghệ',
     shortName: 'Sci. Tech. Dev. J. - Eng. Tech.',
     publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
-    color: '#0F4761', // Official Steel Blue/Dark Slate RGB(15, 71, 97) - Verified in ET ID1563.pdf
+    color: '#000000', // The ET sample PDF (ET ID1563) has no brand colour: title, headings and rules are plain black
     accentColor: '#F8AB60',
     issn: '2588-1205',
     headerText: 'Tạp chí Phát triển KH&CN – Kỹ thuật & Công nghệ',
@@ -118,12 +123,57 @@ export const JOURNAL_TEMPLATES: Record<string, JournalTemplate> = {
   },
 };
 
+/** "VNUHCM-HS" / "vnuhcm_hs" / "hs" -> "hs"; the old STDJ names mean the standard journal. */
+export function journalKeyOf(journalId: string): string {
+  const key = journalId.trim().toLowerCase().replace(/^vnuhcm[-_ ]/, '');
+  return key === 'stdj' || key === 'jst' ? 'std' : key;
+}
+
+const builtInTemplate = (key: string): JournalTemplate | undefined =>
+  JOURNAL_TEMPLATES[`VNUHCM-${key.toUpperCase()}`];
+
+/** What the server published for the journal (name, code, colour and print details) as a template. */
+function templateFromTier(key: string, tier: JournalTierProfile, fallback?: JournalTemplate): JournalTemplate {
+  const p = tier.publication ?? {};
+  const code = tier.names?.short || fallback?.id || `VNUHCM-${key.toUpperCase()}`;
+  const color = tier.color || fallback?.color || '#000099';
+  return {
+    id: fallback?.id ?? code,
+    name: p.name || tier.names?.vi || fallback?.name || code,
+    shortName: p.shortName || fallback?.shortName || code,
+    publisher: p.publisher || fallback?.publisher || 'ĐHQG TP.HCM / VNU-HCM Press',
+    color,
+    accentColor: p.accentColor || fallback?.accentColor || color,
+    issn: p.issn ?? fallback?.issn,
+    eIssn: p.eIssn ?? fallback?.eIssn,
+    headerText: p.headerText || tier.names?.en || fallback?.headerText || code,
+    officialNameEn: p.officialNameEn ?? fallback?.officialNameEn,
+    officialAbbvEn: p.officialAbbvEn ?? fallback?.officialAbbvEn,
+    doiPrefix: p.doiPrefix ?? fallback?.doiPrefix,
+  };
+}
+
+/** The journal's template, or undefined for a journal nobody knows. The server's published rules win over the built-ins. */
+export function findJournalTemplate(journalId?: string | null): JournalTemplate | undefined {
+  if (!journalId) return undefined;
+  const direct = JOURNAL_TEMPLATES[journalId];
+  const key = journalKeyOf(journalId);
+  const tier = getRemoteJournalTier(key);
+  const builtIn = direct ?? builtInTemplate(key);
+  if (tier) return templateFromTier(key, tier, builtIn);
+  return builtIn;
+}
+
 export function getJournalTemplate(journalId?: string): JournalTemplate {
-  if (journalId && JOURNAL_TEMPLATES[journalId]) {
-    return JOURNAL_TEMPLATES[journalId];
-  }
-  // Try normalizations (e.g. VNUHCM-STD <-> VNUHCM-STDJ)
-  if (journalId === 'VNUHCM-STD') return JOURNAL_TEMPLATES['VNUHCM-STD'];
-  if (journalId === 'VNUHCM-STDJ') return JOURNAL_TEMPLATES['VNUHCM-STDJ'];
-  return JOURNAL_TEMPLATES['VNUHCM-HS'];
+  return findJournalTemplate(journalId) ?? findJournalTemplate('VNUHCM-HS')!;
+}
+
+/** Every journal the app knows: the built-ins plus those the server published (a journal added by an admin). */
+export function listJournalTemplates(): JournalTemplate[] {
+  const builtIns = Object.values(JOURNAL_TEMPLATES).map((t) => findJournalTemplate(t.id)!);
+  const known = new Set(Object.keys(JOURNAL_TEMPLATES).map(journalKeyOf));
+  const added = remoteJournalKeys()
+    .filter((key) => !known.has(key))
+    .map((key) => findJournalTemplate(`VNUHCM-${key.toUpperCase()}`)!);
+  return [...builtIns, ...added];
 }
