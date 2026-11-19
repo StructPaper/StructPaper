@@ -56,6 +56,9 @@ COPY --from=builder /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.ya
 COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/package.json /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder /app/apps/api/src ./apps/api/src
+# Logos and badges of the PDF header/footer (open-access, check-update, press logo). The compile service copies
+# them next to the .tex file; without this folder the PDF silently loses them (the template guards with \IfFileExists).
+COPY --from=builder /app/apps/api/resources ./apps/api/resources
 
 RUN pnpm install --prod --frozen-lockfile
 
