@@ -34,6 +34,7 @@ import { JournalLayoutTab } from './tabs/JournalLayoutTab';
 import { JournalPublicationTab } from './tabs/JournalPublicationTab';
 import { ResizableSplitLayout, LivePreviewPane, useEditorCompilation } from '@/features/editor';
 import { generateSamplePaperForJournal } from '@/lib/templates/sample-template-paper';
+import { templateFromProfile } from '@/lib/templates';
 import { CompletePaper } from '@/types/paper';
 
 interface JournalDetailEditorProps {
@@ -93,6 +94,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     [shown.profile]
   );
   const [livePaper, setLivePaper] = useState<CompletePaper>(samplePaper);
+  const shownTemplate = useMemo(() => templateFromProfile(shown.profile as any), [shown.profile]);
 
   const {
     compiledPdfUrl,
@@ -106,6 +108,8 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     paper: livePaper,
     formData: livePaper,
     onUpdatePaper: setLivePaper,
+    // the preview is typeset with the rules on screen (names, colour, print details), saved or not
+    latexTemplate: shownTemplate,
   });
 
   // Tách biệt logic quản lý lưu, xác nhận và khôi phục template sang custom hook

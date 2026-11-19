@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CompletePaper } from '@/types/paper';
+import { CompletePaper, JournalTemplate } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { exportToLatex } from '@/lib/exporters';
 import {
@@ -33,6 +33,8 @@ export interface UseEditorCompilationOptions {
   autoCompile?: boolean;
   /** Keep the server copy of the PDF up to date for readers (editors only; default on). */
   publishPreview?: boolean;
+  /** Typeset with this journal template instead of the registered one (the Template editor's preview of unsaved rules). */
+  latexTemplate?: JournalTemplate;
 }
 
 export function useEditorCompilation({
@@ -46,7 +48,10 @@ export function useEditorCompilation({
   debounceMs = 500,
   autoCompile = true,
   publishPreview = true,
+  latexTemplate,
 }: UseEditorCompilationOptions) {
+  const latexTemplateRef = useRef(latexTemplate);
+  latexTemplateRef.current = latexTemplate;
   // The language the PDF is laid out in is chosen in the title bar.
   const { pdfLanguage } = useEditorSession();
   const isDefaultHs630 =
@@ -195,7 +200,7 @@ export function useEditorCompilation({
         setIsCompilingPdf(true);
         setCompileStartedAt(Date.now());
         setCompileErrorInfo(null);
-        const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage });
+        const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
         const images = await extractPaperImagesAsync(paperToCompile);
 
         const scheduler = ensureInfra();

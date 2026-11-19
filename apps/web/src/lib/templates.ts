@@ -153,6 +153,15 @@ function templateFromTier(key: string, tier: JournalTierProfile, fallback?: Jour
   };
 }
 
+/**
+ * The template a journal profile that is still being edited would give: its names, colour and print details
+ * (what the Template editor's preview is typeset with, before anything is saved or published).
+ */
+export function templateFromProfile(profile: JournalTierProfile): JournalTemplate {
+  const key = journalKeyOf(profile.id || '');
+  return templateFromTier(key, profile, builtInTemplate(key));
+}
+
 /** The journal's template, or undefined for a journal nobody knows. The server's published rules win over the built-ins. */
 export function findJournalTemplate(journalId?: string | null): JournalTemplate | undefined {
   if (!journalId) return undefined;

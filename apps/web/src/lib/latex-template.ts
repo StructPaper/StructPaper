@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { CompletePaper, LayoutSettings } from '@/types/paper';
+import { CompletePaper, LayoutSettings, JournalTemplate } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { getJournalTemplate } from './templates';
 import { resolveTheme, hexToRgb as themeHexToRgb } from './theme-config';
@@ -83,6 +83,11 @@ export interface LatexOptions {
    * labels (first page, references). The closing summary page is then printed in the OTHER language.
    */
   primaryLanguage?: PageLanguage;
+  /**
+   * Typeset with this template (names, colour, official cite names) instead of the journal's registered one: the Template editor
+   * previews the rules being edited, which nobody has saved or published yet.
+   */
+  template?: JournalTemplate;
 }
 
 export function generateFullJournalLatex(paper: CompletePaper, customSettings?: LayoutSettings, options: LatexOptions = {}): string {
@@ -90,7 +95,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   const lang: PageLanguage = options.primaryLanguage ?? 'vi';
   const en = lang === 'en';
   const labels = labelsFor(lang);
-  const tmpl = getJournalTemplate(metadata.journalId);
+  const tmpl = options.template ?? getJournalTemplate(metadata.journalId);
   const customColor = (customSettings as any)?.color || (paper as any)?.color || (metadata as any)?.journalColor;
   const journalColor = customColor || tmpl.color;
 
