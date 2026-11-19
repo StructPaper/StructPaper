@@ -83,7 +83,8 @@ Desktop.ini
 # Downloaded JATS DTD (run scripts/jats/fetch-dtd.py)
 scripts/jats/dtd/
 
-# --- Fonts baked into API image (licensed, not committed) ---
-docker/fonts/*
-!docker/fonts/README.md
-!docker/fonts/SourceSans3-*.ttf
+# --- Fonts baked into the api/worker images ---
+# They ARE committed (docker/fonts): CI builds the images from a git checkout, and without these fonts the
+# LaTeX template cannot find its main font and every compile fails. Only OS junk is ignored.
+docker/fonts/Thumbs.db
+docker/fonts/Desktop.ini
