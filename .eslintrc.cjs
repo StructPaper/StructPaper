@@ -25,6 +25,7 @@ const ignoredFilePatterns = [
   '**/*.spec.*',
   '**/fixtures/**',
   '**/*.generated.*',
+  '**/generated/**',
   ...allowlistGlobs,
 ];
 
@@ -52,6 +53,7 @@ module.exports = {
     'public/',
     'playwright-report/',
     'test-results/',
+    '**/generated/**',
   ],
   overrides: [
     // Pure logic: packages/*/src/**/*.ts and apps/web/src/**/*.ts

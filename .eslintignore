@@ -12,3 +12,4 @@ scratch*
 public/
 playwright-report/
 test-results/
+**/generated/**
