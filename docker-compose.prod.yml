@@ -22,6 +22,12 @@ networks:
     external: true
     name: infra
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
 x-app-env: &app-env
   NODE_ENV: production
   DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the env file}
@@ -38,20 +44,33 @@ services:
     networks: [default, infra]
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the env file}
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:?set INITIAL_ADMIN_EMAIL in the env file}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?set INITIAL_ADMIN_PASSWORD in the env file}
+      RUN_SEED: ${RUN_SEED:-false}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@structpaper.org}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     command: >
       /bin/sh -c "
-      apk add --no-cache postgresql-client >/dev/null &&
       (psql \"$$DATABASE_URL\" -c 'CREATE EXTENSION IF NOT EXISTS citext' -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm' -c 'CREATE EXTENSION IF NOT EXISTS unaccent' || echo 'WARN: could not create extensions (need superuser?)') &&
       pnpm --filter @structpaper/db migrate &&
-      pnpm --filter @structpaper/db seed
+      if [ \"$$RUN_SEED\" = 'true' ]; then
+        echo '[db-init] Running database seed...' &&
+        pnpm --filter @structpaper/db seed;
+      else
+        echo '[db-init] Skipping seed (RUN_SEED is not true)';
+      fi
       "
 
   api:
     image: ${API_IMAGE:?set API_IMAGE in the env file}
     init: true # reaps finished compiler processes (no zombies)
     restart: always
+    init: true
+    logging: *default-logging
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3001/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
     networks: [default, infra]
     ports:
       - '${BIND_ADDR:-127.0.0.1}:${API_PORT:-3001}:3001'
@@ -64,7 +83,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
       COMPILE_TIMEOUT_MS: ${COMPILE_TIMEOUT_MS:-300000}
     volumes:
-      - tectonic_cache:/root/.cache/Tectonic
+      - tectonic_cache_node:/home/node/.cache/Tectonic
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -72,9 +91,13 @@ services:
   worker:
     image: ${WORKER_IMAGE:?set WORKER_IMAGE in the env file}
     restart: always
+    init: true
+    logging: *default-logging
     networks: [default, infra]
     environment:
       <<: *app-env
+    volumes:
+      - tectonic_cache_node:/home/node/.cache/Tectonic
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -82,16 +105,26 @@ services:
   web:
     image: ${WEB_IMAGE:?set WEB_IMAGE in the env file}
     restart: always
+    logging: *default-logging
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks: [default]
     ports:
       - '${BIND_ADDR:-127.0.0.1}:${WEB_PORT:-3000}:3000'
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Note: next.config.mjs rewrites() are baked during docker build. Kept here for runtime route handlers.
       INTERNAL_API_URL: http://api:3001
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
 
+# Renamed from tectonic_cache: the old volume is root-owned and not writable by the non-root user.
+# The old volume can be removed after rollout: docker volume rm <project>_tectonic_cache
 volumes:
-  tectonic_cache:
+  tectonic_cache_node:
