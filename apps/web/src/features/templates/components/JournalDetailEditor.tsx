@@ -315,7 +315,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         isDirty={isDirty}
         saveSuccess={saveSuccess}
         readOnly={!canEdit || isViewingOld}
-        onBack={() => guard.guardedPush('/templates')}
+        onBack={() => guard.guardedBack('/templates')}
       />
 
       {/* Main Workspace Area */}
@@ -324,7 +324,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         <div className="flex sm:hidden flex-shrink-0 items-center justify-between p-1.5 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200">
           <button
             type="button"
-            onClick={() => guard.guardedPush('/templates')}
+            onClick={() => guard.guardedBack('/templates')}
             aria-label="Quay lại danh mục tạp chí"
             className="p-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 font-bold text-xs flex items-center gap-1 shadow-2xs"
             title="Quay lại danh mục tạp chí"

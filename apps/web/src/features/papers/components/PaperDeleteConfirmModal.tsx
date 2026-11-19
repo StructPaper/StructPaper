@@ -25,6 +25,8 @@ export const PaperDeleteConfirmModal: React.FC<PaperDeleteConfirmModalProps> = (
   isDeleting = false,
 }) => {
   const [cachedPaper, setCachedPaper] = useState<ManuscriptRecord | null>(paper);
+  // the button spins from the click until the paper is really in the trash; only then the modal closes (and the caller's toast shows)
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (paper) {
@@ -55,19 +57,27 @@ export const PaperDeleteConfirmModal: React.FC<PaperDeleteConfirmModalProps> = (
   return (
     <ActionConfirmModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!busy) onClose();
+      }}
       onConfirm={async () => {
-        await onConfirm(info.id);
+        if (busy) return;
+        setBusy(true);
+        try {
+          await onConfirm(info.id);
+        } finally {
+          setBusy(false);
+        }
         onClose();
       }}
       variant="danger"
       title="Xóa bài báo này?"
       previewCard={previewCard}
-      description="Bài báo và toàn bộ dữ liệu cấu trúc bản thảo liên quan sẽ bị xóa khỏi máy của bạn. Bạn không thể hoàn tác hành động này."
+      description="Bài báo sẽ được chuyển vào Thùng rác. Bạn (hoặc quản lý tạp chí) có thể khôi phục nó trong thời gian lưu giữ (mặc định 30 ngày); sau đó nó bị xóa vĩnh viễn cùng toàn bộ lịch sử phiên bản. Bản thảo chỉ nằm trên máy của bạn thì bị xóa luôn."
       cancelLabel="Hủy"
       confirmLabel="Xóa bài báo"
       confirmIcon={<Trash2 className="w-4 h-4" />}
-      isLoading={isDeleting}
+      isLoading={isDeleting || busy}
       testId="paper-delete-modal"
       confirmTestId="confirm-delete-btn"
     />

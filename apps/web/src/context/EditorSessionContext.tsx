@@ -66,6 +66,19 @@ export interface EditorHistoryState {
   redo: () => void;
 }
 
+/** The title bar on a deleted paper's page in the trash: when it was deleted, how long it stays, and what can be done with it. */
+export interface TrashBarState {
+  deletedAt: string;
+  deletedBy?: string;
+  daysLeft: number;
+  busy: boolean;
+  /** The restore is running (its icon spins). */
+  restoring?: boolean;
+  /** Absent when the server does not allow the action for this person. */
+  onRestore?: () => void;
+  onPurge?: () => void;
+}
+
 /** The title bar on a paper's history page: the paper's title and the way back to the editor. */
 export interface PaperHistoryBarState {
   title: string;
@@ -94,6 +107,8 @@ export interface EditorSessionContextValue {
   setHistory: (state: EditorHistoryState | null) => void;
   paperHistoryBar: PaperHistoryBarState | null;
   setPaperHistoryBar: (state: PaperHistoryBarState | null) => void;
+  trashBar: TrashBarState | null;
+  setTrashBar: (state: TrashBarState | null) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -115,6 +130,8 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   setHistory: () => {},
   paperHistoryBar: null,
   setPaperHistoryBar: () => {},
+  trashBar: null,
+  setTrashBar: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -133,6 +150,7 @@ export function EditorSessionProvider({
   const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
   const [history, setHistory] = useState<EditorHistoryState | null>(null);
   const [paperHistoryBar, setPaperHistoryBar] = useState<PaperHistoryBarState | null>(null);
+  const [trashBar, setTrashBar] = useState<TrashBarState | null>(null);
 
   useEffect(() => {
     try {
@@ -212,8 +230,10 @@ export function EditorSessionProvider({
       setHistory,
       paperHistoryBar,
       setPaperHistoryBar,
+      trashBar,
+      setTrashBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar, trashBar]
   );
 
   return (

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { FolderArchive, BookOpen, ShieldCheck, User } from 'lucide-react';
+import { FolderArchive, BookOpen, ShieldCheck, Trash2, User } from 'lucide-react';
 import type { Capability } from '@structpaper/contracts';
 import type { Access } from '@/lib/access';
 
@@ -48,6 +48,15 @@ export const MAIN_NAV: NavItem[] = [
     description: 'Quản lý vai trò & thành viên',
     icon: ShieldCheck,
     activeOn: ['/permissions'],
+  },
+  {
+    // Everybody has a trash: what they deleted waits here before it is removed for good. Journal managers also see (and restore)
+    // what others deleted in their journals.
+    path: '/trash',
+    label: 'Thùng rác',
+    description: 'Khôi phục bài báo đã xóa',
+    icon: Trash2,
+    activeOn: ['/trash'],
   },
 ];
 

@@ -390,6 +390,7 @@ export const PublicationPreview: React.FC<PublicationPreviewProps> = ({
         <div className="w-full h-[900px] border border-gray-200 rounded-xl overflow-hidden bg-gray-100 shadow-inner">
           {compiledPdfUrl ? (
             <iframe
+              key={compiledPdfUrl}
               src={`${compiledPdfUrl}#toolbar=1`}
               className="w-full h-full border-none"
               title="XeLaTeX Compiled PDF"

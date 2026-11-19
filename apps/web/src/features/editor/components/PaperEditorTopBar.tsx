@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useGoBack, isHistoryPage } from '@/lib/app-history';
 import { CompletePaper } from '@/types/paper';
 import { UniversalTemplateSchema } from '@/types/template-builder';
 import {
@@ -38,10 +38,10 @@ export const PaperEditorTopBar: React.FC<PaperEditorTopBarProps> = ({
   onSave,
   onDownloadTypst,
 }) => {
-  const router = useRouter();
+  const goBack = useGoBack();
 
   const handleBack = () => {
-    router.push('/papers');
+    goBack('/papers', isHistoryPage);
   };
 
   return (

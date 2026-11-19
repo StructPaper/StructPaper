@@ -20,6 +20,8 @@ export const CAPABILITIES = {
   'journal:manage': 'Manage journals and templates',
   /** Read every manuscript (so the public library / shared-with-me shortcuts are not needed). */
   'manuscript:read_all': 'Read all manuscripts',
+  /** The trash of everybody's papers (not only your own): restore them and delete for good. Journal managers and above. */
+  'trash:manage': "Manage everybody's deleted manuscripts and delete them for good",
 } as const;
 
 export type Capability = keyof typeof CAPABILITIES;

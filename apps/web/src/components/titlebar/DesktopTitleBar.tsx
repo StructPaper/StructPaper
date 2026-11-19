@@ -7,7 +7,7 @@ import { useCapabilities } from '@structpaper/platform';
 import { useStorage } from '@/context/StorageContext';
 import { useEditorSession } from '@/context/EditorSessionContext';
 import { formatLocalOnlyTooltip } from '@/lib/editor/save-status';
-import { isEditorTitleBarRoute, isJournalDetailRoute, isPaperHistoryRoute } from './titlebar-routes';
+import { isEditorTitleBarRoute, isJournalDetailRoute, isPaperHistoryRoute, isTrashPreviewRoute } from './titlebar-routes';
 import { useWindowDrag } from './useWindowDrag';
 import { AppLogoMark } from './AppLogoMark';
 import { AutoSaveToggle } from './AutoSaveToggle';
@@ -19,6 +19,7 @@ import { PdfLanguageSelect } from './PdfLanguageSelect';
 import { CompileActivityPill } from './CompileActivityPill';
 import { UndoRedoButtons } from './UndoRedoButtons';
 import { PaperHistoryTitleBarInfo, PaperHistorySaveButton } from './PaperHistoryTitleBarInfo';
+import { TrashTitleBarInfo, TrashTitleBarActions } from './TrashTitleBarInfo';
 import { JournalTitleBarInfo, JournalHistoryButton } from './JournalTitleBarInfo';
 import { PaperProfileInfoButton } from '@/features/journals/components/PaperProfileInfoButton';
 
@@ -42,6 +43,7 @@ export const DesktopTitleBar: React.FC = () => {
   const isEditorRoute = isEditorTitleBarRoute(pathname);
   const isJournalRoute = isJournalDetailRoute(pathname);
   const isHistoryRoute = isPaperHistoryRoute(pathname);
+  const isTrashRoute = isTrashPreviewRoute(pathname);
   const readOnly = Boolean(documentSession?.readOnly);
   const canEditHere = isEditorRoute && !readOnly;
   const isLocalOnly =
@@ -60,10 +62,11 @@ export const DesktopTitleBar: React.FC = () => {
       className={`fixed top-0 left-0 right-0 z-[100005] h-[38px] w-full bg-gray-200/80 backdrop-blur-sm flex items-center justify-between pl-3 ${isDesktop ? 'pr-0' : 'pr-3'} select-none`}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <AppLogoMark showWordmark={!isEditorRoute && !isJournalRoute && !isHistoryRoute} />
+        <AppLogoMark showWordmark={!isEditorRoute && !isJournalRoute && !isHistoryRoute && !isTrashRoute} />
 
         {isJournalRoute && <JournalTitleBarInfo />}
         {isHistoryRoute && <PaperHistoryTitleBarInfo />}
+        {isTrashRoute && <TrashTitleBarInfo />}
 
         {isEditorRoute && (
           <>
@@ -151,6 +154,7 @@ export const DesktopTitleBar: React.FC = () => {
         )}
 
         {isHistoryRoute && <PaperHistorySaveButton />}
+        {isTrashRoute && <TrashTitleBarActions />}
         {isEditorRoute && <ShareManuscriptButton manuscriptId={documentSession?.paperId} />}
         {isEditorRoute && <PaperProfileInfoButton />}
       </div>

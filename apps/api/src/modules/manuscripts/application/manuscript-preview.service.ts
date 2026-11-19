@@ -6,7 +6,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { manuscripts, eq } from '@structpaper/db';
+import { manuscripts, eq, and, isNull } from '@structpaper/db';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
 import { StorageService } from '../../assets/domain/storage.service';
 
@@ -52,7 +52,7 @@ export class ManuscriptPreviewService {
   }
 
   private async find(id: string) {
-    const [row] = await this.db.select().from(manuscripts).where(eq(manuscripts.id, id)).limit(1);
+    const [row] = await this.db.select().from(manuscripts).where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt))).limit(1);
     if (!row) throw new NotFoundException(`Manuscript with ID ${id} not found`);
     return row;
   }

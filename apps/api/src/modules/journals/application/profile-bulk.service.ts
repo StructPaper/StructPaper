@@ -15,6 +15,8 @@ import {
   users,
   auditLogs,
   eq,
+  and,
+  isNull,
   inArray,
   type DbClient,
 } from '@structpaper/db';
@@ -62,7 +64,7 @@ export class ProfileBulkService {
       throw new ForbiddenException('Incorrect password');
     }
 
-    const papers = await db.select().from(manuscripts).where(eq(manuscripts.journalId, journal.id));
+    const papers = await db.select().from(manuscripts).where(and(eq(manuscripts.journalId, journal.id), isNull(manuscripts.deletedAt)));
     const typeIds = [...new Set(papers.map((p) => p.articleTypeId).filter((v): v is string => Boolean(v)))];
     const typeRows = typeIds.length ? await db.select().from(articleTypes).where(inArray(articleTypes.id, typeIds)) : [];
     const codeById = new Map(typeRows.map((t) => [t.id, t.code]));

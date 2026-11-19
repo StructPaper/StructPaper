@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useGoBack, isHistoryPage } from '@/lib/app-history';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
 import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
@@ -75,6 +76,7 @@ interface UnifiedEditorViewProps {
 export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onUpdatePaper }) => {
   const { currentJournal, setCurrentJournal, setPaper } = usePaper();
   const router = useRouter();
+  const goBack = useGoBack();
   const storage = useStorage();
   const { savePaper, loadPaper } = usePaperStorage();
   const [formData, setFormData] = useState<CompletePaper>(() => JSON.parse(JSON.stringify(paper)));
@@ -308,20 +310,20 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     if (isDirty) {
       setIsExitWarningOpen(true);
     } else {
-      router.push('/papers');
+      goBack('/papers', isHistoryPage);
     }
-  }, [isDirty, router]);
+  }, [isDirty, goBack]);
 
   const handleConfirmSaveAndExit = useCallback(async () => {
     if (!(await handleSave())) return;
     setIsExitWarningOpen(false);
-    router.push('/papers');
-  }, [handleSave, router]);
+    goBack('/papers', isHistoryPage);
+  }, [handleSave, goBack]);
 
   const handleDiscardAndExit = useCallback(() => {
     setIsExitWarningOpen(false);
-    router.push('/papers');
-  }, [router]);
+    goBack('/papers', isHistoryPage);
+  }, [goBack]);
 
   // Handler for updating paper workflow status
   const handleUpdateWorkflowStatus = useCallback(

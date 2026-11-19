@@ -16,6 +16,7 @@ import {
   outboxEvents,
   eq,
   and,
+  isNull,
   gt,
   desc,
   asc,
@@ -391,7 +392,7 @@ export class SyncService {
     }
 
     if (this.db.select) {
-      const rows = await this.db.select().from(manuscripts).where(eq(manuscripts.id, id)).limit(1);
+      const rows = await this.db.select().from(manuscripts).where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt))).limit(1);
       return rows[0] || null;
     }
 

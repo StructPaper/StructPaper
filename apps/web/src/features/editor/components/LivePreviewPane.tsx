@@ -260,7 +260,9 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
               onLoadError={() => setViewerFailed(true)}
             />
           ) : compiledPdfUrl ? (
+            // keyed by the PDF: changing an iframe's src adds an entry to the browser history (one more "back" per recompile); a new iframe does not
             <iframe
+              key={compiledPdfUrl}
               src={`${compiledPdfUrl}#toolbar=1&navpanes=0`}
               className="w-full h-full border-none"
               title="XeLaTeX Compiled PDF Live Preview"

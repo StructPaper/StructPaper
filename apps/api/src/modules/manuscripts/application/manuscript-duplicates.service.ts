@@ -1,5 +1,5 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
-import { manuscripts, users, eq, ilike, asc } from '@structpaper/db';
+import { manuscripts, users, eq, and, isNull, ilike, asc } from '@structpaper/db';
 
 export interface TitleDuplicate {
   title: string;
@@ -45,7 +45,7 @@ export class ManuscriptDuplicatesService {
       })
       .from(manuscripts)
       .leftJoin(users, eq(manuscripts.createdBy, users.id))
-      .where(ilike(manuscripts.title, `${escaped}%`))
+      .where(and(ilike(manuscripts.title, `${escaped}%`), isNull(manuscripts.deletedAt)))
       .orderBy(asc(manuscripts.createdAt))
       .limit(100);
 

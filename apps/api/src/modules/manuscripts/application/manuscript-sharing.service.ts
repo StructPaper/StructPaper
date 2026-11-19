@@ -6,7 +6,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { manuscripts, manuscriptMembers, manuscriptVisits, users, eq, and, ne, or, ilike, asc } from '@structpaper/db';
+import { manuscripts, manuscriptMembers, manuscriptVisits, users, eq, and, isNull, ne, or, ilike, asc } from '@structpaper/db';
 import type { AddManuscriptMember, GeneralAccess } from '@structpaper/contracts';
 import { subject, type AppAbility } from '../../access/domain/ability.factory';
 import { AbilityCacheService } from '../../access/domain/ability-cache.service';
@@ -156,7 +156,7 @@ export class ManuscriptSharingService {
   }
 
   private async find(id: string) {
-    const [row] = await this.db.select().from(manuscripts).where(eq(manuscripts.id, id)).limit(1);
+    const [row] = await this.db.select().from(manuscripts).where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt))).limit(1);
     if (!row) throw new NotFoundException(`Manuscript with ID ${id} not found`);
     return row;
   }

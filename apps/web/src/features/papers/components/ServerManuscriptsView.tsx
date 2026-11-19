@@ -120,7 +120,7 @@ export const ServerManuscriptsView: React.FC<ServerManuscriptsViewProps> = ({
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa bài báo này không? Thao tác này sẽ xóa trên cả máy chủ và máy bạn.')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa bài báo này không? Bài báo sẽ được chuyển vào Thùng rác, quản lý tạp chí có thể khôi phục trong thời gian lưu giữ.')) {
       await deletePaper(id);
       refetch();
     }

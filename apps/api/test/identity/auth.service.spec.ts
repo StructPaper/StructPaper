@@ -451,7 +451,7 @@ describe('Identity & User Management', () => {
         { roleName: 'Author', scopeJournalId: null, scopeJournalName: null },
       ]);
       // what the UI may show: derived from the roles by the same rules the guards use
-      expect(profile.capabilities).toEqual(['member:manage', 'role:assign']);
+      expect(profile.capabilities).toEqual(['member:manage', 'role:assign', 'trash:manage']);
     });
   });
 

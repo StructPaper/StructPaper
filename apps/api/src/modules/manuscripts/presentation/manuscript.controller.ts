@@ -30,6 +30,10 @@ import {
   UpdateGeneralAccessSchema,
   PeopleSearchQuerySchema,
   CreateRevisionSchema,
+  TrashQuerySchema,
+  type TrashQuery,
+  TrashBulkSchema,
+  type TrashBulk,
   UpdateRevisionSchema,
   ListRevisionsQuerySchema,
   type CreateRevision,
@@ -52,6 +56,7 @@ import { ManuscriptSharingService } from '../application/manuscript-sharing.serv
 import { ManuscriptPreviewService } from '../application/manuscript-preview.service';
 import { ManuscriptDuplicatesService } from '../application/manuscript-duplicates.service';
 import { RevisionService } from '../application/revision.service';
+import { TrashService } from '../application/trash.service';
 
 /** Ids of papers that only exist on the user's machine (paper_123) are not UUIDs: answer 404, never a database error. */
 const ManuscriptIdPipe = {
@@ -81,6 +86,8 @@ export class ManuscriptController {
     private readonly duplicates?: ManuscriptDuplicatesService,
     @Inject(RevisionService)
     private readonly revisions?: RevisionService,
+    @Inject(TrashService)
+    private readonly trash?: TrashService,
   ) {}
 
   @Post()
@@ -113,6 +120,40 @@ export class ManuscriptController {
   @UsePipes(new ZodValidationPipe(DuplicateQuerySchema))
   async findDuplicates(@Query() query: { title: string }, @Req() req: any) {
     return this.duplicates!.findByTitle(query.title, req.user?.id);
+  }
+
+  // ---- the trash (everybody: what they deleted; journal managers: their journals' too); declared before ':id' so "trash" is not read as an id ----
+
+  @Get('trash')
+  async listTrash(@Query(new ZodValidationPipe(TrashQuerySchema)) query: TrashQuery, @Req() req: any) {
+    return this.trash!.list(query, await this.getAbility(req), req.user?.id);
+  }
+
+  /** Restores or deletes for good many at once; without ids: everything the caller sees in the trash. */
+  @Post('trash/bulk')
+  @HttpCode(HttpStatus.OK)
+  async bulkTrash(@Body(new ZodValidationPipe(TrashBulkSchema)) body: TrashBulk, @Req() req: any) {
+    return this.trash!.bulk(body.action, body.ids, await this.getAbility(req), req.user?.id);
+  }
+
+  /** One deleted paper with its content, read-only. */
+  @Get('trash/:id')
+  async getTrashed(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    return this.trash!.preview(id, await this.getAbility(req), req.user?.id);
+  }
+
+  /** Brings a deleted paper back. */
+  @Post('trash/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restoreFromTrash(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    return this.trash!.restore(id, await this.getAbility(req), req.user?.id);
+  }
+
+  /** Deletes a paper in the trash for good. */
+  @Delete('trash/:id')
+  @HttpCode(HttpStatus.OK)
+  async purgeFromTrash(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    return this.trash!.purge(id, await this.getAbility(req), req.user?.id);
   }
 
   /** Readable by guests when the owner shared it with "anyone with the link". */
@@ -154,7 +195,7 @@ export class ManuscriptController {
   @HttpCode(HttpStatus.OK)
   async delete(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
     const ability = await this.getAbility(req);
-    return this.manuscriptService.deleteManuscript(id, ability);
+    return this.manuscriptService.deleteManuscript(id, ability, req.user?.id);
   }
 
   /** Latest compiled PDF: readable by everybody who may read the paper, guests included. */

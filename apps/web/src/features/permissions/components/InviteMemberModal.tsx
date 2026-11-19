@@ -16,6 +16,7 @@ import { ModalPortal } from '@/components/modals/ModalPortal';
 import { sileo } from '@/components/toast';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { activationLinkOf } from '@/lib/absolute-link';
 import { usePermissionsPolicy } from '../access';
 import {
   apiErrorMessage,
@@ -125,11 +126,12 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
       });
 
       // Never invent a link: show exactly what the server issued, or fail loudly.
-      if (!result?.activationUrl) {
+      const link = activationLinkOf(result ?? {});
+      if (!link) {
         throw new Error('Máy chủ không trả về link kích hoạt.');
       }
 
-      setActivationUrl(result.activationUrl);
+      setActivationUrl(link);
       setExpiresAt(result.expiresAt ?? null);
       onInviteSuccess?.(result.user);
       await invalidateMembers();

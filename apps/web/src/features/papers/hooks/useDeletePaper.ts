@@ -29,8 +29,8 @@ export function useDeletePaper(options: UseDeletePaperOptions = {}) {
 
         if (options.showToast !== false) {
           sileo.info({
-            title: 'Đã xóa bài báo',
-            description: 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.',
+            title: 'Đã chuyển vào thùng rác',
+            description: 'Bạn có thể khôi phục bài báo này trong Thùng rác trong thời gian lưu giữ.',
           });
         }
 

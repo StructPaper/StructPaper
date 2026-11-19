@@ -28,6 +28,12 @@ export const canReadAllManuscripts = (ability: AppAbility): boolean =>
 
 export const canManageJournals = (ability: AppAbility): boolean => ability.can('create', 'Journal');
 
+/**
+ * Managing the trash of OTHER people: journal managers (of every journal, or of their own) and SuperAdmin. Both hold "manage" over
+ * manuscripts. Everybody else still has a trash of their own: the papers they deleted, which they can restore.
+ */
+export const canManageTrash = (ability: AppAbility): boolean => ability.can('manage', 'all') || ability.can('manage', 'Manuscript');
+
 /** One rule per capability: adding a key to CAPABILITIES without a rule does not compile. */
 export const CAPABILITY_RULES: Record<Capability, (ability: AppAbility) => boolean> = {
   'member:manage': canManageMembers,
@@ -35,6 +41,7 @@ export const CAPABILITY_RULES: Record<Capability, (ability: AppAbility) => boole
   'role:grant_superadmin': canGrantSuperAdmin,
   'journal:manage': canManageJournals,
   'manuscript:read_all': canReadAllManuscripts,
+  'trash:manage': canManageTrash,
 };
 
 /** The capabilities an ability grants (stable order, same as the catalogue). */
