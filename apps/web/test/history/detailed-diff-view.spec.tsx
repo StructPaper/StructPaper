@@ -149,12 +149,10 @@ describe('every setting of a block is covered, not only a table\'s or figure\'s'
     expect(blockSettingChanges({ id: 'q', type: 'paragraph', content: 'x' }, { id: 'q', type: 'quote', content: 'x' })[0]).toMatchObject({ to: 'Trích dẫn' });
   });
 
-  it('shows an equation\'s numbering and column span', () => {
+  it('shows an equation numbering, and no column setting (it follows the paper)', () => {
     const eq = (over: Record<string, any>) => ({ id: 'e1', type: 'equation', content: 'a=b', equation: { latex: 'a=b', numbered: true, ...over } });
-    expect(blockSettingChanges(eq({}), eq({ numbered: false, columnSpan: '2-column' }))).toEqual([
-      { label: 'Đánh số công thức', from: 'Có đánh số', to: 'Không đánh số' },
-      { label: 'Số cột của công thức', from: 'Trong 1 cột', to: 'Trải 2 cột' },
-    ]);
+    expect(blockSettingChanges(eq({}), eq({ numbered: false, columnSpan: '2-column' }))).toEqual([{ label: 'Đánh số công thức', from: 'Có đánh số', to: 'Không đánh số' }]);
+    expect(blockSettingChanges(eq({}), eq({ columnSpan: '2-column' }))).toEqual([]);
   });
 
   it('lists a changed heading type in the content tab', () => {

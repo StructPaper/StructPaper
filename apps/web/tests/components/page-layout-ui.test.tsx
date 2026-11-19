@@ -44,26 +44,12 @@ const eqSection = (extra: Partial<PaperSection> = {}): PaperSection => ({
   ...extra,
 });
 
-describe('EquationSectionItem column span', () => {
-  it('defaults to 1 column and switches to 2 columns', () => {
-    const onUpdate = vi.fn();
-    render(<EquationSectionItem sec={eqSection()} idx={3} onUpdateSection={onUpdate} />);
-    expect(screen.getByTestId('equation-span-1').getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByTestId('equation-span-2'));
-    expect(onUpdate).toHaveBeenCalledTimes(1);
-    const [idx, updated] = onUpdate.mock.calls[0];
-    expect(idx).toBe(3);
-    expect(updated.equation.columnSpan).toBe('2-column');
-    expect(updated.equation.latex).toBe('a=b');
-  });
-
-  it('reflects an existing 2-column span and can go back', () => {
-    const onUpdate = vi.fn();
-    const sec = eqSection({ equation: { latex: 'a=b', numbered: true, columnSpan: '2-column' } });
-    render(<EquationSectionItem sec={sec} idx={0} onUpdateSection={onUpdate} />);
-    expect(screen.getByTestId('equation-span-2').getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByTestId('equation-span-1'));
-    expect(onUpdate.mock.calls[0][1].equation.columnSpan).toBe('1-column');
+describe('EquationSectionItem', () => {
+  it('has no column setting: a formula follows the layout of the paper', () => {
+    render(<EquationSectionItem sec={eqSection()} idx={3} onUpdateSection={vi.fn()} />);
+    expect(screen.queryByTestId('equation-span')).toBeNull();
+    expect(screen.queryByTestId('equation-span-1')).toBeNull();
+    expect(screen.queryByTestId('equation-span-2')).toBeNull();
   });
 });
 

@@ -59,21 +59,6 @@ export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, i
         </p>
       )}
 
-      <div className="space-y-1" data-testid="equation-span">
-        <SegmentedOptions
-          ariaLabel="Độ rộng công thức"
-          value={eq.columnSpan ?? '1-column'}
-          onChange={(columnSpan) => update({ columnSpan })}
-          options={[
-            { value: '1-column', label: 'Trong 1 cột', testId: 'equation-span-1', title: 'Công thức nằm trong 1 cột, tự xuống dòng ở dấu + - = khi quá rộng' },
-            { value: '2-column', label: 'Trải 2 cột', testId: 'equation-span-2', title: 'Công thức trải ngang cả 2 cột, nằm trên một dòng liền mạch' },
-          ]}
-        />
-        <p className="text-[10px] text-zinc-500 leading-snug">
-          Trải 2 cột: công thức nằm trên một dòng liền mạch, như bảng/hình rộng
-        </p>
-      </div>
-
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700 cursor-pointer select-none">
           <input

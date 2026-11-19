@@ -29,13 +29,11 @@ const TYPE_LABELS: Record<string, string> = {
 /** The kind of a block as the editor names it ("Mục cấp 2 (H2)", "Đoạn văn"). */
 export const blockTypeLabel = (type: unknown): string => TYPE_LABELS[String(type)] ?? String(type ?? '—');
 
-const EQUATION_NAMES: Record<string, string> = { numbered: 'Đánh số công thức', columns: 'Số cột của công thức' };
+const EQUATION_NAMES: Record<string, string> = { numbered: 'Đánh số công thức' };
 
 function equationChips(eq: Json | undefined): SettingChip[] {
-  return [
-    { key: 'numbered', label: eq?.numbered ? 'Có đánh số' : 'Không đánh số', accent: eq?.numbered === false },
-    { key: 'columns', label: eq?.columnSpan === '2-column' ? 'Trải 2 cột' : 'Trong 1 cột', accent: eq?.columnSpan === '2-column' },
-  ];
+  // a formula has no column setting: it follows the paper's layout
+  return [{ key: 'numbered', label: eq?.numbered ? 'Có đánh số' : 'Không đánh số', accent: eq?.numbered === false }];
 }
 
 const TABLE_NAMES: Record<string, string> = {
