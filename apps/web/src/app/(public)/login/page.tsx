@@ -69,12 +69,6 @@ function LoginContent() {
     }
   }, []);
 
-  const handleQuickFillAdmin = () => {
-    setEmail('admin@structpaper.org');
-    setPassword('AdminPassword123!');
-    setErrorMessage(null);
-  };
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMessage(null);
@@ -157,18 +151,6 @@ function LoginContent() {
           </div>
         </div>
       )}
-
-      {/* Quick Fill Dev Helper */}
-      <div className="flex items-center justify-between pb-1">
-        <span className="text-xs text-zinc-500 font-medium">Tài khoản quản trị:</span>
-        <button
-          type="button"
-          onClick={handleQuickFillAdmin}
-          className="text-xs font-bold text-[#14532D] bg-[#D9F99D] hover:bg-[#bef264] px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
-        >
-          ⚡ Điền nhanh Admin
-        </button>
-      </div>
 
       {/* Form starts directly */}
       <form onSubmit={handleSubmit} className="space-y-4">
