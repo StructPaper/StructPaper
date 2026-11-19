@@ -83,6 +83,21 @@ export const JournalQcConfigSchema = z.object({
   weights: z.record(z.number()),
 });
 
+export const JournalPublicationSchema = z
+  .object({
+    name: z.string().optional(),
+    shortName: z.string().optional(),
+    publisher: z.string().optional(),
+    accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    issn: z.string().optional(),
+    eIssn: z.string().optional(),
+    headerText: z.string().optional(),
+    officialNameEn: z.string().optional(),
+    officialAbbvEn: z.string().optional(),
+    doiPrefix: z.string().optional(),
+  })
+  .passthrough();
+
 export const JournalProfileSchema = z
   .object({
     id: z.string().min(1),
@@ -98,6 +113,7 @@ export const JournalProfileSchema = z
     typography: JournalTypographyConfigSchema,
     latex: JournalLatexConfigSchema,
     qc: JournalQcConfigSchema,
+    publication: JournalPublicationSchema.optional(),
   })
   .passthrough();
 

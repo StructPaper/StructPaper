@@ -1,25 +1,42 @@
 'use client';
+import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createBatchDeps } from '@/lib/batch-import/default-deps';
 import { retryFailed, runBatchImport, initialItems } from '@/lib/batch-import/run-batch';
 import type { BatchDeps, BatchItem, BatchJournal } from '@/lib/batch-import/types';
+import { summarize } from '@/lib/batch-import/summary';
+import { batchActivity } from '@/lib/batch-import/activity';
+import { toast } from '@/components/toast';
+
+const TOAST_ID = 'batch-import-progress';
+
+/** One loading toast per run, updated as files finish: it stays visible after the dialog is closed. */
+function showProgress(items: BatchItem[]) {
+  const sum = summarize(items);
+  batchActivity.set({ total: sum.total, finished: sum.finished });
+  toast.loading(`Đang nhập ${sum.finished}/${sum.total} bài báo…`, 'Bạn có thể đóng hộp thoại, quá trình vẫn chạy ngầm.', { id: TOAST_ID, dismissible: false });
+}
 
 export interface UseBatchImportOptions {
   /** Called once when a run (or a retry) has finished or been cancelled, with the final items. */
   onFinished?: (items: BatchItem[]) => void;
   /** Dependencies; the real ones by default (tests pass fakes). */
   createDeps?: () => BatchDeps;
+  /** Journals an automatic template choice may pick from (the server's list). */
+  catalog?: ManagedJournalProfile[];
 }
 
 /** State around runBatchImport: progress for the UI, cancel, retry of the failed files. */
-export function useBatchImport({ onFinished, createDeps = createBatchDeps }: UseBatchImportOptions = {}) {
+export function useBatchImport({ onFinished, createDeps = createBatchDeps, catalog }: UseBatchImportOptions = {}) {
+  const catalogRef = useRef(catalog);
+  catalogRef.current = catalog;
   const [items, setItems] = useState<BatchItem[]>([]);
   const [running, setRunning] = useState(false);
   const [skipped, setSkipped] = useState(0);
   const filesRef = useRef<File[]>([]);
   const journalRef = useRef<BatchJournal | null>(null);
-  const journalsRef = useRef<BatchJournal[] | undefined>(undefined);
+  const journalsRef = useRef<Array<BatchJournal | null> | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
   const latestRef = useRef<BatchItem[]>([]);
   const finishedRef = useRef(onFinished);
@@ -40,6 +57,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
       try {
         final = await job(abortRef.current.signal, (it) => {
           latestRef.current = it;
+          showProgress(it);
           if (mounted.current) setItems(it);
         });
       } catch (e) {
@@ -51,6 +69,8 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
           setRunning(false);
         }
         abortRef.current = null;
+        batchActivity.set(null);
+        toast.dismiss(TOAST_ID);
         finishedRef.current?.(final);
       }
     },
@@ -58,7 +78,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
   );
 
   const start = useCallback(
-    (files: File[], journal: BatchJournal, skippedCount = 0, journals?: BatchJournal[]) => {
+    (files: File[], journal: BatchJournal, skippedCount = 0, journals?: Array<BatchJournal | null>) => {
       if (abortRef.current) return Promise.resolve(); // a run is already going
       filesRef.current = files;
       journalRef.current = journal;
@@ -66,7 +86,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
       setSkipped(skippedCount);
       latestRef.current = initialItems(files);
       setItems(latestRef.current);
-      return execute((signal, onUpdate) => runBatchImport({ files, journal, journals, deps: createDeps(), signal, onUpdate }));
+      return execute((signal, onUpdate) => runBatchImport({ files, journal, journals, catalog: catalogRef.current, deps: createDeps(), signal, onUpdate }));
     },
     [execute, createDeps]
   );
@@ -75,7 +95,7 @@ export function useBatchImport({ onFinished, createDeps = createBatchDeps }: Use
     const journal = journalRef.current;
     if (abortRef.current || !journal) return Promise.resolve();
     const prev = items;
-    return execute((signal, onUpdate) => retryFailed(prev, filesRef.current, { journal, journals: journalsRef.current, deps: createDeps(), signal, onUpdate }));
+    return execute((signal, onUpdate) => retryFailed(prev, filesRef.current, { journal, journals: journalsRef.current, catalog: catalogRef.current, deps: createDeps(), signal, onUpdate }));
   }, [execute, createDeps, items]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);

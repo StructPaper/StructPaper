@@ -5,10 +5,14 @@
  * OpenAPI 3.1 contract specification for StructPaper backend and automated client SDK.
  * OpenAPI spec version: 1.0.0
  */
+import type { ProfilePin } from './profilePin';
 import type { CreateManuscriptRequestMetadata } from './createManuscriptRequestMetadata';
 
 export interface CreateManuscriptRequest {
   journalId: string;
+  /** Code of one of the journal's article types */
+  articleType?: string;
+  profilePin?: ProfilePin;
   title: string;
   /** @nullable */
   abstract?: string | null;

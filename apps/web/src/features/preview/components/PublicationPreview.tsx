@@ -1,5 +1,6 @@
 'use client';
 
+import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import React, { useState, useEffect, useRef } from 'react';
 import { CompletePaper } from '@/lib/sample-papers';
 import { exportToLatex, generateLatexPackageZip } from '@/lib/exporters';
@@ -108,7 +109,7 @@ export const PublicationPreview: React.FC<PublicationPreviewProps> = ({
       setIsCompilingPdf(true);
       setCompileErrorInfo(null);
       const startTime = Date.now();
-      const texContent = exportToLatex(paper, paper.layoutSettings);
+      const texContent = exportToLatex(paper, resolvePaperLayout(paper));
       const images = await extractPaperImagesAsync(paper);
 
       const response = await fetch('/api/compile-latex', {

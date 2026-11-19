@@ -1,5 +1,6 @@
 'use client';
 
+import { JournalCodeBadge } from '@/features/journals';
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
@@ -17,8 +18,6 @@ import {
   X,
 } from 'lucide-react';
 import {
-  getJournalColor,
-  getJournalShortName,
   getManuscriptTitle,
   getManuscriptAuthors,
   getWorkflowStatusConfig,
@@ -62,8 +61,6 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const { info, doc } = paper;
   const title = getManuscriptTitle(paper);
   const authors = getManuscriptAuthors(paper);
-  const journalColor = getJournalColor(doc.journalId, paper);
-  const journalShort = getJournalShortName(doc.journalId, paper);
   const statusConfig = getWorkflowStatusConfig(
     info.workflowStatus || (paper as any).status || (paper as any).remoteData?.status
   );
@@ -98,12 +95,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
         {/* Top Badges & Actions matching UploadView */}
         <div className="flex items-center justify-between mb-2">
           {/* Journal Badge */}
-          <span
-            className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold text-white shadow-2xs"
-            style={{ backgroundColor: journalColor }}
-          >
-            {journalShort}
-          </span>
+          <JournalCodeBadge journalId={doc.journalId} record={paper} />
 
           {/* Right Badges & Context Menu */}
           <div

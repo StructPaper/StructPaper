@@ -74,7 +74,6 @@ const DockIconButton: React.FC<DockIconButtonProps> = ({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        title={label}
         className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 select-none cursor-pointer relative ${
           active
             ? 'bg-white/90 text-zinc-950 font-bold shadow-[inset_0_0_14px_6px_rgba(255,255,255,0.95),0_0_16px_rgba(0,0,0,0.10),0_0_4px_rgba(0,0,0,0.06)] border border-white scale-105'
@@ -115,6 +114,10 @@ export interface JournalEditorDockProps {
   isSaving: boolean;
   isDirty?: boolean;
   saveSuccess?: boolean;
+  /** The caller may only look: saving, resetting and changing the status are off. */
+  readOnly?: boolean;
+  /** Leaves the page; the editor asks first when there are unsaved edits. Defaults to going to the template list. */
+  onBack?: () => void;
 }
 
 export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
@@ -127,6 +130,8 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   isSaving,
   isDirty = false,
   saveSuccess = false,
+  readOnly = false,
+  onBack,
 }) => {
   let router: any = null;
   try {
@@ -137,9 +142,18 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
   }
 
   const isPublished = status === 'published';
+  const isArchived = status === 'archived';
+  const STATUS_HINT: Record<JournalStatus, string> = {
+    published: 'Đang phát hành (Nhấn để chuyển thành Bản nháp)',
+    draft: 'Bản nháp (Nhấn để chuyển thành Lưu trữ)',
+    validated: 'Bản nháp (Nhấn để chuyển thành Lưu trữ)',
+    archived: 'Đã lưu trữ (Nhấn để phát hành lại)',
+  };
 
   const handleBack = () => {
-    if (router) {
+    if (onBack) {
+      onBack();
+    } else if (router) {
       router.push('/templates');
     } else if (typeof window !== 'undefined') {
       window.location.href = '/templates';
@@ -165,6 +179,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 1: Reset to Base */}
         <DockIconButton
           onClick={onReset}
+          disabled={readOnly}
           label="Khôi phục cấu hình Base mặc định"
           icon={<RotateCcw className="w-5 h-5 text-zinc-700" strokeWidth={2.4} />}
         />
@@ -172,11 +187,8 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 2: Toggle Status (Draft vs Published) */}
         <DockIconButton
           onClick={onToggleStatus}
-          label={
-            isPublished
-              ? 'Đang phát hành (Nhấn để chuyển thành Bản nháp)'
-              : 'Bản nháp (Nhấn để chuyển thành Đang phát hành)'
-          }
+          disabled={readOnly}
+          label={STATUS_HINT[status]}
           icon={
             isPublished ? (
               <CheckCircle2 className="w-5 h-5 text-[#78C841]" strokeWidth={2.4} />
@@ -212,7 +224,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         {/* Action 4: Save Changes */}
         <DockIconButton
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isSaving || readOnly}
           label={saveSuccess ? 'Đã lưu thành công!' : isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
           icon={<Save className="w-5 h-5 text-zinc-700" strokeWidth={2.4} />}
           badge={
@@ -232,11 +244,8 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
         <div className="w-6 h-[1px] mb-2" />
         <DockIconButton
           onClick={onToggleStatus}
-          label={
-            isPublished
-              ? 'Hồ sơ đang phát hành công khai (PUB)'
-              : 'Hồ sơ đang lưu trữ bản nháp (DRAFT)'
-          }
+          disabled={readOnly}
+          label={STATUS_HINT[status]}
           customContent={
             <div className="flex flex-col items-center justify-center">
               <span
@@ -244,7 +253,7 @@ export const JournalEditorDock: React.FC<JournalEditorDockProps> = ({
                   isPublished ? 'text-[#14532D]' : 'text-amber-700'
                 }`}
               >
-                {isPublished ? 'PUB' : 'DRAFT'}
+                {isPublished ? 'PUB' : isArchived ? 'ARCH' : 'DRAFT'}
               </span>
             </div>
           }

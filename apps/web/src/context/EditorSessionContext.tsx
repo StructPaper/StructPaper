@@ -9,6 +9,7 @@ import {
 import type { DocumentSaveState } from '@/lib/editor/save-status';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 import type { ExportFormat } from '@/features/editor';
+import type { PageLanguage } from '@/lib/page-labels';
 
 export interface EditorDocumentSession {
   paperId?: string;
@@ -23,8 +24,54 @@ export interface EditorDocumentSession {
   onOpen?: () => void;
   onExport?: (format: ExportFormat) => void;
   onKeepMine?: () => Promise<void> | void;
+  /** Opens the version history page of the paper (only papers the server knows have one). */
+  onOpenHistory?: () => void;
   /** View-only access: the title bar hides every editing control. */
   readOnly?: boolean;
+}
+
+/** What the title bar shows while a journal's template is open (name, code, colour, and which version is on screen). */
+export interface JournalBarState {
+  names: { vi: string; en: string };
+  short: string;
+  color: string;
+  /** A past version is on screen: its number, and whether it is the one in force. */
+  viewing?: { version: number; isCurrent: boolean } | null;
+  /** Opens the version history; absent for a journal that has no history yet. */
+  onOpenHistory?: () => void;
+}
+
+/** The rules a paper is laid out under, for the title bar's "which rules apply" dialog. */
+export interface PaperProfileInfo {
+  paperId: string;
+  journalKey: string;
+  journalName: { vi: string; en: string };
+  journalShort: string;
+  journalColor: string;
+  articleType?: { vi: string; en: string } | null;
+  pin?: { base?: number; journal?: number; articleType?: number };
+  latestPin?: { base?: number; journal?: number; articleType?: number };
+  isOutdated: boolean;
+  isUpgrading: boolean;
+  onUpgrade: () => void;
+}
+
+/** The paper's undo/redo, for the title bar's two buttons. */
+export interface EditorHistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+  undoLabel: string | null;
+  redoLabel: string | null;
+  undo: () => void;
+  redo: () => void;
+}
+
+/** The title bar on a paper's history page: the paper's title and the way back to the editor. */
+export interface PaperHistoryBarState {
+  title: string;
+  onBack: () => void;
+  /** Keeps the paper under a name; absent for someone who may not change the paper. */
+  onSaveVersion?: () => void;
 }
 
 export interface EditorSessionContextValue {
@@ -36,6 +83,17 @@ export interface EditorSessionContextValue {
   pdfFocusMode: boolean;
   setPdfFocusMode: (enabled: boolean) => void;
   togglePdfFocusMode: () => void;
+  /** Language the PDF preview is laid out in (its closing page is the other language). */
+  pdfLanguage: PageLanguage;
+  setPdfLanguage: (language: PageLanguage) => void;
+  journalBar: JournalBarState | null;
+  setJournalBar: (state: JournalBarState | null) => void;
+  paperProfile: PaperProfileInfo | null;
+  setPaperProfile: (info: PaperProfileInfo | null) => void;
+  history: EditorHistoryState | null;
+  setHistory: (state: EditorHistoryState | null) => void;
+  paperHistoryBar: PaperHistoryBarState | null;
+  setPaperHistoryBar: (state: PaperHistoryBarState | null) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -47,6 +105,16 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   pdfFocusMode: false,
   setPdfFocusMode: () => {},
   togglePdfFocusMode: () => {},
+  pdfLanguage: 'vi',
+  setPdfLanguage: () => {},
+  journalBar: null,
+  setJournalBar: () => {},
+  paperProfile: null,
+  setPaperProfile: () => {},
+  history: null,
+  setHistory: () => {},
+  paperHistoryBar: null,
+  setPaperHistoryBar: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -56,17 +124,32 @@ export function EditorSessionProvider({
 }: {
   children: React.ReactNode;
 }): React.ReactElement {
-  const [autoSaveEnabled, setAutoSaveEnabledState] = useState<boolean>(() =>
-    readAutoSavePreference()
-  );
+  // First render = the server's defaults, so the HTML always matches; the stored choices are read right after mount.
+  const [autoSaveEnabled, setAutoSaveEnabledState] = useState<boolean>(true);
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
-  const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(() => {
+  const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(false);
+  const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
+  const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
+  const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
+  const [history, setHistory] = useState<EditorHistoryState | null>(null);
+  const [paperHistoryBar, setPaperHistoryBar] = useState<PaperHistoryBarState | null>(null);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem('structpaper_pdf_interactive_mode') === 'true';
+      setPdfFocusModeState(localStorage.getItem('structpaper_pdf_interactive_mode') === 'true');
+      setPdfLanguageState(localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi');
     } catch {
-      return false;
+      // storage unavailable: keep the defaults
     }
-  });
+  }, []);
+  const setPdfLanguage = useCallback((language: PageLanguage) => {
+    setPdfLanguageState(language);
+    try {
+      localStorage.setItem('structpaper_pdf_language', language);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     setAutoSaveEnabledState(readAutoSavePreference());
@@ -119,8 +202,18 @@ export function EditorSessionProvider({
       pdfFocusMode,
       setPdfFocusMode,
       togglePdfFocusMode,
+      pdfLanguage,
+      setPdfLanguage,
+      journalBar,
+      setJournalBar,
+      paperProfile,
+      setPaperProfile,
+      history,
+      setHistory,
+      paperHistoryBar,
+      setPaperHistoryBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar]
   );
 
   return (

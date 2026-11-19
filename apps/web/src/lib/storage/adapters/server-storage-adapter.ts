@@ -3,6 +3,7 @@ import type { CompletePaper } from '@/types/paper';
 import type { ManuscriptRecord, ManuscriptInfo, Manuscript } from '@structpaper/doc-model';
 import { isUuid, remoteManuscriptToRecord, manuscriptToCompletePaper } from '../converters';
 import type { ManuscriptStorage, SavePaperResult } from '../types';
+import { articleTypeCodeFor } from '@/lib/layout/article-type-code';
 
 export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
   readonly isLocalAvailable = false;
@@ -52,16 +53,22 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
     }
 
     const journalId = (paper.metadata as any)?.journalId || 'VNUHCM-STD';
+    // the server pins the paper to the profile versions published now (or to those the paper already carries)
+    const articleType = paper.metadata?.articleTypeCode ?? paper.articleTypeCode ?? articleTypeCodeFor(journalId, paper.metadata?.articleType);
     const created = await manuscriptApi.create({
       title,
       journalId,
       metadata,
       abstract: abstract || null,
+      ...(articleType ? { articleType } : {}),
+      ...(paper.profilePin ? { profilePin: paper.profilePin } : {}),
     });
 
     const newVersion = created.version ?? 1;
     paper.id = created.id;
     paper.version = newVersion;
+    paper.profilePin = (created as any).profilePin ?? paper.profilePin;
+    paper.articleTypeCode = (created as any).articleType ?? paper.articleTypeCode;
 
     return {
       id: created.id,

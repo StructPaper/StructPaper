@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { HealthController } from './controllers/health.controller';
 import { CompileController } from './controllers/compile.controller';
 import { CompileService } from './application/compile.service';
+import { CompileQueue } from './application/compile-queue';
 import { Rfc9457ExceptionFilter } from './filters/rfc9457-exception.filter';
 import { ZodValidationPipe } from './pipes/zod-validation.pipe';
 import { createDbClient } from '@structpaper/db';
@@ -51,10 +52,11 @@ const drizzleProvider = {
     },
     Rfc9457ExceptionFilter,
     ZodValidationPipe,
+    CompileQueue,
     CompileService,
     dbProvider,
     drizzleProvider,
   ],
-  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, CompileService, 'DB_CLIENT', DRIZZLE],
+  exports: [Rfc9457ExceptionFilter, ZodValidationPipe, CompileQueue, CompileService, 'DB_CLIENT', DRIZZLE],
 })
 export class PlatformModule {}

@@ -1,12 +1,11 @@
 'use client';
 
+import { JournalCodeBadge } from '@/features/journals';
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import { ActionConfirmModal } from '@/components/modals/ActionConfirmModal';
 import {
-  getJournalColor,
-  getJournalShortName,
   getManuscriptTitle,
 } from './types';
 
@@ -38,17 +37,10 @@ export const PaperDeleteConfirmModal: React.FC<PaperDeleteConfirmModalProps> = (
 
   const { info, doc } = activePaper;
   const title = getManuscriptTitle(activePaper);
-  const journalColor = getJournalColor(doc.journalId);
-  const journalShort = getJournalShortName(doc.journalId);
 
   const previewCard = (
     <div className="w-full bg-slate-50 border border-slate-200/70 rounded-3xl p-3.5 flex items-center gap-3 shadow-inner">
-      <span
-        className="shrink-0 px-2.5 py-1 rounded-xl text-[10.5px] font-extrabold text-white shadow-2xs"
-        style={{ backgroundColor: journalColor }}
-      >
-        {journalShort}
-      </span>
+      <JournalCodeBadge variant="tile" journalId={doc.journalId} record={activePaper} />
       <div className="min-w-0 flex-1">
         <h4 className="text-xs font-bold text-slate-900 truncate">
           {title}

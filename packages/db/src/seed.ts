@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { eq, and } from 'drizzle-orm';
-import { journals } from './schema/journals';
+import { journals, articleTypes } from './schema/journals';
 import { users, userTokens } from './schema/users';
 import { roles, permissions, rolePermissions, userRoles, GLOBAL_SCOPE_ID } from './schema/access';
 
@@ -45,81 +45,131 @@ function hashPassword(password: string): string {
   return `scrypt:${salt}:${derivedKey}`;
 }
 
-export const VNUHCM_DEFAULT_JOURNALS = [
+/** What every article type is called. A journal accepts a subset of these; the rules of each type are versioned separately. */
+export const ARTICLE_TYPE_LABELS: Record<string, { vi: string; en: string }> = {
+  research: { vi: 'Bài báo nghiên cứu', en: 'Research Article' },
+  review: { vi: 'Bài tổng quan', en: 'Review' },
+  editorial: { vi: 'Bài xã luận', en: 'Editorial' },
+  commentary: { vi: 'Bình luận & Ý kiến', en: 'Commentary' },
+  letter: { vi: 'Thư gửi tòa soạn', en: 'Letter' },
+  correction: { vi: 'Đính chính', en: 'Correction' },
+  methodology: { vi: 'Phương pháp luận', en: 'Methodology' },
+  'case-report': { vi: 'Báo cáo ca lâm sàng', en: 'Case Report' },
+  'special-topic': { vi: 'Chuyên đề đặc biệt', en: 'Special Topic' },
+};
+
+export interface DefaultJournal {
+  slug: string;
+  code: string;
+  name: string;
+  nameEn: string;
+  shortName: string;
+  issn: string;
+  color: string;
+  latexCls: string;
+  sortOrder: number;
+  status: 'draft' | 'published';
+  articleTypes: string[];
+}
+
+export const VNUHCM_DEFAULT_JOURNALS: DefaultJournal[] = [
   {
     slug: 'vnuhcm-std',
     code: 'VNUHCM-STD',
     name: 'Tạp chí Phát triển Khoa học và Công nghệ',
+    nameEn: 'Science and Technology Development Journal',
     shortName: 'STD',
     issn: '1859-0128',
     color: '#000099',
     latexCls: 'structpaper-std.cls',
+    sortOrder: 10,
+    status: 'published',
     articleTypes: ['research', 'review', 'commentary'],
   },
   {
     slug: 'vnuhcm-hs',
     code: 'VNUHCM-HS',
     name: 'Tạp chí Phát triển KH&CN - Khoa học Sức khỏe',
+    nameEn: 'Science & Technology Development Journal - Health Sciences',
     shortName: 'HS',
-    issn: '2734-9330',
+    issn: '2734-9276',
     color: '#2B74B7',
     latexCls: 'structpaper-hs.cls',
+    sortOrder: 20,
+    status: 'published',
     articleTypes: ['research', 'review', 'case-report'],
   },
   {
     slug: 'vnuhcm-ssh',
     code: 'VNUHCM-SSH',
     name: 'Tạp chí Phát triển KH&CN - Khoa học Xã hội và Nhân văn',
+    nameEn: 'Science & Technology Development Journal - Social Sciences and Humanities',
     shortName: 'SSH',
-    issn: '2734-9349',
+    issn: '2588-1043',
     color: '#0000FF',
     latexCls: 'structpaper-ssh.cls',
+    sortOrder: 30,
+    status: 'published',
     articleTypes: ['research', 'review', 'editorial'],
   },
   {
     slug: 'vnuhcm-ebl',
     code: 'VNUHCM-EBL',
     name: 'Tạp chí Phát triển KH&CN - Kinh tế, Luật và Quản lý',
+    nameEn: 'Science & Technology Development Journal - Economics, Business and Law',
     shortName: 'EBL',
-    issn: '2734-9357',
+    issn: '2588-1108',
     color: '#8F0B97',
     latexCls: 'structpaper-ebl.cls',
+    sortOrder: 40,
+    status: 'published',
     articleTypes: ['research', 'review', 'commentary'],
   },
   {
     slug: 'vnuhcm-et',
     code: 'VNUHCM-ET',
     name: 'Tạp chí Phát triển KH&CN - Kỹ thuật và Công nghệ',
+    nameEn: 'Science & Technology Development Journal - Engineering and Technology',
     shortName: 'ET',
-    issn: '2734-9365',
-    color: '#0F4761',
+    issn: '2588-1205',
+    // the ET sample PDF has no brand colour: title, headings and rules are plain black
+    color: '#000000',
     latexCls: 'structpaper-et.cls',
+    sortOrder: 50,
+    status: 'published',
     articleTypes: ['research', 'review', 'methodology'],
   },
   {
     slug: 'vnuhcm-ees',
     code: 'VNUHCM-EES',
     name: 'Tạp chí Phát triển KH&CN - Môi trường & Khoa học Trái đất',
+    nameEn: 'Science & Technology Development Journal - Environment and Earth Sciences',
     shortName: 'EES',
-    issn: '2734-9373',
+    issn: '2588-1329',
     color: '#0C712F',
     latexCls: 'structpaper-ees.cls',
-    articleTypes: ['research', 'review', 'special_topic'],
+    sortOrder: 60,
+    status: 'published',
+    articleTypes: ['research', 'review', 'special-topic'],
   },
   {
     slug: 'vnuhcm-arns',
     code: 'VNUHCM-ARNS',
     name: 'Tạp chí Phát triển KH&CN - Khoa học Tự nhiên',
+    nameEn: 'Science & Technology Development Journal - Advanced Research in Natural Sciences',
     shortName: 'ARNS',
-    issn: '2734-9381',
+    issn: '2588-140X',
     color: '#FF0000',
     latexCls: 'structpaper-arns.cls',
+    sortOrder: 70,
+    // not offered to authors yet
+    status: 'draft',
     articleTypes: ['research', 'review', 'letter'],
   },
 ];
 
 export async function seedDatabase(db: any): Promise<SeedResult> {
-  // 1. Seed 7 Canonical VNUHCM Journals
+  // 1. Seed the 7 canonical VNUHCM journals, each with the article types it accepts
   let defaultJournal: any = null;
   for (const jDef of VNUHCM_DEFAULT_JOURNALS) {
     let existing = await db.query.journals?.findFirst({
@@ -131,54 +181,31 @@ export async function seedDatabase(db: any): Promise<SeedResult> {
         .insert(journals)
         .values({
           slug: jDef.slug,
+          code: jDef.code,
           name: jDef.name,
+          nameEn: jDef.nameEn,
+          shortName: jDef.shortName,
           issn: jDef.issn,
-          settings: {
-            code: jDef.code,
-            shortName: jDef.shortName,
-            color: jDef.color,
-            language: 'vi',
-            openAccess: true,
-            publisher: 'Đại học Quốc gia TP.HCM',
-            latexCls: jDef.latexCls,
-            articleTypes: jDef.articleTypes,
-          },
+          color: jDef.color,
+          latexCls: jDef.latexCls,
+          status: jDef.status,
+          sortOrder: jDef.sortOrder,
           version: 1,
         })
         .returning();
       existing = inserted[0];
     }
 
+    for (const [index, code] of jDef.articleTypes.entries()) {
+      await db
+        .insert(articleTypes)
+        .values({ journalId: existing.id, code, labels: ARTICLE_TYPE_LABELS[code], sortOrder: (index + 1) * 10 })
+        .onConflictDoNothing();
+    }
+
     if (!defaultJournal || jDef.slug === 'vnuhcm-std') {
       defaultJournal = existing;
     }
-  }
-
-  // Also maintain legacy slug vnu-jst pointing to std if requested
-  const legacySlug = 'vnu-jst';
-  const legacyJournal = await db.query.journals?.findFirst({
-    where: eq(journals.slug, legacySlug),
-  });
-  if (!legacyJournal) {
-    await db
-      .insert(journals)
-      .values({
-        slug: legacySlug,
-        name: 'Tạp chí Phát triển Khoa học và Công nghệ ĐHQG-HCM',
-        issn: '1859-0128',
-        settings: {
-          code: 'VNUHCM-JST',
-          shortName: 'STD',
-          color: '#000099',
-          language: 'vi',
-          openAccess: true,
-          publisher: 'Đại học Quốc gia TP.HCM',
-          latexCls: 'structpaper-std.cls',
-          articleTypes: ['research', 'review', 'commentary'],
-        },
-        version: 1,
-      })
-      .returning();
   }
 
   // 2. System Roles

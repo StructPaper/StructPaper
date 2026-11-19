@@ -76,23 +76,6 @@ export class SyncController {
     return this.syncService.getDoc(id, ability);
   }
 
-  @Post(':id/revisions')
-  @HttpCode(HttpStatus.CREATED)
-  async createRevision(
-    @Param('id') id: string,
-    @Body() body: { tagName: string },
-    @Req() req: any,
-  ) {
-    const ability = await this.getAbility(req);
-    return this.syncService.createRevision(id, body?.tagName || 'checkpoint', req.user?.id, ability);
-  }
-
-  @Get(':id/revisions')
-  async listRevisions(@Param('id') id: string, @Req() req: any) {
-    const ability = await this.getAbility(req);
-    return this.syncService.listRevisions(id, ability);
-  }
-
   private async getAbility(req: any): Promise<AppAbility | undefined> {
     const user = req.user;
     if (!user) return undefined;

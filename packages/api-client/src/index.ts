@@ -39,6 +39,7 @@ export * from './generated/endpoints/auth/auth';
 export * from './generated/endpoints/access/access';
 export * from './generated/endpoints/users/users';
 export * from './generated/endpoints/journals/journals';
+export * from './generated/endpoints/profiles/profiles';
 export * from './generated/endpoints/manuscripts/manuscripts';
 export * from './generated/endpoints/sync/sync';
 export * from './generated/endpoints/assets/assets';

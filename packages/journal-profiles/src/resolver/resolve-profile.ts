@@ -9,14 +9,18 @@ import {
   ARTICLE_TYPE_DEFINITIONS,
   normalizeArticleTypeId,
 } from '../profiles/article-types';
-import { deepMerge } from './deep-merge';
+import { resolveFromTiers } from './resolve-from-tiers';
+import { getRemoteArticleType, getRemoteBase, getRemoteJournalTier, hasRemoteArticleTypes, remoteJournalKeys } from './registry';
 
 /**
  * Resolves a Journal Profile through 3-tier inheritance:
  * 1. Tier 1: Base Profile (common default configuration)
- * 2. Tier 2: Journal Profile (e.g. std, hs, ssh, ebl, et, ees, arns)
+ * 2. Tier 2: Journal Profile (e.g. std, hs, ssh, ebl, et, ees, arns, or a journal the server added)
  * 3. Tier 3: Article Type Profile (e.g. research, review, editorial, letter, etc.)
  * 4. Tier 4: Runtime Overrides (ad-hoc custom config passed by caller)
+ *
+ * Tiers 1 and 2 come from what the server published when the app registered it
+ * (`registerRemoteProfiles`), else from the built-in definitions.
  *
  * @param journalId Target journal identifier or alias (e.g. 'hs', 'vnuhcm-hs', 'std')
  * @param articleTypeId Optional article type identifier or alias (e.g. 'research', 'editorial')
@@ -28,58 +32,35 @@ export function resolveProfile(
   articleTypeId?: string,
   overrides?: Record<string, unknown>
 ): ResolvedProfile {
-  const normalizedJournalId = normalizeJournalId(journalId);
+  const builtInId = normalizeJournalId(journalId);
+  const journalTier = getRemoteJournalTier(builtInId ?? journalId) ?? (builtInId ? JOURNAL_DEFINITIONS[builtInId] : undefined);
 
-  if (!normalizedJournalId || !JOURNAL_DEFINITIONS[normalizedJournalId]) {
-    const available = ALL_JOURNAL_IDS.join(', ');
+  if (!journalTier) {
+    const available = [...ALL_JOURNAL_IDS, ...remoteJournalKeys().filter((k) => !(ALL_JOURNAL_IDS as readonly string[]).includes(k))].join(', ');
     throw new Error(
       `Unknown journal profile: "${journalId}". Available journals: [${available}]`
     );
   }
 
-  const journalTier = JOURNAL_DEFINITIONS[normalizedJournalId];
-  const targetJournalId = journalTier.id;
-
-  // Tier 1 -> Tier 2
-  let merged = deepMerge(
-    BASE_PROFILE as unknown as Record<string, unknown>,
-    journalTier as unknown as Record<string, unknown>
-  );
-
-  // Tier 3: Article Type
-  let activeArticleTypeId: string | undefined;
+  let articleType;
+  let normalizedArticleTypeId: string | undefined;
   if (articleTypeId !== undefined && articleTypeId !== null && articleTypeId !== '') {
-    const normalizedArticleTypeId = normalizeArticleTypeId(articleTypeId);
-    const articleTypeTier = ARTICLE_TYPE_DEFINITIONS[normalizedArticleTypeId];
+    normalizedArticleTypeId = normalizeArticleTypeId(articleTypeId);
+    // the journal's own published rules for the type win; else the type's built-in definition
+    articleType = getRemoteArticleType(journalTier.id, normalizedArticleTypeId) ?? ARTICLE_TYPE_DEFINITIONS[normalizedArticleTypeId];
 
-    if (!articleTypeTier) {
+    if (!articleType) {
       const available = Object.keys(ARTICLE_TYPE_DEFINITIONS).join(', ');
       throw new Error(
         `Unknown article type: "${articleTypeId}". Available article types: [${available}]`
       );
     }
-
-    activeArticleTypeId = normalizedArticleTypeId;
-    const { id: _articleId, ...articleTypeOverrides } = articleTypeTier;
-    merged = deepMerge(
-      merged,
-      articleTypeOverrides as unknown as Record<string, unknown>
-    );
   }
 
-  // Tier 4: Overrides
-  if (overrides && Object.keys(overrides).length > 0) {
-    merged = deepMerge(merged, overrides);
-  }
-
-  // Ensure journal ID is preserved unless explicitly overridden in overrides
-  if (!overrides || !('id' in overrides)) {
-    merged.id = targetJournalId;
-  }
-
-  if (activeArticleTypeId) {
-    merged.articleType = activeArticleTypeId;
-  }
-
-  return merged as unknown as ResolvedProfile;
+  return resolveFromTiers({
+    base: getRemoteBase() ?? (BASE_PROFILE as unknown as Record<string, unknown>),
+    journal: journalTier,
+    articleType,
+    overrides,
+  });
 }

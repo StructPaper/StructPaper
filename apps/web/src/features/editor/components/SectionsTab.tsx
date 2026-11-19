@@ -284,6 +284,8 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
     if (!focusRequest) return;
     jumpToSection(focusRequest.id);
     setNewlyAddedId(focusRequest.id);
+    // an undo puts the cursor back in the paragraph it was typed in
+    if ((focusRequest as { edit?: boolean }).edit) setActiveEditingParaId(focusRequest.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest]);
 

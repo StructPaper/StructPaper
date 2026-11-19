@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useSessionReady } from '@/features/auth/hooks/useSessionReady';
 import { useGetManuscript, isMockModeEnabled, type ManuscriptAccess } from '@structpaper/api-client';
 import type { ManuscriptRecord } from '@structpaper/doc-model';
 import type { Decision } from '@/lib/access';
@@ -96,12 +97,14 @@ export const isServerPaperId = (id?: string | null): id is string => !!id && UUI
  */
 export function usePaperAccess(paperId?: string | null): { access: PaperAccess; title?: string } {
   const onServer = isServerPaperId(paperId);
-  const query = useGetManuscript(paperId ?? '', { query: { enabled: onServer, staleTime: 30_000, retry: false } });
+  // after a reload the token is restored first; asked earlier, the server would answer as if for a guest
+  const sessionReady = useSessionReady();
+  const query = useGetManuscript(paperId ?? '', { query: { enabled: onServer && sessionReady, staleTime: 30_000, retry: false } });
 
   return useMemo(() => {
     if (!onServer) return { access: createPaperAccess({ kind: 'local' }) };
-    if (query.isLoading) return { access: createPaperAccess({ kind: 'server', loading: true }) };
+    if (!sessionReady || query.isLoading) return { access: createPaperAccess({ kind: 'server', loading: true }) };
     if (query.isError && !query.data) return { access: createPaperAccess({ kind: 'local' }) }; // offline
     return { access: createPaperAccess({ kind: 'server', access: query.data?.access }), title: query.data?.title };
-  }, [onServer, query.isLoading, query.isError, query.data]);
+  }, [onServer, sessionReady, query.isLoading, query.isError, query.data]);
 }

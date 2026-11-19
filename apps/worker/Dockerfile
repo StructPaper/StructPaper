@@ -51,10 +51,10 @@ COPY --from=base /usr/local/bin/tectonic /usr/local/bin/tectonic
 COPY --from=base /usr/share/fonts/structpaper/ /usr/share/fonts/structpaper/
 RUN fc-cache -f /usr/share/fonts/structpaper
 
-COPY --from=builder /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml ./
+COPY --from=builder /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/tsconfig.json ./
 COPY --from=builder /app/packages/ ./packages/
-COPY --from=builder /app/apps/worker/package.json ./apps/worker/package.json
-COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
+COPY --from=builder /app/apps/worker/package.json /app/apps/worker/tsconfig.json ./apps/worker/
+COPY --from=builder /app/apps/worker/src ./apps/worker/src
 
 RUN pnpm install --prod --frozen-lockfile
 
@@ -64,4 +64,4 @@ RUN mkdir -p /home/node/.cache/Tectonic && chown -R node:node /home/node/.cache
 USER node
 
 WORKDIR /app/apps/worker
-CMD ["node", "dist/apps/worker/src/main.js"]
+CMD ["pnpm", "start"]

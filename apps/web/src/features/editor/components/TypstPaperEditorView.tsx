@@ -1,5 +1,7 @@
 'use client';
 
+import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
+import { layoutOverrides } from '@/lib/layout/profile-layout';
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
@@ -162,7 +164,7 @@ export const TypstPaperEditorView: React.FC<TypstPaperEditorViewProps> = ({
   };
 
   const handleLayoutSettingsChange = (newLayout: LayoutSettings) => {
-    updateData({ ...formData, layoutSettings: newLayout });
+    updateData({ ...formData, layoutSettings: layoutOverrides(journalLayoutOf(formData), newLayout) });
   };
 
   // Recompile / Refresh preview
@@ -439,7 +441,7 @@ export const TypstPaperEditorView: React.FC<TypstPaperEditorViewProps> = ({
       <LayoutSettingsDrawer
         isOpen={isSettingsDrawerOpen}
         onClose={() => setIsSettingsDrawerOpen(false)}
-        settings={formData.layoutSettings || DEFAULT_LAYOUT_SETTINGS}
+        settings={resolvePaperLayout(formData)}
         journalId={formData.metadata.journalId}
         onApplySettings={handleLayoutSettingsChange}
       />

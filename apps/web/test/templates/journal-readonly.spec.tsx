@@ -46,16 +46,17 @@ describe('Journals are view-only without journal:manage', () => {
     expect(screen.getByText(/Thêm Tạp chí Mới/)).toBeDefined();
   });
 
-  it('the card of a view-only user has no hover effect, no click-through and no editor link', () => {
+  it('the card of a view-only user can still be hovered and opened, but says "view" instead of "customise"', () => {
     loginWith([]);
     const managed = getDefaultVnuhcmJournals()[0];
     const { container } = render(<JournalProfileCard managed={managed} onCreatePaper={vi.fn()} />);
 
     const card = container.firstElementChild as HTMLElement;
     expect(card.getAttribute('data-readonly')).toBe('true');
-    expect(card.className).not.toContain('hover:');
-    expect(card.className).not.toContain('cursor-pointer');
+    expect(card.className).toContain('hover:');
+    expect(card.className).toContain('cursor-pointer');
     expect(screen.queryByText('Tùy chỉnh')).toBeNull();
+    expect(screen.getByText('Xem quy định').closest('a')?.getAttribute('href')).toContain('/templates/journal/');
   });
 
   it('the card of a manager keeps hover, click-through and the editor link', () => {

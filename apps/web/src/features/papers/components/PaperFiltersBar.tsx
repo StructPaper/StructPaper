@@ -10,10 +10,8 @@ import {
   Globe2,
   Users,
 } from 'lucide-react';
-import {
-  ALL_JOURNAL_IDS,
-  JOURNAL_DEFINITIONS,
-} from '@structpaper/journal-profiles';
+import { useJournals } from '@/features/journals';
+import { Shimmer } from '@/components/ui/Shimmer';
 import { Select, SelectOption } from '@/components/ui/Select';
 import {
   type FilterWorkflowStatus,
@@ -69,6 +67,7 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
   showLibrary = false,
 }) => {
   const [searchInputValue, setSearchInputValue] = React.useState(searchQuery);
+  const { journals, isLoading: journalsLoading } = useJournals();
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 
   React.useEffect(() => {
@@ -92,11 +91,11 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
   // Journal select options
   const journalOptions: SelectOption<string>[] = [
     { value: 'all', label: 'Tất cả tạp chí' },
-    ...ALL_JOURNAL_IDS.map((jid) => ({
-      value: jid,
-      label: JOURNAL_DEFINITIONS[jid]?.names?.short || jid.toUpperCase(),
-      color: JOURNAL_DEFINITIONS[jid]?.color,
-      badge: jid.toUpperCase(),
+    ...journals.map((j) => ({
+      value: j.key,
+      label: j.code,
+      color: j.color,
+      badge: j.key.toUpperCase(),
     })),
   ];
 
@@ -202,14 +201,18 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Custom Select for Journal */}
           <div className="w-44">
-            <Select
-              options={journalOptions}
-              value={journalFilter}
-              onChange={(val) => onJournalFilterChange(val as FilterJournal)}
-              size="sm"
-              variant="eatzy-inner"
-              fullWidth
-            />
+            {journalsLoading ? (
+              <Shimmer className="h-9 w-full rounded-2xl" />
+            ) : (
+              <Select
+                options={journalOptions}
+                value={journalFilter}
+                onChange={(val) => onJournalFilterChange(val as FilterJournal)}
+                size="sm"
+                variant="eatzy-inner"
+                fullWidth
+              />
+            )}
             {/* Hidden native select for test & accessibility integration */}
             <select
               data-testid="filter-journal-select"
@@ -220,9 +223,9 @@ export const PaperFiltersBar: React.FC<PaperFiltersBarProps> = ({
               tabIndex={-1}
             >
               <option value="all">Tất cả tạp chí</option>
-              {ALL_JOURNAL_IDS.map((jid) => (
-                <option key={jid} value={jid}>
-                  {JOURNAL_DEFINITIONS[jid]?.names?.short || jid.toUpperCase()}
+              {journals.map((j) => (
+                <option key={j.key} value={j.key}>
+                  {j.code}
                 </option>
               ))}
             </select>

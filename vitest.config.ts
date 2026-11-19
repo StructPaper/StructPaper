@@ -7,6 +7,7 @@ export default defineConfig({
     alias: {
       '@structpaper/doc-model': path.resolve(__dirname, 'packages/doc-model/src'),
       '@structpaper/journal-profiles': path.resolve(__dirname, 'packages/journal-profiles/src'),
+      '@structpaper/doc-diff': path.resolve(__dirname, 'packages/doc-diff/src'),
       '@structpaper/editor-core': path.resolve(__dirname, 'packages/editor-core/src'),
       '@structpaper/storage': path.resolve(__dirname, 'packages/storage/src'),
       '@structpaper/ingest-docx': path.resolve(__dirname, 'packages/ingest-docx/src'),

@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
-import { useAuth } from '@/features/auth';
+import { useAuth, hasStoredSession } from '@/features/auth';
 import { isMockModeEnabled } from '@structpaper/api-client';
 
 /**
@@ -17,14 +17,6 @@ import { isMockModeEnabled } from '@structpaper/api-client';
 /** `/papers/<id>`: a shared paper can be opened by anyone who has the link, signed in or not. */
 export const isSharedPaperLink = (pathname: string | null | undefined): boolean =>
   /^\/papers\/[^/]+\/?$/.test(pathname ?? '');
-
-const hasStoredSession = (): boolean => {
-  try {
-    return Boolean(JSON.parse(window.localStorage.getItem('structpaper_auth_storage') || 'null')?.state?.user);
-  } catch {
-    return false;
-  }
-};
 
 export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();

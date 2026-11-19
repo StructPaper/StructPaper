@@ -8,7 +8,7 @@ const INSTITUTION_RE = /\b(sub-?institute|university|institute|college|hospital|
 
 /** Line that opens the second-language summary page placed after the reference list. */
 const MARKER_RE =
-  /^((original\s+)?research|review)(\s+article)?$|^case report$|^short communication$|^phần ngôn ngữ thứ hai$/i;
+  /^((original\s+)?research|review)(\s+article)?$|^case report$|^short communication$|^phần ngôn ngữ thứ\s*(hai|2)$/i;
 
 export interface EnglishBackMatter {
   /** rawLines index where the block starts (marker or English title). */
