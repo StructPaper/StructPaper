@@ -67,6 +67,8 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
   const [step, setStep] = useState<1 | 2>(1);
   const [parsedPaper, setParsedPaper] = useState<CompletePaper | null>(null);
   const [isBlank, setIsBlank] = useState<boolean>(false);
+  // the paper is being checked (same title?) and created, or an import is starting: the Continue button spins meanwhile
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [docName, setDocName] = useState<string>('');
   // Several Word files picked at once: one paper per file, imported side by side.
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
@@ -187,6 +189,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
 
   // Finalize paper creation with chosen template
   const finalizeCreation = async (managed: ManagedJournalProfile, docxPaper?: CompletePaper | null) => {
+    setIsFinalizing(true);
     try {
       const journalCode = `VNUHCM-${managed.id.toUpperCase()}`;
 
@@ -195,6 +198,8 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
         await checkAndPromptDuplicate(title, {
           journalId: journalCode,
           onProceed: async (resolvedTitle) => {
+            setIsFinalizing(true);
+            try {
             const finalPaper: CompletePaper = {
               ...docxPaper,
               metadata: {
@@ -211,6 +216,9 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
               await executeSaveAndRedirect(finalPaper, managed);
             } else {
               setImportGate({ paper: finalPaper, managed, report });
+            }
+            } finally {
+              setIsFinalizing(false);
             }
           },
         });
@@ -230,6 +238,9 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
     } catch (err: any) {
       console.error('Lỗi khởi tạo bài báo:', err);
       toast.error('Lỗi khởi tạo bài báo', err?.message || 'Có lỗi xảy ra');
+    } finally {
+      // when a paper with the same title was found the warning is on screen: nothing is running while it waits for an answer
+      setIsFinalizing(false);
     }
   };
 
@@ -414,7 +425,15 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                 {batchPending ? (
                   <StepBatchTemplates
                     files={batchFiles}
-                    onConfirm={(choices) => startBatch(choices, batchFiles, batchSkipped)}
+                    busy={isFinalizing}
+                    onConfirm={async (choices) => {
+                      setIsFinalizing(true);
+                      try {
+                        await startBatch(choices, batchFiles, batchSkipped);
+                      } finally {
+                        setIsFinalizing(false);
+                      }
+                    }}
                     onBack={() => {
                       setBatchFiles([]);
                       setStep(1);
@@ -422,6 +441,7 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
                   />
                 ) : (
                 <StepSelectTemplate
+                  busy={isFinalizing}
                   onConfirm={handleStep2Complete}
                   onBack={() => {
                     setBatchFiles([]);
@@ -467,7 +487,12 @@ export const CreatePaperModal: React.FC<CreatePaperModalProps> = ({
         if (!importGate) return;
         const { paper: toSave, managed } = importGate;
         setImportGate(null);
-        await executeSaveAndRedirect(toSave, managed);
+        setIsFinalizing(true);
+        try {
+          await executeSaveAndRedirect(toSave, managed);
+        } finally {
+          setIsFinalizing(false);
+        }
       }}
     />
 

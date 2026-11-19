@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, FileText } from 'lucide-react';
 import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { useJournalTemplates } from '@/features/journals';
 import { Shimmer } from '@/components/ui/Shimmer';
@@ -13,6 +13,8 @@ interface StepBatchTemplatesProps {
   /** null = automatic for that file. */
   onConfirm: (choices: Array<ManagedJournalProfile | null>) => void;
   onBack: () => void;
+  /** The import is starting: Continue spins and nothing can be pressed twice. */
+  busy?: boolean;
 }
 
 const shortName = (j: ManagedJournalProfile) => j.profile.names?.short || j.id.toUpperCase();
@@ -21,7 +23,7 @@ const shortName = (j: ManagedJournalProfile) => j.profile.names?.short || j.id.t
  * Template choice for a multi-file import: one template for every file (default), or a template of its
  * own for each file (e.g. a Health Sciences paper and an Economics paper in the same batch).
  */
-export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, onConfirm, onBack }) => {
+export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, onConfirm, onBack, busy = false }) => {
   const { templates: journals, isLoading } = useJournalTemplates();
   const [perFile, setPerFile] = useState(false);
   // Nothing is chosen up front: a card chosen again is un-chosen, and no choice means automatic.
@@ -40,7 +42,8 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại tải file</span>
@@ -139,11 +142,14 @@ export const StepBatchTemplates: React.FC<StepBatchTemplatesProps> = ({ files, o
         <button
           type="button"
           data-testid="continue-to-editor-btn"
-          onClick={() => onConfirm(choices)}
-          className="px-6 py-2.5 rounded-full bg-[#78C841] hover:bg-[#6cb43a] text-zinc-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-md shadow-[#78C841]/20 hover:scale-102 active:scale-98 transition-all cursor-pointer"
+          onClick={() => !busy && onConfirm(choices)}
+          disabled={busy}
+          aria-busy={busy}
+          className="px-6 py-2.5 rounded-full bg-[#78C841] hover:bg-[#6cb43a] text-zinc-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-md shadow-[#78C841]/20 hover:scale-102 active:scale-98 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100"
         >
-          <span>Tiếp tục</span>
-          <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          <span>{busy ? 'Đang xử lý...' : 'Tiếp tục'}</span>
+          {busy ? null : <ArrowRight className="w-4 h-4 stroke-[2.5]" />}
         </button>
       </div>
     </div>
