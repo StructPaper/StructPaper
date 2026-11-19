@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { manuscripts } from './manuscripts';
 import { users } from './users';
@@ -27,18 +27,40 @@ export const manuscriptOps = pgTable('manuscript_ops', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const manuscriptRevisions = pgTable('manuscript_revisions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  manuscriptId: uuid('manuscript_id')
-    .notNull()
-    .references(() => manuscripts.id, { onDelete: 'cascade' }),
-  serverRev: integer('server_rev').notNull(),
-  tagName: varchar('tag_name', { length: 255 }),
-  snapshot: jsonb('snapshot').$type<Record<string, any>>().notNull(),
-  checksum: varchar('checksum', { length: 64 }),
-  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+/**
+ * Kinds of revision. 'sync' is the checkpoint the op log writes (not shown in a paper's history); the others are
+ * the history an author sees: automatic ones, named ones, the safety copy taken before a risky step, and a restore.
+ */
+export const REVISION_KINDS = ['auto', 'named', 'pre-risk', 'profile-upgrade', 'restore', 'import', 'sync'] as const;
+export type RevisionKind = (typeof REVISION_KINDS)[number];
+
+export const manuscriptRevisions = pgTable(
+  'manuscript_revisions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    manuscriptId: uuid('manuscript_id')
+      .notNull()
+      .references(() => manuscripts.id, { onDelete: 'cascade' }),
+    serverRev: integer('server_rev').notNull(),
+    /** The name of a named version, or the label of an automatic one ("Trước khi đổi loại bài"). */
+    tagName: varchar('tag_name', { length: 255 }),
+    description: text('description'),
+    /** One of REVISION_KINDS. */
+    kind: varchar('kind', { length: 30 }).notNull().default('auto'),
+    /** The whole paper as it was (metadata.doc of the manuscript). */
+    snapshot: jsonb('snapshot').$type<Record<string, any>>().notNull(),
+    /** Fingerprint of the content (see contentFingerprintSource): two revisions with the same one are the same text. */
+    checksum: varchar('checksum', { length: 64 }),
+    /** What changed since the revision before it (blocks added/removed/edited, words...), for the list. */
+    stats: jsonb('stats').$type<Record<string, any>>().notNull().default({}),
+    /** Named versions are pinned: pruning never removes them. */
+    pinned: boolean('pinned').notNull().default(false),
+    sizeBytes: integer('size_bytes').notNull().default(0),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('idx_revisions_ms_created').on(t.manuscriptId, t.createdAt)],
+);
 
 export const manuscriptDocsRelations = relations(manuscriptDocs, ({ one }) => ({
   manuscript: one(manuscripts, {

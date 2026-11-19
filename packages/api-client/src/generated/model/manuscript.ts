@@ -8,6 +8,7 @@
 import type { ManuscriptStatus } from './manuscriptStatus';
 import type { GeneralAccess } from './generalAccess';
 import type { ManuscriptAccess } from './manuscriptAccess';
+import type { ProfilePin } from './profilePin';
 import type { ManuscriptMetadata } from './manuscriptMetadata';
 
 export interface Manuscript {
@@ -22,6 +23,12 @@ export interface Manuscript {
   createdBy: string;
   currentServerRev: number;
   version: number;
+  profilePin?: ProfilePin;
+  /**
+   * Code of the article type ("research")
+   * @nullable
+   */
+  articleType?: string | null;
   metadata?: ManuscriptMetadata;
   createdAt?: string;
   updatedAt?: string;

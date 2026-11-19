@@ -17,6 +17,7 @@ import { EditorSessionProvider } from '@/context/EditorSessionContext';
 import { DesktopChromeShell } from '@/components/titlebar';
 import { UpdateToastNotifier } from '@/components/platform/UpdateToastNotifier';
 import { QueryProvider } from '@/lib/query-client';
+import { PublishedProfilesSync } from '@/features/journals/components/PublishedProfilesSync';
 
 export default function RootLayout({
   children,
@@ -38,6 +39,7 @@ export default function RootLayout({
           }}
         />
         <QueryProvider>
+          <PublishedProfilesSync />
           <PlatformProvider>
             <StorageProvider>
               <EditorSessionProvider>

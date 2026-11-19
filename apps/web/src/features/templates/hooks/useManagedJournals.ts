@@ -13,6 +13,7 @@ import {
   resetJournalToBase,
   createNewPaperFromJournal,
 } from '@/lib/templates/journal-storage';
+import { isLegacyJournal } from '@/features/journals/resolve';
 import { usePaper } from '@/context/PaperContext';
 import { usePaperStorage } from '@/features/editor';
 import { createEmptyPaper } from '@/types/paper';
@@ -39,15 +40,27 @@ export function useManagedJournals() {
     try {
       const res: any = await http.get('/api/v1/journals');
       if (Array.isArray(res) && res.length > 0) {
-        const merged = res.map((bj: any) => {
+        const current = res.filter((bj: any) => !isLegacyJournal(bj));
+        const merged = (current.length > 0 ? current : res).map((bj: any) => {
           const shortKey = (bj.shortName || bj.slug.replace('vnuhcm-', '')).toLowerCase();
           const localMatch = localDefaults.find(
             (ld) => ld.id.toLowerCase() === shortKey || ld.id.toLowerCase() === bj.slug.toLowerCase(),
           );
           if (localMatch) {
+            // what the server holds (colour, name, code, status) wins over the local copy; layout edits stay
             return {
               ...localMatch,
               status: (bj.status as JournalStatus) || localMatch.status,
+              profile: {
+                ...localMatch.profile,
+                color: bj.color || localMatch.profile.color,
+                names: {
+                  ...localMatch.profile.names,
+                  vi: bj.name || localMatch.profile.names?.vi,
+                  en: bj.nameEn || localMatch.profile.names?.en,
+                  short: bj.code || localMatch.profile.names?.short,
+                },
+              },
             };
           }
           let resolvedProf: any = null;
@@ -56,14 +69,14 @@ export function useManagedJournals() {
           } catch {
             resolvedProf = {
               id: bj.slug,
-              names: { vi: bj.name, en: bj.name, short: bj.code },
+              names: { vi: bj.name, en: bj.nameEn || bj.name, short: bj.code },
               color: bj.color,
             };
           }
           return {
             id: shortKey,
             status: (bj.status as JournalStatus) || 'published',
-            isCustom: false,
+            isCustom: true,
             profile: resolvedProf,
             updatedAt: new Date().toISOString(),
           };

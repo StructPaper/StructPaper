@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
@@ -38,7 +38,7 @@ ENV INTERNAL_API_URL=$INTERNAL_API_URL
 RUN pnpm --filter @structpaper/web build
 
 # Stage 3: Production Runner (Next.js Standalone ~150MB)
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

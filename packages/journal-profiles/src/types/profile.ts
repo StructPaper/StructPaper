@@ -111,6 +111,28 @@ export interface JournalQcConfig {
   weights: Record<string, number>;
 }
 
+/**
+ * What a journal prints about itself (page headers, "Cite this article", DOI). Its ISSN is the journal's
+ * own field (the journals table) and is laid over this when the profile is served.
+ */
+export interface JournalPublicationConfig {
+  /** Full Vietnamese name used in headers and lists */
+  name?: string;
+  /** English abbreviation, e.g. "Sci. Tech. Dev. J." */
+  shortName?: string;
+  publisher?: string;
+  accentColor?: string;
+  issn?: string;
+  eIssn?: string;
+  /** Header line printed on every page */
+  headerText?: string;
+  /** Official English name as printed on the journal's own PDF */
+  officialNameEn?: string;
+  officialAbbvEn?: string;
+  /** DOI = prefix.v{volume}i{issue}.{articleId} */
+  doiPrefix?: string;
+}
+
 export interface JournalProfile {
   id: string;
   version: string;
@@ -125,6 +147,7 @@ export interface JournalProfile {
   typography: JournalTypographyConfig;
   latex: JournalLatexConfig;
   qc: JournalQcConfig;
+  publication?: JournalPublicationConfig;
   [key: string]: unknown;
 }
 
@@ -155,6 +178,7 @@ export interface JournalTierProfile {
   typography?: Partial<JournalTypographyConfig>;
   latex?: Partial<JournalLatexConfig>;
   qc?: Partial<JournalQcConfig>;
+  publication?: JournalPublicationConfig;
   [key: string]: unknown;
 }
 

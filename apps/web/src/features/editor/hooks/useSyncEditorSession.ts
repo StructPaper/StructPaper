@@ -25,6 +25,7 @@ export interface UseSyncEditorSessionOptions {
   onOpen?: () => void;
   onExport?: (format: ExportFormat) => void;
   onKeepMine?: () => Promise<void> | void;
+  onOpenHistory?: () => void;
 }
 
 /**
@@ -46,6 +47,7 @@ export function useSyncEditorSession({
   onOpen,
   onExport,
   onKeepMine,
+  onOpenHistory,
 }: UseSyncEditorSessionOptions): void {
   const { setDocumentSession } = useEditorSession();
 
@@ -61,6 +63,8 @@ export function useSyncEditorSession({
   exportRef.current = onExport;
   const keepMineRef = useRef(onKeepMine);
   keepMineRef.current = onKeepMine;
+  const historyRef = useRef(onOpenHistory);
+  historyRef.current = onOpenHistory;
 
   const triggerManualSave = useCallback(async () => {
     await manualSaveRef.current?.();
@@ -79,6 +83,9 @@ export function useSyncEditorSession({
   }, []);
   const triggerKeepMine = useCallback(async () => {
     await keepMineRef.current?.();
+  }, []);
+  const triggerHistory = useCallback(() => {
+    historyRef.current?.();
   }, []);
 
   const resolvedTitle = resolveDocumentDisplayTitle(displayName);
@@ -103,6 +110,7 @@ export function useSyncEditorSession({
   const hasOpen = Boolean(onOpen);
   const hasExport = Boolean(onExport);
   const hasKeepMine = Boolean(onKeepMine);
+  const hasHistory = Boolean(onOpenHistory);
 
   useEffect(() => {
     setDocumentSession({
@@ -118,6 +126,7 @@ export function useSyncEditorSession({
       onOpen: hasOpen ? triggerOpen : undefined,
       onExport: hasExport ? triggerExport : undefined,
       onKeepMine: hasKeepMine ? triggerKeepMine : undefined,
+      onOpenHistory: hasHistory ? triggerHistory : undefined,
     });
   }, [
     paperId,
@@ -132,6 +141,8 @@ export function useSyncEditorSession({
     hasOpen,
     hasExport,
     hasKeepMine,
+    hasHistory,
+    triggerHistory,
     triggerManualSave,
     triggerRename,
     triggerNew,

@@ -5,16 +5,25 @@
  * OpenAPI 3.1 contract specification for StructPaper backend and automated client SDK.
  * OpenAPI spec version: 1.0.0
  */
+import type { JournalStatus } from './journalStatus';
 
 export interface Journal {
   id: string;
   slug: string;
-  code?: string;
+  code: string;
   name: string;
-  shortName?: string;
+  /** @nullable */
+  nameEn?: string | null;
+  shortName: string;
   /** @nullable */
   issn?: string | null;
-  color?: string;
-  status?: string;
+  /** #RRGGBB */
+  color: string;
+  status: JournalStatus;
+  sortOrder?: number;
+  /** Codes of the active article types */
   articleTypes?: string[];
+  latexCls?: string;
+  /** Also the ETag; send it back as If-Match when editing */
+  version: number;
 }

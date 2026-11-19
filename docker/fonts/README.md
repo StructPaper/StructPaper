@@ -9,3 +9,6 @@ Do NOT bind-mount `C:\Windows\Fonts` into the container: that mount is ~10x slow
 
 The font binaries are git-ignored (Microsoft licence). Copy them from `C:\Windows\Fonts`
 on a dev machine, or supply licensed/open substitutes for production builds.
+
+`SourceSans3-*.ttf` (SIL Open Font License) stand in for Myriad Pro in the journal template
+(headings, abstract, side column). They are open, so unlike the Microsoft fonts they are tracked in git.

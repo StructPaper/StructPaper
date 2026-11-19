@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
+import { EditorSessionProvider, useEditorSession } from '@/context/EditorSessionContext';
 
 // Mock next/navigation
 const mockPush = vi.fn();
@@ -25,6 +26,16 @@ vi.mock('@/components/toast', () => ({
     warning: vi.fn(),
   },
 }));
+
+// The editor saves through the API: record the calls instead of reaching a server
+const api = vi.hoisted(() => ({
+  updateJournal: vi.fn(),
+  createJournal: vi.fn(),
+  createProfileDraft: vi.fn(),
+  validateProfileDraft: vi.fn(),
+  publishProfileDraft: vi.fn(),
+}));
+vi.mock('@structpaper/api-client', async (importOriginal) => ({ ...(await importOriginal<typeof import('@structpaper/api-client')>()), ...api }));
 
 // Suppress unhandled rejection on happy-dom animation cancel on unmount
 if (typeof Element !== 'undefined' && Element.prototype.animate) {
@@ -55,6 +66,7 @@ import {
 
 describe('Task 5: Journal Profile & Template Management UI', () => {
   beforeEach(() => {
+    Object.values(api).forEach((fn) => fn.mockReset());
     mockPush.mockClear();
     localStorage.clear();
   });
@@ -174,13 +186,20 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
   describe('3. JournalDetailEditor Component (Subpage)', () => {
     const sampleManaged = getDefaultVnuhcmJournals().find((j) => j.id === 'hs')!;
 
-    it('renders header, brand color, status and tab navigation', () => {
-      render(<JournalDetailEditor initialManaged={sampleManaged} isNew={false} />);
+    it('renders header, brand color, status and tab navigation', async () => {
+      // the journal's name and code are shown by the title bar, which reads them from the editor session
+      const Probe = () => {
+        const { journalBar } = useEditorSession();
+        return <span data-testid="bar">{journalBar ? `${journalBar.short}|${journalBar.names.vi}|${journalBar.names.en}` : 'none'}</span>;
+      };
+      render(
+        <EditorSessionProvider>
+          <Probe />
+          <JournalDetailEditor initialManaged={sampleManaged} isNew={false} />
+        </EditorSessionProvider>,
+      );
 
-      expect(
-        screen.getAllByText('Tạp chí Phát triển KH&CN - Khoa học Sức khỏe').length
-      ).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('VNUHCM-HS').length).toBeGreaterThanOrEqual(1);
+      await waitFor(() => expect(screen.getByTestId('bar').textContent).toContain('VNUHCM-HS|Tạp chí Phát triển KH&CN - Khoa học Sức khỏe|'));
 
       // Verify the 4 editor tabs exist (Tab 5 removed and numbers/icons removed as per requirement)
       expect(screen.getAllByText('Nhận diện & Thương hiệu').length).toBeGreaterThanOrEqual(1);
@@ -209,7 +228,8 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
       expect(screen.getAllByText('Số cột nội dung').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('saves changes to localStorage on "Lưu Thay Đổi" after confirming warning modal', () => {
+    it('saves a changed code through the API (If-Match not sent without a server version) after confirming', async () => {
+      api.updateJournal.mockResolvedValue({ version: 2 });
       render(<JournalDetailEditor initialManaged={sampleManaged} isNew={false} />);
 
       // Modify short code input
@@ -222,14 +242,19 @@ describe('Task 5: Journal Profile & Template Management UI', () => {
 
       // Verify warning modal is open
       expect(screen.getByTestId('template-save-confirm-modal')).toBeDefined();
-      expect(screen.getByText('Lưu cấu hình tạp chí?')).toBeDefined();
+      expect(screen.getByText('Xem lại thay đổi trước khi lưu')).toBeDefined();
+      // the diff shows the code going from the old value to the new one
+      expect(screen.getByTestId('diff-group-identity').textContent).toContain('STDJ-HEALTH');
 
       // Click confirm in modal
-      const confirmBtn = screen.getByTestId('confirm-save-template-btn');
-      fireEvent.click(confirmBtn);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-save-template-btn'));
+      });
 
-      const stored = getManagedJournalById('hs');
-      expect(stored?.profile.names?.short).toBe('STDJ-HEALTH');
+      await waitFor(() => expect(api.updateJournal).toHaveBeenCalledTimes(1));
+      expect(api.updateJournal).toHaveBeenCalledWith('hs', { code: 'STDJ-HEALTH' }, undefined);
+      // only the code changed: no new profile version
+      expect(api.createProfileDraft).not.toHaveBeenCalled();
     });
 
     it('rejects saving when template short code or name conflicts with existing journal', () => {

@@ -25,7 +25,7 @@ export const VNUHCM_COLOR_PALETTE = [
   { id: 'hs', name: 'Khoa học Sức khỏe', hex: '#2B74B7' },
   { id: 'ssh', name: 'KH Xã hội & Nhân văn', hex: '#0000FF' },
   { id: 'ebl', name: 'Kinh tế, Luật & Quản lý', hex: '#8F0B97' },
-  { id: 'et', name: 'Kỹ thuật & Công nghệ', hex: '#0F4761' },
+  { id: 'et', name: 'Kỹ thuật & Công nghệ', hex: '#000000' },
   { id: 'ees', name: 'Trái đất & Môi trường', hex: '#0C712F' },
   { id: 'arns', name: 'Khoa học Tự nhiên', hex: '#FF0000' },
 ];

@@ -3,6 +3,7 @@ import { computePreflightCheck } from '@/lib/docx-parser';
 import { checkLatexMath } from '@/lib/math-text';
 import { analyzeNumbering } from './numbering';
 import { resolvePublication, UNKNOWN } from '../publication';
+import { extraChecks } from './extra-checks';
 
 export type ValidationGate = 'import' | 'export';
 export type ValidationSeverity = 'error' | 'warning' | 'info';
@@ -318,11 +319,20 @@ function dedupe(issues: ValidationIssue[]): ValidationIssue[] {
 }
 
 /**
+ * Every problem found in a paper, for one gate. The import gate, the export gate and the QC tab all
+ * start from this one function, so a problem is reported the same way everywhere.
+ */
+export function collectIssues(paper: CompletePaper, gate: ValidationGate): ValidationIssue[] {
+  const extra = extraChecks(paper, gate).map((i) => ({ ...i, gate }));
+  return dedupe([...fromPreflight(paper, gate), ...coreChecks(paper, gate), ...extra]);
+}
+
+/**
  * GATE 1 — run right after a Word file is imported, before the user may open the editor.
  * Never throws; reports missing fields and numbering problems.
  */
 export function validateForImport(paper: CompletePaper): ValidationReport {
-  const issues = dedupe([...fromPreflight(paper, 'import'), ...coreChecks(paper, 'import')]);
+  const issues = collectIssues(paper, 'import');
   const emptyDoc = !(paper.sections || []).length && !(paper.metadata?.title || '').trim();
   return build('import', issues, emptyDoc);
 }
@@ -332,7 +342,7 @@ export function validateForImport(paper: CompletePaper): ValidationReport {
  * listed, and the user may still export. Only a failed PDF compile blocks (nothing to export).
  */
 export function validateForExport(paper: CompletePaper, opts: ExportValidationOptions = {}): ValidationReport {
-  const issues = dedupe([...fromPreflight(paper, 'export'), ...coreChecks(paper, 'export')]);
+  const issues = collectIssues(paper, 'export');
   if (opts.format === 'pdf' && opts.pdfCompiled === false) {
     issues.push({ id: 'pdf_compile', gate: 'export', severity: 'error', code: 'export.pdf.compile', title: 'PDF chưa biên dịch thành công', message: 'Cần biên dịch PDF không lỗi trước khi xuất.', suggestion: 'Mở bảng lỗi biên dịch và sửa nội dung.' });
   }
