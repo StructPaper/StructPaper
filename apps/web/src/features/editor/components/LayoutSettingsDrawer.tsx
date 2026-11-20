@@ -662,6 +662,56 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
                   </div>
                 </div>
               </div>
+              {/* 6. TÀI LIỆU THAM KHẢO VÀ TRANG CUỐI */}
+              <div className="space-y-3" data-testid="layout-references-section">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-zinc-500" />
+                  Tài liệu tham khảo & trang cuối
+                </label>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-zinc-600 block">DOI ở cuối mỗi tài liệu tham khảo:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ['journal', 'Theo tạp chí (chuẩn)'],
+                      ['available', 'Có "Available from:"'],
+                      ['link', 'Chỉ liên kết'],
+                      ['none', 'Không in'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        data-testid={`layout-reference-doi-${value}`}
+                        onClick={() => setLocalSettings((prev) => ({ ...prev, referenceDoi: value }))}
+                        className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          (localSettings.referenceDoi || 'journal') === value ? 'bg-zinc-900 text-white shadow-2xs' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-zinc-500">Chỉ tài liệu đã có DOI mới được in. Tạp chí KH&CN (STD) in liên kết không kèm chữ "Available from:".</p>
+                </div>
+
+                {([
+                  ['balanceColumns', 'Cân bằng hai cột ở trang cuối', 'Hai cột kết thúc ngang nhau thay vì cột trái đầy còn cột phải ngắn.'],
+                  ['rangeDash', 'Gạch ngang dài cho khoảng số', 'Đổi 268-9 và 2016-2023 thành 268–9 và 2016–2023 như bản in của tạp chí.'],
+                ] as const).map(([key, label, hint]) => (
+                  <label key={key} className="flex items-start gap-2 cursor-pointer select-none" data-testid={`layout-${key}`}>
+                    <input
+                      type="checkbox"
+                      checked={localSettings[key] !== false}
+                      onChange={(e) => setLocalSettings((prev) => ({ ...prev, [key]: e.target.checked }))}
+                      className="mt-0.5 accent-lime-500"
+                    />
+                    <span>
+                      <span className="block text-[11px] font-bold text-zinc-700">{label}</span>
+                      <span className="block text-[10px] text-zinc-500">{hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
               <ThemeSettingsSection
                 theme={localSettings.theme}
                 onChange={(theme) => setLocalSettings((prev) => ({ ...prev, theme }))}

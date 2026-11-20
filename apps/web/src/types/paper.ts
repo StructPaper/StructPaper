@@ -53,7 +53,7 @@ export interface PaperMetadata {
   year: string;
   firstPage: number;
   lastPage: number;
-  titleOriginal?: string; articleTypeEn?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
+  titleOriginal?: string; titleEnOriginal?: string; importNotes?: string[]; articleTypeEn?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
 }
 
 export interface PaperFigure {
@@ -499,6 +499,8 @@ export interface PreflightCheck {
 }
 
 export interface JournalTemplate {
+  /** What the journal prints before a reference's DOI link ("Available from: "); empty prints the link alone. */
+  referenceDoiLabel?: string;
   doiPrefix?: string; officialNameEn?: string; officialAbbvEn?: string; // DOI prefix (DOI = prefix.v{vol}i{issue}.{articleId}); English name/abbreviation for headers and citation
   id: string;
   name: string;
@@ -540,6 +542,12 @@ export interface LayoutSettings {
   columnSep?: '1pc' | '1.5pc' | '2pc';
   lineSpacing?: '1.13' | '1.2' | '1.3';
   pageNumbering?: PageNumberingSettings;
+  /** The DOI at the end of a reference: as the journal prints it (default), with "Available from:", as a bare link, or not at all. */
+  referenceDoi?: 'journal' | 'available' | 'link' | 'none';
+  /** The two columns of the last page end at the same height (default on). */
+  balanceColumns?: boolean;
+  /** Hyphens between numbers (268-9, 2016-2023) are printed as en dashes (default on). */
+  rangeDash?: boolean;
 }
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {

@@ -13,6 +13,8 @@ import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } 
 import { extractListHeadings, isNoneMark } from './docx-headings';
 import { articleIdFromFileName } from './publication';
 import { normalizeImportedTitle } from './title-case';
+import { prepareDocx } from './docx-prepare';
+import { splitReferenceDoi } from './reference-format';
 import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
 import { findJournalTemplate, getJournalTemplate } from './templates';
@@ -785,7 +787,10 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
   return { authors, affiliations: cleanedAffiliations, corresponding, authorLineIndex };
 }
 
-export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string): Promise<CompletePaper> {
+export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: string): Promise<CompletePaper> {
+  // not a .docx: say so plainly. Track Changes are resolved and footnotes placed in the text before anything is read
+  const prepared = await prepareDocx(originalBuffer);
+  const fileBuffer = prepared.buffer;
   const mammothOpts: any = { arrayBuffer: fileBuffer };
   if (typeof Buffer !== 'undefined') {
     mammothOpts.buffer = Buffer.isBuffer(fileBuffer) ? fileBuffer : Buffer.from(fileBuffer);
@@ -829,7 +834,7 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     }
   }
 
-  const listHeadings = extractListHeadings((await zip.file('word/document.xml')?.async('text')) || '');
+  const listHeadings = extractListHeadings((await zip.file('word/document.xml')?.async('text')) || '', await zip.file('word/styles.xml')?.async('text'));
   const rawTextResult = await mammoth.extractRawText(cleanMammothOpts);
   const rawLines = rawTextResult.value
     .split(/\r?\n/)
@@ -1462,10 +1467,13 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
 
   // ALL-CAPS titles become sentence case (acronyms found elsewhere in the paper stay capital); original kept for undo
   const normalizedTitle = normalizeImportedTitle(title, [abstract, keywords.join(' '), ...sections.map((s) => s.content)]);
+  // the English title too: a title typed in CAPITALS becomes sentence case (acronyms found elsewhere in the paper stay capital)
+  const normalizedTitleEn = normalizeImportedTitle(titleEn, [abstractEn, keywordsEn.join(' '), abstract, ...sections.map((s) => s.content)]);
   const metadata: PaperMetadata = {
     title: normalizedTitle.title,
     titleOriginal: normalizedTitle.original,
-    titleEn,
+    titleEn: normalizedTitleEn.title,
+    ...(normalizedTitleEn.original ? { titleEnOriginal: normalizedTitleEn.original } : {}),
     articleType,
     ...(articleTypeEn ? { articleTypeEn } : {}),
     journalId: journalInfo.journalId,
@@ -1488,13 +1496,20 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     lastPage,
     // only the article id is knowable from the file name; the rest stays "?" until the editor enters it
     publication: articleIdFromFileName(fileName) ? { articleId: articleIdFromFileName(fileName) } : undefined,
+    // what the import did and what it could not carry over (Track Changes, footnotes, comments, EMF/WMF, MathType)
+    ...(prepared.notes.length ? { importNotes: prepared.notes } : {}),
   };
 
   const paper: CompletePaper = {
     id: `paper_${Date.now()}`,
     metadata,
     sections,
-    references,
+    // a DOI at the end of a reference ("Available from: https://doi.org/..." / "DOI: ...") is kept in its own field
+    references: references.map((r) => {
+      if (r.doi) return r;
+      const split = splitReferenceDoi(r.raw);
+      return split.doi ? { ...r, raw: split.raw, doi: split.doi } : r;
+    }),
   };
 
   return paper;

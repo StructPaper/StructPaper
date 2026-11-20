@@ -164,13 +164,21 @@ export async function extractPaperImagesAsync(
     }))
   );
 
+  // every figure number of the paper, with or without a picture: a position-based alias must never take the name of a figure
+  // that has none (it would then show somebody else's picture under its caption)
+  const claimed = new Set<number>(figureEntries.map((e) => e.num));
+  sections.forEach((sec) => {
+    if (sec.type === 'figure' && sec.figure?.num) claimed.add(sec.figure.num);
+  });
   for (const { idx, num, resolved } of resolvedEntries) {
     if (!resolved) continue;
     const { base64, ext } = resolved;
     images[`fig${num}.${ext}`] = base64;
     images[`image${num}.${ext}`] = base64;
-    images[`image${idx + 1}.${ext}`] = base64;
-    images[`fig${idx + 1}.${ext}`] = base64;
+    if (!claimed.has(idx + 1) || idx + 1 === num) {
+      images[`image${idx + 1}.${ext}`] = base64;
+      images[`fig${idx + 1}.${ext}`] = base64;
+    }
   }
 
   return images;

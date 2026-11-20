@@ -6,6 +6,7 @@ import { resolvePublication, hasPublicationValue } from './publication';
 import { displayHeading } from './headings';
 import { resolveTheme } from './theme-config';
 import { articleTypeJats } from './article-types';
+import { hasFootnotes, splitFootnotes } from './footnotes';
 /**
  * JATS 1.2 XML export for the VNUHCM journal platform.
  *
@@ -89,6 +90,12 @@ const CITE_RE = /\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g;
 
 /** Text -> JATS inline XML: formulas become <inline-formula>, [n] becomes <xref ref-type="bibr">. */
 export function inlineToJats(text: string): string {
+  // footnotes ([[fn: ...]]) become inline <fn> elements, right where they are cited
+  if (hasFootnotes(text || '')) {
+    return splitFootnotes(text)
+      .map((p) => (p.kind === 'note' ? `<fn><p>${inlineToJats(p.text)}</p></fn>` : inlineToJats(p.text)))
+      .join('');
+  }
   return splitMathSegments(text || '')
     .map((seg) => {
       if (seg.kind === 'text') {

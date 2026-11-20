@@ -2,6 +2,8 @@ import JSZip from 'jszip';
 import { CompletePaper, LayoutSettings, JournalTemplate } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { getJournalTemplate } from './templates';
+import { hasFootnotes, splitFootnotes } from './footnotes';
+import { enDashRanges, referenceLatex } from './reference-format';
 import { resolveTheme, hexToRgb as themeHexToRgb } from './theme-config';
 import { sanitizeMathForLatex } from './math-text';
 import { equationToLatex, EQUATION_FIT_MACRO } from './latex-equation';
@@ -27,9 +29,32 @@ export { escapeLatex };
 /**
  * Converts inline citation brackets like [1] or [1, 2] to native LaTeX natbib citations
  */
+/** A heading is also an entry of the PDF's bookmark panel: an anchor at the heading and an entry that points to it. */
+export const bookmark = (level: 'section' | 'subsection' | 'subsubsection', title: string): string =>
+  `\\phantomsection\\addcontentsline{toc}{${level}}{${escapeLatex(title)}}\n`;
+
+/** Text for a PDF information field: no TeX specials, one line. */
+export const pdfText = (s: string): string => (s || '').replace(/[{}\\%#&_^~$]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const ORCID = /(\d{4}-\d{4}-\d{4}-\d{3}[\dXx])/;
+
+/** The small green "iD" after an author's name, linking to their ORCID page; nothing for an ORCID that is not well formed. */
+export const orcidLatex = (orcid?: string): string => {
+  const id = (orcid || '').match(ORCID)?.[1]?.toUpperCase();
+  return id ? `\\,\\href{https://orcid.org/${id}}{\\textcolor[RGB]{166,206,57}{\\textbf{\\scriptsize iD}}}` : '';
+};
+
+/** A footnote, printed at the foot of the page (in a two-column paper, at the foot of its column). */
+const footnoteLatex = (note: string): string => `\\footnote{${escapeLatex(note)}}`;
+
+/** Set at the start of each document: whether number ranges get an en dash (see LayoutSettings.rangeDash). */
+let rangeDashOn = true;
+
 function formatParagraphText(text: string): string {
   if (!text) return '';
-  let escaped = escapeLatex(text);
+  // a footnote typed or imported as [[fn: text]] is printed at the foot of the page
+  if (hasFootnotes(text)) return splitFootnotes(text).map((part) => (part.kind === 'note' ? footnoteLatex(part.text) : formatParagraphText(part.text))).join('');
+  let escaped = escapeLatex(rangeDashOn ? enDashRanges(text) : text);
   escaped = escaped.replace(/\[(\d+)\]/g, '\\unskip~\\cite{ref$1}');
   escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2}');
   escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2,ref$3}');
@@ -105,6 +130,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   const headRgb = themeHexToRgb(theme.tableHeaderColor);
   const zebraRgb = themeHexToRgb(theme.tableZebraColor);
   const isOneColumn = settings.columnLayout === '1-column';
+  // hyphens between numbers become en dashes unless the author turned that off (read by formatParagraphText and the references)
+  rangeDashOn = settings.rangeDash !== false;
 
   let paperWidthStr = '8.51in';
   let paperHeightStr = '11in';
@@ -273,7 +300,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
       const supContent = `${affMark}${affMark && corrMark ? ',' : ''}${corrMark}`;
       const sup = supContent ? `\\textsuperscript{${supContent}}\\!` : '';
       const nameWithTildes = (a.name || 'Tác giả').trim().replace(/\s+/g, '~');
-      return `${escapeLatex(nameWithTildes)}${sup}`;
+      return `${escapeLatex(nameWithTildes)}${sup}${orcidLatex(a.orcid)}`;
     })
     .join(', ');
 
@@ -332,6 +359,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
 \\def\\cmlastpage{${escapeLatex(pub.lastPage)}}
 \\def\\citeauthor{${escapeLatex(en ? toAsciiName(citeAuthors) : citeAuthors)}}
 \\def\\citetitle{\\textbf{${escapeLatex(safeTitle)}}}\\def\\journalname{${escapeLatex(journalSuffix)}}\\def\\actualjournal{${escapeLatex(mainJournalName)}}\\renewcommand{\\refname}{${labels.references}}
+% what a PDF reader and a search index show about the file
+\\hypersetup{pdftitle={${pdfText(safeTitle)}},pdfauthor={${pdfText(rawAuthors.map((a) => a.name).join(', '))}},pdfsubject={${pdfText(`${mainJournalName} ${metadata.year || ''}`)}},pdfkeywords={${pdfText(safeKeywords.join(', '))}},pdfcreator={StructPaper}}
 `;
 
   const buildAffbox = (affs: string, name: string, aff: string, email: string) => `        \\gdef\\affbox{\\parbox{4.4cm}{
@@ -387,13 +416,13 @@ ${isOneColumn
 
     if (sec.type === 'h1' && sec.title) {
       const displayTitle = displayHeading(sec.title, theme.keepSectionNumbers).toUpperCase().replace(/TÁ\s+TRÀNG/g, 'TÁ~TRÀNG');
-      bodyLatex += `\n\\section*\n  {\\textbf{${escapeLatex(displayTitle)}}}\n`;
+      bodyLatex += `\n${bookmark('section', displayTitle)}\\section*\n  {\\textbf{${escapeLatex(displayTitle)}}}\n`;
       if (sec.content) bodyLatex += `${formatParagraphText(sec.content)}\n`;
     } else if (sec.type === 'h2' && sec.title) {
-      bodyLatex += `\n\\subsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
+      bodyLatex += `\n${bookmark('subsection', displayHeading(sec.title, theme.keepSectionNumbers))}\\subsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
       if (sec.content) bodyLatex += `${formatParagraphText(sec.content)}\n`;
     } else if (sec.type === 'h3' && sec.title) {
-      bodyLatex += `\n\\subsubsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
+      bodyLatex += `\n${bookmark('subsubsection', displayHeading(sec.title, theme.keepSectionNumbers))}\\subsubsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
       if (sec.content) bodyLatex += `${formatParagraphText(sec.content)}\n`;
     } else if (sec.type === 'paragraph' && sec.content) {
       bodyLatex += `\n${formatParagraphText(sec.content)}\n`;
@@ -432,15 +461,15 @@ ${isOneColumn
       bodyLatex += `\n\\bgroup
 \\fixFloatSize{images/${imgName}}
 \\begin{${figEnv}}[${placement}]${mdframedStart}\\centering \\makeatletter
-\\IfFileExists{images/${imgName}}{\\includegraphics[${widthArg}]{images/${imgName}}}{%
+${sec.figure.src?.trim() ? '' : `\\fbox{\\parbox[c][2.4cm][c]{0.92\\linewidth}{\\centering\\sffamily\\footnotesize Chưa có ảnh cho Hình ${figNum}}}\\iffalse\n`}\\IfFileExists{images/${imgName}}{\\includegraphics[${widthArg}]{images/${imgName}}}{%
 \\IfFileExists{${imgName}}{\\includegraphics[${widthArg}]{${imgName}}}{%
 \\IfFileExists{images/fig${figNum}.png}{\\includegraphics[${widthArg}]{images/fig${figNum}.png}}{%
 \\IfFileExists{fig${figNum}.png}{\\includegraphics[${widthArg}]{fig${figNum}.png}}{%
 \\IfFileExists{images/fig${figNum}.jpg}{\\includegraphics[${widthArg}]{images/fig${figNum}.jpg}}{%
 \\IfFileExists{fig${figNum}.jpg}{\\includegraphics[${widthArg}]{fig${figNum}.jpg}}{%
 \\IfFileExists{open-access.png}{\\includegraphics[width=0.65\\linewidth]{open-access.png}}{\\rule{5cm}{3cm}}%
-}}}}}}
-\\makeatother 
+}}}}}}${sec.figure.src?.trim() ? '' : '\n\\fi'}
+\\makeatother
 \\caption{{\\textbf{${escapeLatex(stripCaptionLabel(sec.figure.caption))}}}}
 ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${escapeLatex(sec.figure.source)}}}\\\\\n` : ''}\\label{figure-${figNum}}${mdframedEnd}
 \\end{${figEnv}}
@@ -460,13 +489,15 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
     bodyLatex = `\n\\section*{\\textbf{NỘI DUNG BẢN THẢO}}\nChưa có nội dung bài báo. Vui lòng thêm các đề mục, đoạn văn bản, bảng số liệu hoặc hình ảnh minh họa tại thẻ Nội dung.\n`;
   }
 
+  // what is printed before a reference's DOI link: the journal's own habit unless the author chose another
+  const doiLabel = settings.referenceDoi === 'available' ? 'Available from: ' : settings.referenceDoi === 'link' ? '' : tmpl.referenceDoiLabel ?? 'Available from: ';
   let bibLatex = '';
   if (references.length > 0) {
-    const balanceCmd = layoutTracker.oneColumn ? '' : '\\beforepage{\\balance} \n\n';
+    const balanceCmd = layoutTracker.oneColumn || settings.balanceColumns === false ? '' : '\\beforepage{\\balance} \n\n';
     // polyglossia resets \refname to "References" at \begin{document}; set the printed heading here
     bibLatex = `\n${balanceCmd}{\\sffamily\\fontsize{7}{8}\\selectfont \n\n\\renewcommand{\\refname}{${labels.references}}\n\\begin{thebibliography}{10}\n\n` +
       references
-        .map((r) => `\\bibitem{ref${r.id}}\n${escapeLatex(r.raw)}`)
+        .map((r) => `\\bibitem{ref${r.id}}\n${referenceLatex(r, escapeLatex, doiLabel, { dash: rangeDashOn, showDoi: settings.referenceDoi !== 'none' })}`)
         .join('\n\n') +
       `\n\n\\end{thebibliography}\n}\n`;
   }

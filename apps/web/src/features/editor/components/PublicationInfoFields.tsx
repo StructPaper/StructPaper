@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { BookMarked, Wand2, History } from 'lucide-react';
+import { DatePicker } from '@/components/ui';
 import type { PaperMetadata, PublicationInfo } from '@/types/paper';
 import { getJournalTemplate } from '@/lib/templates';
 import {
@@ -19,12 +20,12 @@ interface Props {
   onChange: (metadata: PaperMetadata) => void;
 }
 
-const FIELDS: Array<{ key: PublicationKey; label: string; placeholder: string; mono?: boolean; wide?: boolean }> = [
+const FIELDS: Array<{ key: PublicationKey; label: string; placeholder: string; mono?: boolean; wide?: boolean; date?: boolean }> = [
   { key: 'volume', label: 'Tập (Volume):', placeholder: '10' },
   { key: 'issue', label: 'Số (Issue):', placeholder: '3' },
   { key: 'firstPage', label: 'Trang đầu:', placeholder: '6906' },
   { key: 'lastPage', label: 'Trang cuối:', placeholder: '6916' },
-  { key: 'published', label: 'Ngày đăng (dd-mm-yyyy):', placeholder: '10-08-2026' },
+  { key: 'published', label: 'Ngày đăng:', placeholder: '10-08-2026', date: true },
   { key: 'doi', label: 'Mã định danh DOI:', placeholder: 'https://doi.org/10.32508/…', mono: true, wide: true },
 ];
 
@@ -60,7 +61,11 @@ export const PublicationInfoFields: React.FC<Props> = ({ metadata, onChange }) =
       </label>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {FIELDS.map((f) => (
+        {FIELDS.map((f) => f.date ? (
+          <div key={f.key}>
+            <DatePicker label={f.label} value={shown(f.key)} onChange={(val) => set(f.key, val)} placeholder={f.placeholder} />
+          </div>
+        ) : (
           <div key={f.key} className={f.wide ? 'col-span-2 sm:col-span-4' : ''}>
             <label className="text-[11px] font-bold text-zinc-600 block mb-1" htmlFor={`pub-${f.key}`}>
               {f.label}

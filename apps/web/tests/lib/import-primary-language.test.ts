@@ -58,7 +58,7 @@ describe('Vietnamese journal template sample keeps working', () => {
   it('Vietnamese stays primary, the English closing page fills the English slots', async () => {
     const m: any = (await load('Bài mẫu template tiếng Việt.docx')).metadata;
     expect(m.title).toMatch(/^Các yếu tố tác động/);
-    expect(m.titleEn).toMatch(/^FACTORS AFFECTING/);
+    expect(m.titleEn).toMatch(/^Factors affecting/);
     expect(m.abstract).toMatch(/^Bài viết nhằm/);
     expect(m.abstractEn).toMatch(/^This study identifies/);
     expect(m.articleTypeEn).toBeUndefined();

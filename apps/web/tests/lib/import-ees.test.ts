@@ -92,7 +92,7 @@ describe('real file: the journal Vietnamese template sample', () => {
     expect(p.sections.some((s) => /Hướng dẫn dành cho tác giả|không thuộc nội dung bài báo/.test(s.content || s.title || ''))).toBe(false);
     const h1 = p.sections.filter((s) => s.type === 'h1').map((s) => s.title);
     expect(h1).toEqual(expect.arrayContaining(['Đóng góp của các tác giả', 'Xung đột lợi ích', 'Tính khả dụng của dữ liệu']));
-    expect(p.metadata.titleEn).toMatch(/^FACTORS AFFECTING/);
+    expect(p.metadata.titleEn).toMatch(/^Factors affecting/);
   }, 60_000);
 });
 

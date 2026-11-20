@@ -197,6 +197,9 @@ const LAYOUT_LABELS: Record<string, string> = {
   fontSize: 'Cỡ chữ',
   columnSep: 'Khoảng cách giữa các cột',
   lineSpacing: 'Giãn dòng',
+  referenceDoi: 'DOI trong tài liệu tham khảo',
+  balanceColumns: 'Cân bằng hai cột ở trang cuối',
+  rangeDash: 'Gạch ngang dài cho khoảng số',
 };
 
 /** "pageNumbering.format" -> "Đánh số trang › format". */

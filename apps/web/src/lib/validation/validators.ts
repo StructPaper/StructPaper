@@ -127,6 +127,14 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
     push({ id: 'title_normalized', severity: 'info', code: 'field.title.normalized', title: 'Tựa đề đã chuyển từ chữ HOA sang kiểu câu', message: `Bản gốc trong Word: "${md.titleOriginal}".`, suggestion: 'Có thể hoàn tác ở thẻ "Tựa đề".', fixTab: 'metadata' });
   }
 
+  (md.importNotes ?? []).forEach((note, i) => {
+    push({ id: `import_note_${i}`, severity: 'info', code: 'import.note', title: 'Ghi chú khi nhập tệp Word', message: note });
+  });
+
+  if (md.titleEnOriginal && md.titleEnOriginal !== md.titleEn) {
+    push({ id: 'title_en_normalized', severity: 'info', code: 'field.titleEn.normalized', title: 'Tựa đề tiếng Anh đã chuyển từ chữ HOA sang kiểu câu', message: `Bản gốc trong Word: "${md.titleEnOriginal}".`, suggestion: 'Kiểm tra lại cách viết hoa tên riêng ở thẻ "Tựa đề".', fixTab: 'metadata' });
+  }
+
   // Word titles are often typed in capitals; the journal prints sentence case.
   const titleLetters = (md.title || '').replace(/[^A-Za-zÀ-ỹ]/g, '');
   if (titleLetters.length >= 12 && titleLetters === titleLetters.toUpperCase()) {

@@ -12,6 +12,7 @@ import {
   BorderStyle,
 } from 'docx';
 import type { PaperReference, PaperSection } from '@/types/paper';
+import { inlineFootnotes } from './footnotes';
 import type { ResolvedTheme } from './theme-config';
 import { latexToDocxMath, splitTextWithMath } from './docx-math';
 import { displayHeading } from './headings';
@@ -42,8 +43,9 @@ export function richRuns(text: string, color: string, font = FONT_SERIF, size = 
   return out;
 }
 
+// Word footnotes need their own part of the file: here a note is kept as a parenthesis right after the sentence it belongs to
 const bodyPara = (text: string, color: string) =>
-  new Paragraph({ style: 'BodyText', alignment: AlignmentType.JUSTIFIED, children: richRuns(text, color) });
+  new Paragraph({ style: 'BodyText', alignment: AlignmentType.JUSTIFIED, children: richRuns(inlineFootnotes(text), color) });
 
 function headingPara(sec: PaperSection, theme: ResolvedTheme, color: string): Paragraph {
   const title = displayHeading(sec.title || '', theme.keepSectionNumbers);

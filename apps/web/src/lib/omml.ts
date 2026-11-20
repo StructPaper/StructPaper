@@ -62,7 +62,8 @@ function propChr(props: OrderedNode[] | undefined, tag: string): string | undefi
 /** Wrap in braces only when needed so output stays readable: x_{1} -> x_1. */
 function group(latex: string): string {
   const t = latex.trim();
-  return /^(?:[A-Za-z0-9]|\\[A-Za-z]+)$/.test(t) ? t : `{${t}}`;
+  if (/^\\[A-Za-z]+$/.test(t)) return `${t} `; // a command needs a space after it, or the next letter would join it (\nu z -> \nuz)
+  return /^[A-Za-z0-9]$/.test(t) ? t : `{${t}}`;
 }
 
 function convertRun(children: OrderedNode[]): string {
