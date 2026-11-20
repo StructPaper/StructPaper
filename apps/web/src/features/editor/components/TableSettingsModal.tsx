@@ -41,7 +41,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   const [columnSpan, setColumnSpan] = useState<'1-column' | '2-column'>(initialSpan);
   const [isRotated, setIsRotated] = useState<boolean>(!!table.isRotated);
   const [fontSize, setFontSize] = useState<'7pt' | '8pt' | '9pt' | '10pt'>(table.fontSize || '8pt');
-  const [rowStretch, setRowStretch] = useState<number>(table.rowStretch || 1.4);
+  const [rowStretch, setRowStretch] = useState<number>(table.rowStretch || 1.2);
   const [bodyFill, setBodyFill] = useState<'plain' | 'zebra' | 'shaded'>(resolveBodyFill(table));
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(table.placement || 'auto');
   const [breakAcrossPages, setBreakAcrossPages] = useState<'auto' | 'always' | 'never'>(table.breakAcrossPages || 'auto');
@@ -64,7 +64,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       setColumnSpan(span);
       setIsRotated(!!table.isRotated);
       setFontSize(table.fontSize || '8pt');
-      setRowStretch(table.rowStretch || 1.4);
+      setRowStretch(table.rowStretch || 1.2);
       setBodyFill(resolveBodyFill(table));
       setPlacement(table.placement || 'auto');
       setBreakAcrossPages(table.breakAcrossPages || 'auto');
@@ -77,7 +77,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     setColumnSpan('2-column');
     setIsRotated(false);
     setFontSize('8pt');
-    setRowStretch(1.4);
+    setRowStretch(1.2);
     setBodyFill('plain');
     setPlacement('auto');
   };

@@ -48,6 +48,23 @@ export function enDashRanges(text: string): string {
 }
 
 /**
+ * A web address inside a reference is set as a link, which may break across lines at "/", "." or "-". As plain text it is one
+ * unbreakable word and runs into the next column ("https://scholar.google.com/scholar?hl=vi&as_sdt=...").
+ */
+export function escapeWithLinks(text: string, escape: (s: string) => string): string {
+  return text
+    .split(/(https?:\/\/[^\s<>]+)/g)
+    .map((part, i) => {
+      if (i % 2 === 0) return escape(part);
+      const url = part.replace(/[.,;:)\]]+$/, '');
+      const tail = part.slice(url.length);
+      if (/[{}\\]/.test(url)) return escape(part);
+      return `\\url{${url}}${escape(tail)}`;
+    })
+    .join('');
+}
+
+/**
  * One reference as LaTeX: its text, then the DOI as a link when it has one and the text does not already say it.
  * `label` is what the journal prints before the link ("Available from: "); empty prints the link alone.
  */
@@ -57,7 +74,7 @@ export function referenceLatex(
   label = 'Available from: ',
   options: { dash?: boolean; showDoi?: boolean } = {},
 ): string {
-  const body = escape(options.dash === false ? ref.raw.trim() : enDashRanges(ref.raw.trim()));
+  const body = escapeWithLinks(options.dash === false ? ref.raw.trim() : enDashRanges(ref.raw.trim()), escape);
   const doi = options.showDoi === false ? undefined : cleanDoi(ref.doi);
   if (!doi || ref.raw.includes(doi)) return body;
   const end = /[.!?]$/.test(ref.raw.trim()) ? '' : '.';

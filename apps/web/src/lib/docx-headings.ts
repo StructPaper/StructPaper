@@ -32,10 +32,19 @@ export function headingStyleLevels(stylesXml: string | undefined): Map<string, n
 
 export function extractListHeadings(docXml: string, stylesXml?: string): Map<string, number> {
   const out = new Map<string, number>();
+  const styledTexts = new Set<string>();
   const styleLevels = headingStyleLevels(stylesXml);
   const withoutTables = docXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/gi, '');
-  for (const m of withoutTables.matchAll(/<w:p\b[\s>][\s\S]*?<\/w:p>/gi)) {
-    const p = m[0];
+  const paragraphs = [...withoutTables.matchAll(/<w:p\b[\s>][\s\S]*?<\/w:p>/gi)].map((m) => m[0]);
+  const textOf = (para: string) => para.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const runsOf = (para: string) => [...para.matchAll(/<w:r\b[\s>][\s\S]*?<\/w:r>/gi)].map((r) => r[0]).filter((r) => /<w:t\b/.test(r));
+  /** The next paragraph that has text. */
+  const nextTextual = (i: number) => {
+    for (let j = i + 1; j < paragraphs.length; j++) if (textOf(paragraphs[j])) return paragraphs[j];
+    return undefined;
+  };
+  for (let pi = 0; pi < paragraphs.length; pi++) {
+    const p = paragraphs[pi];
     const lvl = p.match(/<w:numPr>[\s\S]*?<w:ilvl w:val="(\d+)"/i)?.[1];
     const runs = [...p.matchAll(/<w:r\b[\s>][\s\S]*?<\/w:r>/gi)].map((r) => r[0]).filter((r) => /<w:t\b/.test(r));
     if (!runs.length) continue;
@@ -47,7 +56,10 @@ export function extractListHeadings(docXml: string, stylesXml?: string): Map<str
     const allBold = runs.every((r) => isOn(r, 'b'));
     const numbered = lvl !== undefined && allBold;
     const handTyped = lvl === undefined && allBold && runs.every((r) => isOn(r, 'i'));
-    const boldOnly = lvl === undefined && allBold && styled === undefined;
+    // A bold line alone is a heading only when real text follows it: a bold label followed by another bold line or a caption is not
+    const next = nextTextual(pi);
+    const nextIsBody = !!next && textOf(next).length >= 40 && !runsOf(next).every((r) => isOn(r, 'b'));
+    const boldOnly = lvl === undefined && allBold && styled === undefined && nextIsBody;
     if (styled === undefined && !numbered && !handTyped && !boldOnly) continue;
 
     const text = p.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -55,7 +67,10 @@ export function extractListHeadings(docXml: string, stylesXml?: string): Map<str
     // Captions and source/notes lines stay text. "Nguồn dữ liệu" is a heading: only "Nguồn: …" is a source line.
     if ((handTyped || boldOnly || styled !== undefined) && (/^(hình|bảng|figure|table|phụ lục)\s*\d/i.test(text) || /^(nguồn|source|ghi chú|chú thích|notes?)\s*:/i.test(text))) continue;
 
-    if (styled !== undefined) out.set(text, styled);
+    if (styled !== undefined) {
+      out.set(text, styled);
+      styledTexts.add(text);
+    }
     else if (numbered) out.set(text, Math.min(Number(lvl), 2));
     else if (handTyped) out.set(text, 1);
     else {
@@ -63,6 +78,13 @@ export function extractListHeadings(docXml: string, stylesXml?: string): Map<str
       const letters = text.replace(/[^\p{L}]/gu, '');
       out.set(text, letters.length >= 4 && letters === letters.toUpperCase() ? 0 : 1);
     }
+  }
+  // A file that uses Heading 2 and Heading 3 and never Heading 1 means "section" and "sub-section": move every level up
+  if (styledTexts.size > 0) {
+    const used = new Set([...styledTexts].map((t) => out.get(t) ?? 0));
+    const lowest = Math.min(...used);
+    // only when two levels are used (Heading 2 for sections, Heading 3 under them): a lone level is left as it is
+    if (lowest > 0 && used.size > 1) for (const t of styledTexts) out.set(t, (out.get(t) ?? 0) - lowest);
   }
   return out;
 }

@@ -31,7 +31,7 @@ export function tableToLatex(
 
   const fontSize = table.fontSize || '8pt';
   const lineHeight = fontSize === '7pt' ? '9pt' : fontSize === '9pt' ? '11pt' : fontSize === '10pt' ? '12pt' : '10pt';
-  const arrayStretch = table.rowStretch || 1.4;
+  const arrayStretch = table.rowStretch || 1.2;
   const fill = resolveBodyFill(table);
 
   const bodyRows = table.bodyRows && table.bodyRows.length > 0
@@ -60,21 +60,29 @@ export function tableToLatex(
         .join('\\newline ')}}`
     : '';
 
-  const caption = `\\caption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}}`;
+  // the caption is as wide as the table and starts at its left edge (not centred in a narrower box), as in the printed journals
+  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}}`;
   const label = `\\label{tab:${table.num || 1}}`;
   // Multi-row headers keep their merged cells ("Quan trắc" over 3 columns, "Dự báo" over 2 rows)
   const headSpans = spanRenderer(maxCols, (c: any) => `\\textbf{${escapeLatex(c?.text ?? '')}}`, 'c');
   const headRow =
     table.headerRows && table.headerRows.length > 1
-      ? `${table.headerRows.map((r) => `\\rowcolor{tableheadrcolor}\n${headSpans(r)} \\\\`).join('\n')} \\hline`
-      : `\\rowcolor{tableheadrcolor}\n${headers.map((h) => `\\textbf{${escapeLatex(h)}}`).join(' & ')} \\\\ \\hline`;
+      ? table.headerRows.map((r) => `\\rowcolor{tableheadrcolor}\n${headSpans(r)} \\\\`).join('\n')
+      : // as printed: the header band is grey with bold centred titles, and no rule between it and the body (the rules are above and below the table)
+        `\\rowcolor{tableheadrcolor}\n${headers.map((h) => `\\centering\\arraybackslash\\textbf{${escapeLatex(h)}}`).join(' & ')} \\\\`;
   const continuedTitle = escapeLatex(theme.continuedTitleText.replace('{n}', String(table.num || '')));
   const continuedFoot = escapeLatex(theme.continuedFootText);
-  // Column widths proportional to content length (clamped), like a typeset journal table.
-  const weights = headers.map((h, c) => {
-    const lens = [h.length, ...bodyRows.map((r) => String(r[c]?.text ?? r[c] ?? '').length)];
-    const avg = lens.reduce((a, b) => a + b, 0) / lens.length;
-    return Math.max(6, Math.min(60, Math.round(avg)));
+  // Column widths like a typeset journal table: the longest line of a column decides, softened by a square root so that a column of
+  // short names still gets about a third of the width next to a column of long sentences (the printed tables are set that way).
+  // A banner merged over several columns ("Điểm đánh giá … " over six) says nothing about one column's width: the leaf header row decides,
+  // and merged cells are left out.
+  const headerText = (c: number): string => String(headers[c] ?? '').split(' / ').pop() ?? "";
+  const weights = headers.map((_h, c) => {
+    const cells = [headerText(c), ...bodyRows.filter((r: any[]) => !(r[c]?.colSpan && r[c].colSpan > 1)).map((r) => String(r[c]?.text ?? r[c] ?? ''))];
+    const longestLine = Math.max(...cells.flatMap((t) => t.split(/\r?\n/).map((l) => l.length)), 1);
+    const L = Math.min(110, Math.max(6, longestLine));
+    // a label that fits on one line ("KCN Hiệp Phước GĐ1") gets the room to stay on it: grows linearly up to ~28 characters
+    return Math.max(Math.round(Math.sqrt(L) * 10), L <= 28 ? Math.round(L * 3.2) : 0);
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   const colSpec = weights
@@ -90,7 +98,7 @@ export function tableToLatex(
     const contLine = `\\multicolumn{${maxCols}}{c}{\\textit{${continuedTitle}}}\\\\`;
     const repeat = theme.repeatTableHeader ? `\\tablehead{\\hline ${contLine}\n${headRow}}\n` : `\\tablehead{${contLine}}\n`;
     return `\n${sizeOpen}
-\\topcaption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}}
+\\topcaption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}${label}}
 \\tablefirsthead{\\hline ${headRow}}
 ${repeat}\\tabletail{\\hline \\multicolumn{${maxCols}}{r}{\\textit{${continuedFoot}}}\\\\}
 \\tablelasttail{\\hline}
@@ -137,17 +145,16 @@ ${back}`;
   else if (table.placement === 'here') placement = '!h';
   else if (table.placement === 'bottom') placement = 'b';
 
-  const colFmt = Array(maxCols).fill('L').join('');
   return `\n\\begin{${tabEnv}}[${placement}]
 ${caption}
 ${label}
 \\centering
 ${sizeOpen}
-\\begin{tabulary}{\\linewidth}{${colFmt}}
+\\begin{tabular}{${colSpec}}
 \\hline ${headRow}
 ${bodyRows.map(renderRow).join('\n')}
 \\hline
-\\end{tabulary}${sourceLine}}
+\\end{tabular}${sourceLine}}
 \\end{${tabEnv}}\n`;
 }
 

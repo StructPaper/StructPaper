@@ -27,9 +27,9 @@ function paperWithTable(rows: number, extra: Record<string, unknown> = {}): Comp
 }
 
 describe('LaTeX table export', () => {
-  it('keeps short tables as floating tabulary', () => {
+  it('keeps short tables as floating tabular', () => {
     const tex = generateFullJournalLatex(paperWithTable(3));
-    expect(tex).toContain('\\begin{tabulary}');
+    expect(tex).toContain('\\begin{tabular}');
     expect(tex).not.toContain('\\begin{supertabular}');
   });
 
@@ -38,7 +38,7 @@ describe('LaTeX table export', () => {
     expect(tex).toContain('\\begin{supertabular}');
     expect(tex).toContain('\\tablehead{');
     expect(tex).toContain('\\tablefirsthead{');
-    expect(tex).not.toContain('\\begin{tabulary}');
+    expect(tex).not.toContain('\\begin{table}');
     expect(tex).toContain('Nguồn: Kết quả của nhóm tác giả');
   });
 

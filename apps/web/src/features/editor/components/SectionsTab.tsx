@@ -430,6 +430,8 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         headers: [],
         rows: [],
         isFullWidth: true,
+        // the published journals print every body row on the pale blue tint
+        bodyFill: 'shaded',
       };
       const newSection: PaperSection = {
         id: `s_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,

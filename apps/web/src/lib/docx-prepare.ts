@@ -21,6 +21,35 @@ export interface PreparedDocx {
   stats: { inserted: number; deleted: number; moved: number; comments: number; footnotes: number; vectorImages: number; embeddedEquations: number };
 }
 
+/**
+ * Symbols inserted from Word's Insert > Symbol are written as <w:sym w:font="Symbol" w:char="F0A3"/>, not as text, so the text
+ * reader skipped them ("≤ 10 người" became "10 người"). The Symbol font's codes (F020-F0FF) and the Unicode characters they stand for.
+ */
+const SYMBOL_FONT: Record<string, string> = {
+  F020: ' ', F0A3: '≤', F0B3: '≥', F0B1: '±', F0B4: '×', F0B8: '÷', F0B9: '≠', F0BB: '≈', F0B0: '°', F0AE: '→', F0AC: '←', F0AB: '↔',
+  F0DE: '⇒', F0DC: '⇐', F0DB: '⇔', F0A5: '∞', F0B7: '•', F0D6: '√', F0B5: '∝', F0B6: '∂', F0D1: '∇', F0CE: '∈', F0CF: '∉', F0C7: '∩',
+  F0C8: '∪', F0CC: '⊂', F0CD: '⊆', F0A2: '′', F0B2: '″', F0D7: '⋅', F0A8: '♦', F0E5: '∑', F0D5: '∏', F0F2: '∫', F0AD: '↑', F0AF: '↓',
+  F0DA: '∨', F0D9: '∧', F0D8: '¬', F0C5: '⊕', F0C4: '⊗', F0C6: '∅', F0BA: '≡', F0D0: '∠', F0BC: '…', F0A7: '♣',
+  // lower case Greek letters (a = alpha ... w = omega) and upper case ones
+  F061: 'α', F062: 'β', F063: 'χ', F064: 'δ', F065: 'ε', F066: 'φ', F067: 'γ', F068: 'η', F069: 'ι', F06A: 'ϕ', F06B: 'κ', F06C: 'λ',
+  F06D: 'μ', F06E: 'ν', F06F: 'ο', F070: 'π', F071: 'θ', F072: 'ρ', F073: 'σ', F074: 'τ', F075: 'υ', F076: 'ϖ', F077: 'ω', F078: 'ξ',
+  F079: 'ψ', F07A: 'ζ', F041: 'Α', F042: 'Β', F043: 'Χ', F044: 'Δ', F045: 'Ε', F046: 'Φ', F047: 'Γ', F048: 'Η', F049: 'Ι', F04B: 'Κ',
+  F04C: 'Λ', F04D: 'Μ', F04E: 'Ν', F04F: 'Ο', F050: 'Π', F051: 'Θ', F052: 'Ρ', F053: 'Σ', F054: 'Τ', F055: 'Υ', F057: 'Ω', F058: 'Ξ',
+  F059: 'Ψ', F05A: 'Ζ',
+};
+
+/** The text of the Symbol-font characters in a document's XML (unknown codes are left as they are). */
+export function replaceSymbolFont(xml: string): { xml: string; replaced: number } {
+  let replaced = 0;
+  const next = xml.replace(/<w:sym\b[^>]*?w:font="Symbol"[^>]*?w:char="([0-9A-Fa-f]{4})"[^>]*?\/>/g, (whole, code: string) => {
+    const ch = SYMBOL_FONT[code.toUpperCase()];
+    if (!ch) return whole;
+    replaced++;
+    return `<w:t xml:space="preserve">${ch}</w:t>`;
+  });
+  return { xml: next, replaced };
+}
+
 const OLE_HEADER = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 
 /** Throws a message in Vietnamese when the bytes are not a Word .docx (zip). */
@@ -102,6 +131,9 @@ export async function prepareDocx(buffer: ArrayBuffer): Promise<PreparedDocx> {
       .replace(/<w:moveFrom\b[^>]*>[\s\S]*?<\/w:moveFrom>/g, '')
       .replace(/<\/?w:(?:ins|moveTo)\b[^>]*>/g, '');
   }
+
+  // ---- symbols inserted from Word's Symbol font become the characters they are
+  xml = replaceSymbolFont(xml).xml;
 
   // ---- footnotes and endnotes: placed at the sentence that cites them
   for (const [tag, part] of [['footnote', 'word/footnotes.xml'], ['endnote', 'word/endnotes.xml']] as const) {

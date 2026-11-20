@@ -25,10 +25,18 @@ describe('which paragraphs are headings', () => {
   });
 
   it('a short paragraph typed in bold is a heading: capitals make it a section, otherwise a sub-section', () => {
-    const map = extractListHeadings(doc(para('VẬT LIỆU VÀ PHƯƠNG PHÁP', { bold: true }), para('Hóa chất', { bold: true }), para('Thiết bị', { bold: true })));
+    const body = para('Đây là một đoạn văn bình thường, đủ dài để là nội dung của mục đứng trước nó.');
+    const map = extractListHeadings(doc(para('VẬT LIỆU VÀ PHƯƠNG PHÁP', { bold: true }), body, para('Hóa chất', { bold: true }), body, para('Thiết bị', { bold: true }), body));
     expect(map.get('VẬT LIỆU VÀ PHƯƠNG PHÁP')).toBe(0);
     expect(map.get('Hóa chất')).toBe(1);
     expect(map.get('Thiết bị')).toBe(1);
+  });
+
+  it('a bold line not followed by body text (a label before a caption, two bold lines in a row) is not a heading', () => {
+    const body = para('Đây là một đoạn văn bình thường, đủ dài để là nội dung của mục đứng trước nó.');
+    const map = extractListHeadings(doc(para('Nhãn đậm', { bold: true }), para('Dòng đậm tiếp theo', { bold: true }), body));
+    expect(map.has('Nhãn đậm')).toBe(false);
+    expect(map.get('Dòng đậm tiếp theo')).toBe(1);
   });
 
   it('bold text that is a caption, a source line, a sentence or too long stays text', () => {

@@ -24,7 +24,9 @@ describe('real file: EES ID850 imported from Word', () => {
     expect(paper.references).toHaveLength(26);
     expect(paper.references.map((r) => r.id)).toEqual(Array.from({ length: 26 }, (_, i) => i + 1));
     expect(paper.references[0].raw).toMatch(/^W\. C\. Skamarock/);
-    expect(paper.references[24].raw).toContain('10.1029/2024MS004556');
+    // the DOI at the end is kept in its own field, and printed after "Available from:" by the typesetter
+    expect(paper.references[24].doi).toBe('10.1029/2024MS004556');
+    expect(paper.references[24].raw).not.toContain('doi.org');
     expect(paper.references.some((r) => /Correspondence|Research Article|Sub-Institute|Email:/.test(r.raw))).toBe(false);
   });
 

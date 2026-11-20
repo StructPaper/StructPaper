@@ -16,6 +16,7 @@ import { resolvePublication, hasPublicationValue, UNKNOWN } from './publication'
 import { qrBlockFor } from './qr-latex';
 import { buildEnglishPage, hasEnglishPageContent, toAsciiName } from './latex-english-page';
 import { articleTypeEnglish } from './article-types';
+import { affiliationEnglish, affiliationToEnglish } from './affiliation-en';
 import { ENGLISH_LABELS, VIETNAMESE_LABELS, labelsFor, relabelPreamble, type PageLanguage } from './page-labels';
 import {
   resolveLatexFigureFilename,
@@ -55,10 +56,60 @@ function formatParagraphText(text: string): string {
   // a footnote typed or imported as [[fn: text]] is printed at the foot of the page
   if (hasFootnotes(text)) return splitFootnotes(text).map((part) => (part.kind === 'note' ? footnoteLatex(part.text) : formatParagraphText(part.text))).join('');
   let escaped = escapeLatex(rangeDashOn ? enDashRanges(text) : text);
+  if (parenCiteMax > 0) escaped = parenthesisedCitations(escaped, parenCiteMax);
   escaped = escaped.replace(/\[(\d+)\]/g, '\\unskip~\\cite{ref$1}');
   escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2}');
   escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2,ref$3}');
-  return escaped;
+  return linkFigureTableMentions(escaped);
+}
+
+/** Set at the start of each document: the number of references when "(n)" means a citation, else 0. */
+let parenCiteMax = 0;
+
+/** Words after which "(3)" names an equation, a figure, a step… not a reference. */
+const NOT_A_CITATION = /(?:công thức|phương trình|biểu thức|hình|bảng|mục|bước|điều|khoản|điểm|equation|eq\.?|figure|fig\.?|table|section|step|formula|eqs?\.)\s*$/i;
+
+/**
+ * "(3)", "(2, 5)" and "(4-6)" after a word are citations of those references; "(1)" after "phương trình" or alone on a line is not.
+ * Numbers above the number of references are left alone.
+ */
+export function parenthesisedCitations(escaped: string, max: number): string {
+  return escaped.replace(/(\S)(\s?)\((\d{1,3}(?:\s*[,\-–]\s*\d{1,3})*)\)/g, (whole, prev: string, sp: string, list: string, offset: number, all: string) => {
+    const before = all.slice(Math.max(0, offset - 20), offset) + prev;
+    if (NOT_A_CITATION.test(before)) return whole;
+    const nums: number[] = [];
+    for (const part of list.split(/\s*,\s*/)) {
+      const range = part.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if (range) {
+        const [a, b] = [Number(range[1]), Number(range[2])];
+        if (b < a || b - a > 20) return whole;
+        for (let n = a; n <= b; n++) nums.push(n);
+      } else nums.push(Number(part));
+    }
+    if (nums.some((n) => n < 1 || n > max)) return whole;
+    return `${prev}${sp ? '\\unskip' : ''}~\\cite{${nums.map((n) => `ref${n}`).join(',')}}`;
+  });
+}
+
+/** Numbers of the figures and tables of the paper being typeset: only these mentions become links. */
+let figureTargets = new Set<number>();
+let tableTargets = new Set<number>();
+
+/**
+ * "Hình 3", "Bảng 2", "Figure 1", "Table 4" in the text link to that figure or table (the labels set on their captions).
+ * Lists ("Hình 1, 2 và 3") link each number that exists; a number without a figure or table is left as plain text.
+ */
+export function linkFigureTableMentions(escaped: string, figures: Set<number> = figureTargets, tables: Set<number> = tableTargets): string {
+  return escaped.replace(
+    /\b(Hình|Hình ảnh|Figures?|Figs?\.?|Bảng|Tables?)(~|\s)(\d+)((?:\s*(?:,|và|and|&|–|-)\s*\d+)*)/g,
+    (whole, word: string, sep: string, first: string, rest: string) => {
+      const isTable = /^(Bảng|Table)/i.test(word);
+      const targets = isTable ? tables : figures;
+      const link = (n: string, text: string) => (targets.has(Number(n)) ? `\\hyperref[${isTable ? 'tab:' : 'figure-'}${Number(n)}]{${text}}` : text);
+      const tail = rest.replace(/(\d+)/g, (n) => link(n, n));
+      return `${word}${sep}${link(first, first)}${tail}`;
+    }
+  );
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -132,6 +183,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   const isOneColumn = settings.columnLayout === '1-column';
   // hyphens between numbers become en dashes unless the author turned that off (read by formatParagraphText and the references)
   rangeDashOn = settings.rangeDash !== false;
+  // a paper that cites as (1), (2, 3) instead of [1] (no bracket citation anywhere): the parenthesised numbers are citations
+  parenCiteMax = references.length > 0 && !sections.some((s) => /\[\d+(?:\s*[,\-–]\s*\d+)*\]/.test(s.content || '')) ? references.length : 0;
 
   let paperWidthStr = '8.51in';
   let paperHeightStr = '11in';
@@ -367,9 +420,13 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
         {~\\\\[.5pc]\\raggedright {\\fontsize{8pt}{8pt}\\selectfont\\itshape ${affs}\\\\[.5pc]} }{\\ttfamily\\bfseries\\color{titlecolor}\\fontsize{7pt}{7pt}\\selectfont \\Correspondence}\\\\[.35pc]
         {\\ttfamily\\fontsize{7pt}{8pt}\\selectfont\\textbf{\\prolight ${name}}, ${aff}\\\\[.35pc]Email: ${email}.\\\\[.3pc]}}}`;
   const affiliationsEnFormatted = rawAffiliations
-    .map((aff) => `${hasMultipleAffs && aff.id ? `\\textsuperscript{${aff.id}}` : ''}${escapeLatex((aff.nameEn || aff.name).trim())}`)
+    .map((aff) => `${hasMultipleAffs && aff.id ? `\\textsuperscript{${aff.id}}` : ''}${escapeLatex(affiliationEnglish(aff))}`)
     .join('\\\\[.35pc]\n');
-  const corrAffEn = escapeLatex((rawAffiliations[0]?.nameEn || metadata.corresponding?.affiliation || rawAffiliations[0]?.name || '').trim());
+  const corrAffEn = escapeLatex(
+    rawAffiliations[0]?.nameEn?.trim() || rawAffiliations[0]?.name
+      ? affiliationEnglish(rawAffiliations[0])
+      : affiliationToEnglish((metadata.corresponding?.affiliation || '').trim())
+  );
   // first page: the primary language (English prints names without diacritics)
   const dynamicAffbox = en
     ? buildAffbox(affiliationsEnFormatted, toAsciiName(corrName), corrAffEn, corrEmail)
@@ -396,6 +453,12 @@ ${isOneColumn
 
 `;
 
+  figureTargets = new Set();
+  tableTargets = new Set();
+  sections.forEach((sec, secIdx) => {
+    if (sec.type === 'figure' && sec.figure) figureTargets.add(sec.figure.num || secIdx + 1);
+    else if (sec.type === 'table' && sec.table) tableTargets.add(sec.table.num || 1);
+  });
   let bodyLatex = '';
   const layoutTracker = new PageLayoutTracker(isOneColumn, settings.orientation === 'landscape');
   sections.forEach((sec, secIdx) => {
@@ -484,6 +547,11 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
     }
   });
 
+  // a heading right before a table that has its own page(s) goes onto that page, not alone on the page before
+  bodyLatex = bodyLatex.replace(
+    /(\n\\phantomsection\\addcontentsline[^\n]*\n\\(?:sub)*section\*\n {2}\{\\textbf\{[^\n]*\}\}\n)(\n\\clearpage\n\\onecolumn\n)/g,
+    '$2$1'
+  );
   if (bodyLatex.includes('\\fiteq{')) bodyLatex = EQUATION_FIT_MACRO + bodyLatex;
   if (!bodyLatex.trim()) {
     bodyLatex = `\n\\section*{\\textbf{NỘI DUNG BẢN THẢO}}\nChưa có nội dung bài báo. Vui lòng thêm các đề mục, đoạn văn bản, bảng số liệu hoặc hình ảnh minh họa tại thẻ Nội dung.\n`;
@@ -495,7 +563,9 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
   if (references.length > 0) {
     const balanceCmd = layoutTracker.oneColumn || settings.balanceColumns === false ? '' : '\\beforepage{\\balance} \n\n';
     // polyglossia resets \refname to "References" at \begin{document}; set the printed heading here
-    bibLatex = `\n${balanceCmd}{\\sffamily\\fontsize{7}{8}\\selectfont \n\n\\renewcommand{\\refname}{${labels.references}}\n\\begin{thebibliography}{10}\n\n` +
+    // long links and words may break at the column edge instead of running into the next column
+    const bibBreaks = '\\sloppy\\emergencystretch=3em\\def\\UrlBreaks{\\do\\/\\do\\-\\do\\_\\do\\.\\do\\?\\do\\=\\do\\&\\do\\:\\do\\#\\do\\%\\do\\+\\do\\a\\do\\b\\do\\c\\do\\d\\do\\e\\do\\f}\\Urlmuskip=0mu plus 2mu\\hbadness=10000\\hfuzz=2pt ';
+    bibLatex = `\n${balanceCmd}{\\sffamily\\fontsize{7}{8}\\selectfont ${bibBreaks}\n\n\\renewcommand{\\refname}{${labels.references}}\n\\begin{thebibliography}{10}\n\n` +
       references
         .map((r) => `\\bibitem{ref${r.id}}\n${referenceLatex(r, escapeLatex, doiLabel, { dash: rangeDashOn, showDoi: settings.referenceDoi !== 'none' })}`)
         .join('\n\n') +

@@ -8,6 +8,21 @@
  */
 
 const CAPTION_RE = /^\s*(?:h\s*ình|hình|figure|fig\.?)\s*(\d+)\s*[:.]/i;
+const BARE_CAPTION_RE = /^\s*(?:h\s*ình|hình|figure|fig\.?)\s*(\d+)\s+(\S)/i;
+const REFERENCE_VERB = /^\s*(?:h\s*ình|hình|figure|fig\.?)\s*\d+\s+(?:cho thấy|chỉ ra|biểu thị|được|minh họa|mô tả|thể hiện|trình bày|shows|presents|illustrates|indicates)/i;
+
+/**
+ * The figure number a caption paragraph names: "Hình 2: …", "Hình 2. …" and the Word caption with no punctuation, "Hình 2 Bản đồ …"
+ * (a capital letter follows the number, so "Hình 2 cho thấy …" in a sentence is not one). Accepts raw paragraph XML or plain text.
+ */
+export function figureCaptionNumber(rawText: string): number | undefined {
+  const text = rawText.replace(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+  const punct = text.match(CAPTION_RE)?.[1];
+  if (punct) return Number(punct);
+  if (text.trim().length > 250 || REFERENCE_VERB.test(text)) return undefined;
+  const bare = text.match(BARE_CAPTION_RE);
+  return bare && bare[2] !== bare[2].toLowerCase() ? Number(bare[1]) : undefined;
+}
 const MAX_DISTANCE = 8000; // characters of XML between a caption paragraph and its picture
 
 export function parseImageRelationships(relsXml: string): Map<string, string> {
@@ -45,9 +60,8 @@ export function pairFiguresWithImages(docXml: string, relsXml: string): FigurePa
 
   const captions: { pos: number; num: number }[] = [];
   for (const p of docXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/gi)) {
-    const text = p[0].replace(/<[^>]+>/g, '');
-    const num = text.match(CAPTION_RE)?.[1];
-    if (num) captions.push({ pos: p.index ?? 0, num: Number(num) });
+    const num = figureCaptionNumber(p[0]);
+    if (num) captions.push({ pos: p.index ?? 0, num });
   }
 
   const pairs: { d: number; c: number; i: number }[] = [];
@@ -83,8 +97,8 @@ export function pairShapeDrawings(docXml: string, taken: Set<number>): Map<numbe
 
   const captions: { pos: number; num: number }[] = [];
   for (const p of docXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/gi)) {
-    const num = p[0].replace(/<[^>]+>/g, '').match(CAPTION_RE)?.[1];
-    if (num && !taken.has(Number(num))) captions.push({ pos: p.index ?? 0, num: Number(num) });
+    const num = figureCaptionNumber(p[0]);
+    if (num && !taken.has(num)) captions.push({ pos: p.index ?? 0, num });
   }
 
   const pairs: { d: number; c: number; i: number }[] = [];

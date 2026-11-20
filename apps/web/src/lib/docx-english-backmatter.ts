@@ -41,7 +41,24 @@ export function findEnglishBackMatter(rawLines: string[]): EnglishBackMatter | n
       break;
     }
   }
-  if (start < 0) return null; // no explicit marker: do not guess
+  // No explicit marker: the English title is the line above the English authors / affiliations / correspondence block that
+  // ends at "ABSTRACT" (read backwards from it); anything else is not guessed.
+  let guessedTitle = -1;
+  if (start < 0) {
+    const VI = /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
+    let j = absIdx - 1;
+    let sawBlock = false;
+    for (; j > refIdx; j--) {
+      const l = lines[j];
+      if (!l) continue;
+      const isBlockLine = /^(e-?mail|correspondence|corresponding author)\b/i.test(l) || /^\d{1,2}\s*[.:]?\s+.*(faculty|department|university|institute|school|college|centre|center|laborator|hospital)/i.test(l) && !/\b(?:19|20)\d{2}\b/.test(l) || (/[A-Za-z]\d(?:,\d)*\*?(?:,|$)/.test(l) && l.length < 200 && !VI.test(l));
+      if (!isBlockLine) break;
+      sawBlock = true;
+    }
+    if (!sawBlock || j <= refIdx || VI.test(lines[j]) || lines[j].length < 15) return null;
+    guessedTitle = j;
+    start = j;
+  }
 
   const nonEmpty = (from: number): number => {
     let k = from;
@@ -49,7 +66,7 @@ export function findEnglishBackMatter(rawLines: string[]): EnglishBackMatter | n
     return k;
   };
 
-  let k = nonEmpty(start + 1);
+  let k = guessedTitle >= 0 ? guessedTitle : nonEmpty(start + 1);
   if (k >= absIdx) return null;
   let titleEn = '';
   // A plain marker line ("Phần ngôn ngữ thứ hai") may be followed by an explicit "Title:" label

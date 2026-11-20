@@ -9,6 +9,7 @@ import { detectPrimaryLanguage, findVietnameseBackMatter, foldVietnamese } from 
 import { findArticleTypePreset } from './article-types';
 import { enrichScriptRuns } from './docx-richtext';
 import { loadFigureImages } from './docx-figure-images';
+import { figureCaptionNumber } from './docx-figures';
 import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } from './docx-figure-tables';
 import { extractListHeadings, isNoneMark } from './docx-headings';
 import { articleIdFromFileName } from './publication';
@@ -46,15 +47,16 @@ export function cleanEndNoteText(str: string): string {
 }
 
 /**
- * Normalize Vietnamese spaced letters (e.g. "Nguy ễ n" -> "Nguyễn", "H ù ng" -> "Hùng")
+ * Normalize Vietnamese spaced letters in a NAME (e.g. "Nguy ễ n" -> "Nguyễn", "H ù ng" -> "Hùng").
+ * Only a lone accented letter that sits between word fragments is joined; whole words such as "mức độ" or "KCN ở TPHCM" are left alone.
  */
 export function normalizeVietnameseWordSpacing(name: string): string {
   if (!name) return '';
   let s = name;
-  // Repeat to catch consecutive spaced syllables
-  for (let k = 0; k < 3; k++) {
-    s = s.replace(/([A-ZÀ-Ỹa-zà-ỹ])\s+([à-ỹ])/g, '$1$2');
-  }
+  // "Nguy ễ n": fragment, lone accented letter, then a 1-2 letter fragment: one word
+  s = s.replace(/(\p{L}+)\s+([à-ỹ])\s+(\p{L}{1,2})(?!\p{L})/gu, '$1$2$3');
+  // "Hu ể" at the end of the name
+  s = s.replace(/(\p{L}+)\s+([à-ỹ])(?!\p{L})\s*$/u, '$1$2');
   return s.replace(/\s+/g, ' ').trim();
 }
 
@@ -442,7 +444,7 @@ export async function extractOpenXmlTables(
     for (let pI = pMatches.length - 1; pI >= Math.max(0, pMatches.length - 3); pI--) {
       // Text runs only: field codes (" SEQ Bảng \* ARABIC ") live in <w:instrText> and must not leak into the caption
       const pText = (pMatches[pI].match(/<w:t\b[^>]*>[\s\S]*?<\/w:t>/gi) || []).map((t) => t.replace(/<[^>]+>/g, '')).join('').replace(/\s+/g, ' ').trim();
-      const cleanP = normalizeVietnameseWordSpacing(cleanEndNoteText(decodeXml(pText)));
+      const cleanP = cleanEndNoteText(decodeXml(pText));
 
       const tableCapMatch = cleanP.match(/^(?:b\s*ảng|bảng|table|b\.)\s*(\d*)\s*[:.-]?\s*(.*)/i);
       if (
@@ -561,7 +563,7 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
     const text = p.text;
 
     // Stop frontmatter extraction if we hit a body section header
-    if (/^(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|vật liệu và phương pháp)/i.test(text.trim())) {
+    if (/^(?:\d+(?:\.\d+)*\.?\s+)?(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|vật liệu và phương pháp)/i.test(text.trim())) {
       break;
     }
 
@@ -1175,7 +1177,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
 
     // Headings H1
     if (
-      /^(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|phương pháp nghiên cứu|vật liệu và phương pháp|kết quả|results|kết quả và thảo luận|bàn luận|thảo luận|discussion|kết luận|conclusion|conclusions|lời cảm ơn|acknowledgements|danh mục từ viết tắt|tuyên bố đóng góp của tác giả|tuyên bố xung đột lợi ích|đóng góp của các tác giả|xung đột lợi ích|tính khả dụng của dữ liệu|chấp thuận về đạo đức nghiên cứu|nguồn kinh phí|kinh phí|tài trợ|funding|author contributions|conflicts? of interest|data availability|ethics approval):?$/i.test(
+      /^(?:\d+(?:\.\d+)*\.?\s+)?(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|phương pháp nghiên cứu|vật liệu và phương pháp|kết quả|results|kết quả và thảo luận|bàn luận|thảo luận|discussion|kết luận|conclusion|conclusions|lời cảm ơn|acknowledgements|danh mục từ viết tắt|tuyên bố đóng góp của tác giả|tuyên bố xung đột lợi ích|đóng góp của các tác giả|xung đột lợi ích|tính khả dụng của dữ liệu|chấp thuận về đạo đức nghiên cứu|nguồn kinh phí|kinh phí|tài trợ|funding|author contributions|conflicts? of interest|data availability|ethics approval):?$/i.test(
         line
       ) ||
       /^(\d+)\.\s+([A-ZÀ-Ỹa-z\s:]{3,60})$/i.test(line) ||
@@ -1205,9 +1207,11 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
     }
 
     // Figure captions
-    if (/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]/i.test(line)) {
+    const bareFigNum = figureCaptionNumber(line);
+    if (/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]/i.test(line) || (bareFigNum && xmlCaptionNumbers.has(bareFigNum))) {
       isFrontMatterDone = true;
-      const figNumMatch = line.match(/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]\s*(.*)/i);
+      const figNumMatch =
+        line.match(/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]\s*(.*)/i) ?? line.match(/^(?:h\s*ình|hình|figure|fig\.?)\s*(\d+)\s+(.*)/i);
       const explicitNum = figNumMatch && figNumMatch[1] ? parseInt(figNumMatch[1], 10) : 0;
       const figNum = explicitNum || (sections.filter((s) => s.type === 'figure').length + 1);
       const rawCap = figNumMatch && figNumMatch[2] ? figNumMatch[2].trim() : line;
@@ -1258,7 +1262,13 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
     }
 
     // Table / Appendix captions
+    // "Bảng 1 Tên bảng" (a Word caption with no colon) is a caption when a table of that number carries the same text
+    const lettersOnly = (s: string) => s.replace(/[^\p{L}]/gu, '').toLowerCase();
+    const bareNum = line.length <= 250 ? line.match(/^(?:b\s*ảng|bảng|table)\s*(\d+)\s+\S/i)?.[1] : undefined;
+    const isBareTableCaption =
+      !!bareNum && openXmlTables.some((t) => !t.placed && t.type === 'table' && t.num === Number(bareNum) && lettersOnly(t.caption) === lettersOnly(line));
     const isTableCaption =
+      isBareTableCaption ||
       line.length <= 250 &&
       !/^(?:b\s*ảng|bảng|table|b\.)\s*\d*[:.]?\s*(cho thấy|chỉ ra|biểu thị|được thể hiện|minh họa|mô tả|tóm tắt|được trình bày|shows|presents|indicates|illustrates|summarizes|phản ánh|cho biết|thể hiện)/i.test(
         line
