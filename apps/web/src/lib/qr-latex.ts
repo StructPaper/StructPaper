@@ -48,7 +48,11 @@ export const QR_LOGO_FILE = 'logo-vnuhcmpress-color.png';
 
 /** What the title block puts above "Use your smartphone to scan this QR code…". */
 export function qrBlockFor(doi: string | undefined): string {
-  const url = doiToUrl(doi);
+  // With no DOI yet the code is the one printed on the VNUHCM samples (it scans to the journal's site).
+  const url = doiToUrl(doi) ?? DEFAULT_QR_URL;
   // 42 pt (1.48 cm) square: the size printed on every VNUHCM sample
-  return url ? qrToLatex(url, 1.48, { logo: QR_LOGO_FILE }) : '\\vspace*{1.5cm}';
+  return qrToLatex(url, 1.48, { logo: QR_LOGO_FILE });
 }
+
+/** What the QR code of the standard VNUHCM samples (STD, HS) encodes. */
+export const DEFAULT_QR_URL = 'http://www.scienceandtechnology.com.vn/';

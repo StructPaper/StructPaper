@@ -1509,6 +1509,8 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
     publication: articleIdFromFileName(fileName) ? { articleId: articleIdFromFileName(fileName) } : undefined,
     // what the import did and what it could not carry over (Track Changes, footnotes, comments, EMF/WMF, MathType)
     ...(prepared.notes.length ? { importNotes: prepared.notes } : {}),
+    // the language the first page is written in: the title bar's language picker starts on it
+    primaryLanguage,
   };
 
   const paper: CompletePaper = {

@@ -16,15 +16,21 @@ describe('QR from DOI', () => {
     const tex = qrToLatex('https://doi.org/10.32508/x.1');
     expect(tex).toContain(String.raw`\vrule`);
     expect(tex).not.toContain('includegraphics');
-    expect(qrBlockFor('?')).toBe(String.raw`\vspace*{1.5cm}`);
+    // no DOI yet: the code of the standard samples, which scans to the journal's site
+    expect(qrBlockFor('?')).toBe(qrBlockFor('http://www.scienceandtechnology.com.vn/'));
+    expect(qrBlockFor('?')).toContain('\\vrule');
   });
 
-  it('title block carries the code once a DOI is entered, and no fake code before', () => {
+  it('title block carries the sample code with no DOI, and the DOI code once one is entered', () => {
     const p = createEmptyPaper();
     p.metadata.title = 'T';
-    expect(generateFullJournalLatex(p)).not.toContain(String.raw`\vrule width`);
+    const before = generateFullJournalLatex(p);
+    expect(before).toContain(String.raw`\vrule width`);
+    expect(before).toContain(qrBlockFor('?'));
     p.metadata.publication = { doi: '10.32508/vnuhcmj-ebl.v10i3.1750' } as never;
-    expect(generateFullJournalLatex(p)).toContain(String.raw`\vrule width`);
+    const after = generateFullJournalLatex(p);
+    expect(after).toContain(String.raw`\vrule width`);
+    expect(after).not.toContain(qrBlockFor('?'));
   });
 
   it('prints the press logo over the centre and the journal artwork, never a demo QR image', () => {

@@ -122,7 +122,27 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   );
   useHydrateDisplayName(formData.id, formData.displayName, handleHydrateDisplayName);
 
-  const { autoSaveEnabled } = useEditorSession();
+  const { autoSaveEnabled, pdfLanguage, setPdfLanguage } = useEditorSession();
+  // The title bar's language picker follows the paper: opening a paper selects the language it was written in (found when its Word
+  // file was imported), and a later choice in the picker is kept with the paper. Papers with no stored language are left untouched.
+  const langPaperRef = useRef<string | null>(null);
+  const langSeenRef = useRef<string>(pdfLanguage);
+  useEffect(() => {
+    if (langPaperRef.current !== paper.id) {
+      langPaperRef.current = paper.id;
+      const stored = paper.metadata?.primaryLanguage;
+      if (stored && stored !== pdfLanguage) {
+        langSeenRef.current = stored;
+        setPdfLanguage(stored);
+        return;
+      }
+    }
+    if (langSeenRef.current === pdfLanguage) return;
+    langSeenRef.current = pdfLanguage;
+    setFormData((prev) => (prev.metadata?.primaryLanguage === pdfLanguage ? prev : { ...prev, metadata: { ...prev.metadata, primaryLanguage: pdfLanguage } }));
+    setIsDirty(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id, pdfLanguage]);
   // Recompiling saves the paper first. That save goes through the autosave controller (one save at a time, one revision number), not a
   // second parallel save: two saves sent with the same revision made the server answer "your version is older".
   const saveBeforeCompileRef = useRef<((p: CompletePaper) => Promise<unknown>) | null>(null);

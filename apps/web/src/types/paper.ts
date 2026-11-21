@@ -29,6 +29,8 @@ export interface PaperDates {
 export interface PaperMetadata {
   title: string;
   titleEn?: string;
+  /** Language the first page is written in ('vi' | 'en'): found when the Word file is imported, changed with the title-bar language picker. */
+  primaryLanguage?: 'vi' | 'en';
   /** Code of the article type in the paper's journal ("research"): the author's choice; the server applies that type's rules. */
   articleTypeCode?: string;
   articleType: string; // 'Bài tổng quan' | 'Bài báo nghiên cứu' | 'Báo cáo ca lâm sàng' | 'Research Article' | 'Review Article'

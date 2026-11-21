@@ -333,6 +333,8 @@ export function useEditorCompilation({
     async (customPaper?: CompletePaper) => {
       const target = customPaper || formData;
       onUpdatePaper(target);
+      // Typesetting does not depend on the save finishing: start it (and its spinner) at once, save alongside.
+      const compiling = compileLatexToPdf(target);
       if (onSavePaper) {
         try {
           await onSavePaper(target);
@@ -341,7 +343,7 @@ export function useEditorCompilation({
         }
       }
       setIsDirty?.(false);
-      compileLatexToPdf(target);
+      await compiling;
     },
     [formData, onUpdatePaper, onSavePaper, setIsDirty, compileLatexToPdf]
   );
