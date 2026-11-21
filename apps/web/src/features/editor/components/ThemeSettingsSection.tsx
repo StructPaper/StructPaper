@@ -133,6 +133,20 @@ export const ThemeSettingsSection: React.FC<Props> = ({ theme, journalColor, onC
           />
           Giữ số thứ tự mục ("4. Kết quả") khi in
         </label>
+        <label className="flex items-start gap-2 text-[11px] font-bold text-zinc-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={r.rotateTablePage}
+            onChange={(e) => set({ rotateTablePage: e.target.checked })}
+            className="accent-lime-500 mt-0.5"
+          />
+          <span>
+            Xoay cả tờ giấy khi bảng được xoay ngang
+            <span className="block font-medium text-zinc-500 mt-0.5">
+              Tắt: mọi trang luôn thẳng đứng (dễ in), chỉ bảng xoay. Bật: các trang có bảng xoay thành trang ngang.
+            </span>
+          </span>
+        </label>
         <NumberField
           label="Bảng dài hơn (số hàng) thì cho phép ngắt trang"
           value={r.longTableRowThreshold}

@@ -6,6 +6,7 @@ import { resolveBodyFill } from '@/lib/table-fill';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaperTable } from '@/types/paper';
+import { NumberInput } from '@/components/ui/NumberInput';
 import {
   X,
   Sliders,
@@ -40,7 +41,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
 
   const [columnSpan, setColumnSpan] = useState<'1-column' | '2-column'>(initialSpan);
   const [isRotated, setIsRotated] = useState<boolean>(!!table.isRotated);
-  const [fontSize, setFontSize] = useState<'7pt' | '8pt' | '9pt' | '10pt'>(table.fontSize || '8pt');
+  const [fontSize, setFontSize] = useState<`${number}pt`>(table.fontSize || '8pt');
   const [rowStretch, setRowStretch] = useState<number>(table.rowStretch || 1.2);
   const [bodyFill, setBodyFill] = useState<'plain' | 'zebra' | 'shaded'>(resolveBodyFill(table));
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(table.placement || 'auto');
@@ -281,27 +282,16 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
                     {fontSize}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-1">
-                  {[
-                    { sz: '7pt' as const, desc: '7pt - Cỡ chữ rất nhỏ (cho bảng cực kỳ rộng và nhiều cột)' },
-                    { sz: '8pt' as const, desc: '8pt - Cỡ chữ nhỏ gọn tiêu chuẩn cho bài báo 2 cột' },
-                    { sz: '9pt' as const, desc: '9pt - Cỡ chữ trung bình dễ đọc' },
-                    { sz: '10pt' as const, desc: '10pt - Cỡ chữ lớn bằng chữ thân bài' },
-                  ].map(({ sz, desc }) => (
-                    <button
-                      key={sz}
-                      type="button"
-                      onClick={() => setFontSize(sz)}
-                      className={`py-1 px-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${fontSize === sz
-                        ? 'bg-gray-400 text-white shadow-2xs'
-                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
-                        }`}
-                      title={desc}
-                    >
-                      {sz}
-                    </button>
-                  ))}
-                </div>
+                <NumberInput
+                  value={parseFloat(fontSize) || 8}
+                  onChange={(v) => setFontSize(`${Math.round(v * 2) / 2}pt` as `${number}pt`)}
+                  min={5}
+                  max={14}
+                  step={0.5}
+                  unit="pt"
+                  variant="flat-white"
+                  ariaLabel="Cỡ chữ bảng (pt)"
+                />
               </div>
 
               {/* Giãn dòng */}

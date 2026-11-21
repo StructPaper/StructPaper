@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Bookmark, Loader2 } from 'lucide-react';
+import { TitleBarTip } from './TitleBarTip';
 import { toast } from '@/components/toast';
 import { useEditorSession } from '@/context/EditorSessionContext';
 import { isServerPaperId, usePaperAccess } from '@/features/papers/access';
@@ -46,6 +47,7 @@ const SaveVersionControl: React.FC<{ paperId: string }> = ({ paperId }) => {
 
   return (
     <PaperGate access={access} allow="edit">
+      <TitleBarTip label="Lưu phiên bản (giữ bài đúng như lúc này)" align="right">
       <button
         type="button"
         data-testid="titlebar-save-version"
@@ -58,6 +60,7 @@ const SaveVersionControl: React.FC<{ paperId: string }> = ({ paperId }) => {
       >
         {working ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bookmark className="w-3.5 h-3.5" />}
       </button>
+      </TitleBarTip>
       <VersionNameModal isOpen={open} onClose={() => setOpen(false)} mode="save" isSaving={working} onSubmit={submit} />
     </PaperGate>
   );

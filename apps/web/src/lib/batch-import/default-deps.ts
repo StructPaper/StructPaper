@@ -3,6 +3,7 @@ import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { publishPdfPreview } from '@/lib/editor/pdf-preview-sync';
 import { fetchTitleDuplicates } from '@/lib/storage/title-duplicates';
 import { parseDocxFile } from '@/lib/docx-parser';
+import { stashSource } from '@/lib/documents/word-source';
 import { exportToLatex } from '@/lib/exporters';
 import { extractPaperImagesAsync } from '@/lib/media/figure-image-utils';
 import { validateForImport } from '@/lib/validation/validators';
@@ -59,7 +60,10 @@ export function createBatchDeps(): BatchDeps {
   return {
     async parse(file) {
       try {
-        return await parseDocxFile(await file.arrayBuffer(), file.name);
+        const buffer = await file.arrayBuffer();
+        const parsed = await parseDocxFile(buffer, file.name);
+        stashSource(parsed, buffer, file.name);
+        return parsed;
       } catch (e) {
         console.warn('[batch-import] cannot read', file.name, e);
         throw new Error('Không đọc được tệp Word: tệp có thể bị hỏng hoặc không phải .docx');

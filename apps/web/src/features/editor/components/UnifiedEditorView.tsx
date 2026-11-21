@@ -62,6 +62,7 @@ import {
   useCreateEditorTabStateStore,
 } from '../hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';
+import { useWordSourceSession } from '@/features/import-merge/hooks/useWordSourceSession';
 import { useStorage } from '@/context/StorageContext';
 import { usePaperStorage } from '../hooks/usePaperStorage';
 import { ActionConfirmModal } from '@/components/modals/ActionConfirmModal';
@@ -122,13 +123,16 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   useHydrateDisplayName(formData.id, formData.displayName, handleHydrateDisplayName);
 
   const { autoSaveEnabled } = useEditorSession();
+  // Recompiling saves the paper first. That save goes through the autosave controller (one save at a time, one revision number), not a
+  // second parallel save: two saves sent with the same revision made the server answer "your version is older".
+  const saveBeforeCompileRef = useRef<((p: CompletePaper) => Promise<unknown>) | null>(null);
 
-  const { compiledPdfUrl, isCompilingPdf, compileStartedAt, lastOutcomeRef, compileStats, compileErrorInfo, setCompileErrorInfo, compileLatexToPdf, handleRecompile } =
+  const { compiledPdfUrl, isCompilingPdf, compileStartedAt, lastOutcomeRef, compileStats, compileErrorInfo, setCompileErrorInfo, compileLatexToPdf, handleRecompile, hasChangesSinceCompile } =
     useEditorCompilation({
       paper,
       formData,
       onUpdatePaper,
-      onSavePaper: savePaper,
+      onSavePaper: (p) => (saveBeforeCompileRef.current ? saveBeforeCompileRef.current(p) : savePaper(p)) as Promise<boolean | void>,
       setIsDirty,
     });
   // the rules this paper is pinned to; when they lay the page out differently from the latest ones, typeset again
@@ -141,6 +145,8 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     latestPin: profile.latestPin,
     onUpgraded: (pin, version) => setFormData((prev) => ({ ...prev, profilePin: pin, version })),
   });
+  // the Word file this paper was imported from: read again (on request) and compared before anything changes
+  useWordSourceSession(formData, setFormData, () => setIsDirty(true));
   /** Export in progress (covers the save + compile phase before the download starts). */
   const [pendingExport, setPendingExport] = useState<ExportFormat | null>(null);
 
@@ -168,6 +174,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   });
 
   // The dock / title bar speak the simple idle|saving|saved|error vocabulary.
+  saveBeforeCompileRef.current = (p) => saveNow(p);
   const autosaveStatus = autosaveStatusFromSaveState(saveState);
 
   useEffect(() => {
@@ -530,6 +537,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         saveSuccess={saveSuccess}
         isDirty={isDirty}
         onRecompile={() => handleRecompile(formData)}
+        recompileDisabled={!hasChangesSinceCompile}
         isCompiling={isCompilingPdf}
         onDownloadDocx={() => requestExport('docx')}
         isExportingDocx={isExportingDocx || pendingExport === 'docx'}

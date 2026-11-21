@@ -768,7 +768,8 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
 
   // Filter out any affiliation that is accidentally a keyword or table caption
   const cleanedAffiliations = affiliations.filter(
-    (a) => !/^(từ khóa|keywords|bảng|table|hình|figure)/i.test(a.name)
+    // (the correspondence line "*Tác giả liên hệ: Name, Faculty…" is not an institution of its own)
+    (a) => !/^(từ khóa|keywords|bảng|table|hình|figure)/i.test(a.name) && !/^\*?\s*(tác\s+gi[aả]\s+liên\s+hệ|corresponding\s+author)\s*:/i.test(a.name)
   );
 
   authors.forEach((a) => {
@@ -1406,7 +1407,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
   }
 
   // Keep superscripts / subscripts (f², R², CO₂ …) that plain-text extraction flattens
-  enrichScriptRuns(sections, openXmlParagraphs);
+  enrichScriptRuns(sections, openXmlParagraphs, references.length);
   applyTableLayoutHints(sections, Object.fromEntries(openXmlTables.map((t) => [t.id, !!t.landscape])));
 
   if (primaryLanguage === 'en') {

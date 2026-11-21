@@ -3,6 +3,7 @@ import type { ResolvedTheme } from './theme-config';
 import { escapeLatex } from './latex-escape';
 
 import { stripCaptionLabel } from './docx-table-extras';
+import { choosePlacement } from './table-placement';
 import { resolveBodyFill, rowIsTinted } from './table-fill';
 /**
  * LaTeX for one table block. Layout is chosen from the table options:
@@ -26,11 +27,15 @@ export function tableToLatex(
   const headers = Array(maxCols).fill('').map((_, idx) => rawHeaders[idx] || '');
   const paddedRows = rawRows.map((row) => Array(maxCols).fill('').map((_, idx) => row[idx] || ''));
 
-  const isRotated = !!table.isRotated;
-  const spansOneColumn = isOneColumn || table.columnSpan === '1-column' || table.isFullWidth === false;
+  // a table whose author has not chosen one column, two or turned: its size decides
+  const undecided = table.columnSpan === undefined && table.isFullWidth === undefined && table.isRotated === undefined;
+  const auto = undecided ? choosePlacement(table) : undefined;
+  const isRotated = auto ? auto.rotated : !!table.isRotated;
+  const spansOneColumn = isOneColumn || (auto ? auto.columnSpan === '1-column' : table.columnSpan === '1-column' || table.isFullWidth === false);
 
-  const fontSize = table.fontSize || '8pt';
-  const lineHeight = fontSize === '7pt' ? '9pt' : fontSize === '9pt' ? '11pt' : fontSize === '10pt' ? '12pt' : '10pt';
+  const fontSize = table.fontSize || auto?.fontSize || '8pt';
+  // line spacing grows with the type: 8 pt -> 10 pt, 9 pt -> 11 pt, 10 pt -> 12 pt
+  const lineHeight = `${Math.round((parseFloat(fontSize) + 2) * 2) / 2}pt`;
   const arrayStretch = table.rowStretch || 1.2;
   const fill = resolveBodyFill(table);
 
@@ -91,7 +96,8 @@ export function tableToLatex(
   const sizeOpen = `{\\fontsize{${fontSize}}{${lineHeight}}\\selectfont\n\\def\\arraystretch{${arrayStretch}}`;
 
   const breakMode = table.breakAcrossPages ?? 'auto';
-  const isLong = breakMode === 'always' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold);
+  // with "turn the page" on, a table set sideways always gets its own landscape page(s), however short
+  const isLong = breakMode === 'always' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
 
   // ---- long table, flowing inside one column ----
   if (isLong && spansOneColumn && !isRotated) {

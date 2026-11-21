@@ -48,6 +48,12 @@ export const orcidLatex = (orcid?: string): string => {
 /** A footnote, printed at the foot of the page (in a two-column paper, at the foot of its column). */
 const footnoteLatex = (note: string): string => `\\footnote{${escapeLatex(note)}}`;
 
+/** Baseline of a bottom page number, in pt up from the bottom edge (measured on the printed journals: 756 pt down a 792 pt page). */
+const PAGE_NUMBER_FROM_BOTTOM = 29.4;
+
+/** The same for the alternating journals (ARNS, HS, SSH) from page 2 on: 736 pt down a 792 pt page, in 10 pt type. */
+const ALTERNATING_FROM_BOTTOM = 48.7;
+
 /** Set at the start of each document: whether number ranges get an en dash (see LayoutSettings.rangeDash). */
 let rangeDashOn = true;
 
@@ -57,10 +63,35 @@ function formatParagraphText(text: string): string {
   if (hasFootnotes(text)) return splitFootnotes(text).map((part) => (part.kind === 'note' ? footnoteLatex(part.text) : formatParagraphText(part.text))).join('');
   let escaped = escapeLatex(rangeDashOn ? enDashRanges(text) : text);
   if (parenCiteMax > 0) escaped = parenthesisedCitations(escaped, parenCiteMax);
-  escaped = escaped.replace(/\[(\d+)\]/g, '\\unskip~\\cite{ref$1}');
-  escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2}');
-  escaped = escaped.replace(/\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]/g, '\\unskip~\\cite{ref$1,ref$2,ref$3}');
+  // "[15], [16–18]; [19, 20]": citations separated only by a comma or semicolon are one citation ("15,16–18,19,20"), with its commas
+  // set small like the numbers, as the journals print them (a comma left between them would sit on the baseline)
+  for (let i = 0; i < 6; i++) {
+    const merged = escaped
+      // "[6]–[8]" is the range 6–8
+      .replace(/(\[\d[\d\s,;–—-]*)\]\s*[–—-]\s*\[(?=\d)/g, '$1–')
+      // "[6], [7]" and "[6] [7][8]" (nothing, or only spaces, between) are one citation as well
+      .replace(/(\[\d[\d\s,;–—-]*)\]\s*[,;]?\s*\[(?=\d)/g, '$1,');
+    if (merged === escaped) break;
+    escaped = merged;
+  }
+  escaped = escaped.replace(/\[(\d+(?:\s*[,;–—-]\s*\d+)*)\]/g, (_m, list: string) => bracketCitation(list));
   return linkFigureTableMentions(escaped);
+}
+
+/**
+ * "[15]", "[10,11]", "[16–18]", "[15; 19-20]" -> one natbib citation of those references (a range is expanded; natbib prints a run of three
+ * or more as "16–18" and two as "10,11", as the printed journals do).
+ */
+export function bracketCitation(list: string): string {
+  const keys: string[] = [];
+  for (const part of list.split(/\s*[,;]\s*/)) {
+    const range = part.match(/^(\d+)\s*[–—-]\s*(\d+)$/);
+    if (range && Number(range[2]) >= Number(range[1]) && Number(range[2]) - Number(range[1]) <= 40) {
+      for (let n = Number(range[1]); n <= Number(range[2]); n++) keys.push(`ref${n}`);
+    } else if (/^\d+$/.test(part)) keys.push(`ref${part}`);
+    else return `[${list}]`;
+  }
+  return `\\unskip~\\cite{${keys.join(',')}}`;
 }
 
 /** Set at the start of each document: the number of references when "(n)" means a citation, else 0. */
@@ -89,6 +120,18 @@ export function parenthesisedCitations(escaped: string, max: number): string {
     if (nums.some((n) => n < 1 || n > max)) return whole;
     return `${prev}${sp ? '\\unskip' : ''}~\\cite{${nums.map((n) => `ref${n}`).join(',')}}`;
   });
+}
+
+/**
+ * Does this paper cite as "(6–8)", "(8, 9)" rather than "[6]"? True when at least three parenthesised citations are found and they are
+ * more than the bracketed ones (a few stray "[49]" in a paper that cites with parentheses do not count).
+ */
+export function citesInParentheses(texts: string[], referenceCount: number): boolean {
+  if (referenceCount <= 0) return false;
+  const all = texts.join('\n');
+  const bracketed = (all.match(/\[\d+(?:\s*[,;–-]\s*\d+)*\]/g) || []).length;
+  const parenthesised = (parenthesisedCitations(all, referenceCount).match(/\\cite\{/g) || []).length;
+  return parenthesised >= 3 && parenthesised > bracketed;
 }
 
 /** Numbers of the figures and tables of the paper being typeset: only these mentions become links. */
@@ -183,8 +226,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   const isOneColumn = settings.columnLayout === '1-column';
   // hyphens between numbers become en dashes unless the author turned that off (read by formatParagraphText and the references)
   rangeDashOn = settings.rangeDash !== false;
-  // a paper that cites as (1), (2, 3) instead of [1] (no bracket citation anywhere): the parenthesised numbers are citations
-  parenCiteMax = references.length > 0 && !sections.some((s) => /\[\d+(?:\s*[,\-–]\s*\d+)*\]/.test(s.content || '')) ? references.length : 0;
+  // a paper that cites as (1), (2, 3) instead of [1]: when the parenthesised numbers outnumber the bracketed ones they are citations
+  parenCiteMax = citesInParentheses(sections.map((s) => s.content || ''), references.length) ? references.length : 0;
 
   let paperWidthStr = '8.51in';
   let paperHeightStr = '11in';
@@ -268,11 +311,48 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     }
   }
 
+  // A bottom page number sits at the same distance from the bottom of the page on every page (as on the printed first page),
+  // not at a distance from the text: it is drawn on the page itself.
+  let absolutePageNumber = '';
+  const bottomKind = !pageNum.enabled
+    ? ''
+    : pageNum.position === 'bottom-center'
+      ? 'C'
+      : pageNum.position === 'bottom-right'
+        ? 'R'
+        : pageNum.position === 'bottom-left'
+          ? 'L'
+          : !pageNum.position || pageNum.position === 'bottom-alternating'
+            ? 'A'
+            : '';
+  if (bottomKind) {
+    headingsFootHead = '\\fancyfoot[L]{}\\fancyfoot[C]{}\\fancyfoot[R]{}';
+    const style = (pt: number) => `\\fontsize{${pt}pt}{${pt + 1}pt}\\selectfont\\bfseries\\sffamily\\color{titlecolor}`;
+    const at = (x: string, y: number, align: string, pt: number) => `\\put(${x},${y}){\\makebox(0,0)[${align}]{${style(pt)}\\thepage}}`;
+    // the text area of the pages after the first (see \newgeometry below): the numbers sit under its edges, not at the edge of the paper
+    const textLeft = '15.4pc';
+    const textRight = '\\dimexpr\\paperwidth-3.1pc\\relax';
+    const textMiddle = '\\dimexpr(15.4pc+\\paperwidth-3.1pc)/2\\relax';
+    // measured on the printed journals: page 1, and the journals that put the number on one side, 9 pt at 756 pt down the page;
+    // the alternating journals from page 2 on: 10 pt at 736 pt down, left under the left column and right under the right column
+    const low = (x: string, align: string) => at(x, PAGE_NUMBER_FROM_BOTTOM, align, 9);
+    const body =
+      bottomKind === 'L'
+        ? low(textLeft, 'bl')
+        : bottomKind === 'R'
+          ? low(textRight, 'br')
+          : bottomKind === 'C'
+            ? low(textMiddle, 'b')
+            : `\\ifnum\\value{page}=${Math.max(1, startPage)}${low(textRight, 'br')}\\else\\ifodd\\value{page}${at(textRight, ALTERNATING_FROM_BOTTOM, 'br', 10)}\\else${at(textLeft, ALTERNATING_FROM_BOTTOM, 'bl', 10)}\\fi\\fi`;
+    const shown = pageNum.suppressOnFirstPage ? `\\ifnum\\value{page}=${Math.max(1, startPage)}\\else${body}\\fi` : body;
+    absolutePageNumber = `\\usepackage{eso-pic}\\AddToShipoutPictureFG{${shown}}`;
+  }
+
   let preamblePart1 = OFFICIAL_PREAMBLE_PART1
     .replace('TITLE_COLOR_R', String(rgb.r))
     .replace('TITLE_COLOR_G', String(rgb.g))
     .replace('TITLE_COLOR_B', String(rgb.b))
-    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', '\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,pdflscape}')
+    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.rotateTablePage ? 'pdflscape' : 'lscape'}}`)
     .replace('\\definecolor{tableheadrcolor}{RGB}{229, 229, 229}', `\\definecolor{tableheadrcolor}{RGB}{${headRgb.r}, ${headRgb.g}, ${headRgb.b}}\n\\definecolor{tablezebracolor}{RGB}{${zebraRgb.r}, ${zebraRgb.g}, ${zebraRgb.b}}`)
     .replace('left=1.7cm,headsep=.2cm,right=1.3cm,top=1.8cm]', `left=${theme.margins.left}cm,headsep=.2cm,right=${theme.margins.right}cm,top=${theme.margins.top}cm,bottom=${theme.margins.bottom}cm]`)
     // xeCJK treats curly quotes (U+2018-201F) as CJK punctuation and sets them in a full-width CJK font
@@ -294,7 +374,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     );
 
   // If page numbering is disabled or suppressed on the first page
-  if (!pageNum.enabled || pageNum.suppressOnFirstPage) {
+  if (!pageNum.enabled || pageNum.suppressOnFirstPage || bottomKind) {
     preamblePart1 = preamblePart1.replace(
       '\\hfill\\normalsize\\bfseries\\sffamily\\color{titlecolor}\\thepage',
       ''
@@ -309,7 +389,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
   }
 
   // Inject page numbering format and startNumber at end of preamble
-  preamblePart1 += `\n${pageFormatCmd}\n${startPageCmd}\n`;
+  preamblePart1 += `\n${pageFormatCmd}\n${startPageCmd}\n${absolutePageNumber}\n`;
   if (theme.bodyFont !== 'Times New Roman') {
     preamblePart1 += `\\IfFontExistsTF{${theme.bodyFont}}{\\setmainfont{${theme.bodyFont}}}{}\n`;
   }
@@ -417,8 +497,8 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
 `;
 
   const buildAffbox = (affs: string, name: string, aff: string, email: string) => `        \\gdef\\affbox{\\parbox{4.4cm}{
-        {~\\\\[.5pc]\\raggedright {\\fontsize{8pt}{8pt}\\selectfont\\itshape ${affs}\\\\[.5pc]} }{\\ttfamily\\bfseries\\color{titlecolor}\\fontsize{7pt}{7pt}\\selectfont \\Correspondence}\\\\[.35pc]
-        {\\ttfamily\\fontsize{7pt}{8pt}\\selectfont\\textbf{\\prolight ${name}}, ${aff}\\\\[.35pc]Email: ${email}.\\\\[.3pc]}}}`;
+        {~\\\\[.5pc]\\raggedright {\\fontsize{8pt}{8pt}\\selectfont\\itshape ${affs}\\\\[.77pc]} }{\\ttfamily\\bfseries\\color{titlecolor}\\fontsize{7pt}{7pt}\\selectfont \\Correspondence}\\\\[.35pc]
+        {\\ttfamily\\fontsize{7pt}{8pt}\\selectfont\\textbf{\\prolight ${name}}, ${aff}\\\\[.35pc]Email: ${email}.\\par}\\vspace{.3pc}}}`;
   const affiliationsEnFormatted = rawAffiliations
     .map((aff) => `${hasMultipleAffs && aff.id ? `\\textsuperscript{${aff.id}}` : ''}${escapeLatex(affiliationEnglish(aff))}`)
     .join('\\\\[.35pc]\n');

@@ -1,5 +1,6 @@
 import type { CompletePaper } from '@/types/paper';
 import { getUniquePaperTitle } from '@/lib/storage/paper-naming';
+import { adoptStashedSource } from '@/lib/documents/word-source';
 import { abortError, createLimiter, isAbortError } from './limiter';
 import { autoBatchJournal } from './journals';
 import type { BatchItem, BatchOptions } from './types';
@@ -114,6 +115,7 @@ export async function runBatchImport(opts: BatchOptions): Promise<BatchItem[]> {
           },
         };
         (paper as any).displayName = title;
+        adoptStashedSource(parsed, paper.id);
       } catch (e) {
         if (isAbortError(e)) return patch(i, { stage: 'cancelled' });
         return patch(i, { stage: 'error', error: message(e, 'Không đọc được tệp Word') });

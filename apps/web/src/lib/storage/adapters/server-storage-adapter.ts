@@ -3,6 +3,7 @@ import type { CompletePaper } from '@/types/paper';
 import type { ManuscriptRecord, ManuscriptInfo, Manuscript } from '@structpaper/doc-model';
 import { isUuid, remoteManuscriptToRecord, manuscriptToCompletePaper } from '../converters';
 import type { ManuscriptStorage, SavePaperResult } from '../types';
+import { flushPendingSource } from '@/lib/documents/word-source';
 import { articleTypeCodeFor } from '@/lib/layout/article-type-code';
 
 export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
@@ -65,8 +66,11 @@ export class ServerManuscriptStorageAdapter implements ManuscriptStorage {
     });
 
     const newVersion = created.version ?? 1;
+    const localId = paper.id;
     paper.id = created.id;
     paper.version = newVersion;
+    // the Word file this paper was imported from goes up now that the paper exists (never blocks the save)
+    if (localId && localId !== created.id) void flushPendingSource(localId, created.id);
     paper.profilePin = (created as any).profilePin ?? paper.profilePin;
     paper.articleTypeCode = (created as any).articleType ?? paper.articleTypeCode;
 

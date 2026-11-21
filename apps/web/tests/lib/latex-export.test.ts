@@ -82,7 +82,7 @@ describe('LaTeX long table layouts (1 column / 2 columns / landscape)', () => {
 
   it('breakAcrossPages "never" keeps a long table whole, "always" breaks a short one', () => {
     expect(generateFullJournalLatex(paperWithTable(40, { breakAcrossPages: 'never' }))).not.toContain('\\begin{longtable}');
-    expect(generateFullJournalLatex(paperWithTable(3, { breakAcrossPages: 'always' }))).toContain('\\begin{longtable}');
+    expect(generateFullJournalLatex(paperWithTable(3, { breakAcrossPages: 'always', columnSpan: '2-column' }))).toContain('\\begin{longtable}');
   });
 
   it('continuation wording is configurable', () => {

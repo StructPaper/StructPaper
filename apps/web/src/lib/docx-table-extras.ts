@@ -1,3 +1,4 @@
+import { choosePlacement, JOURNAL_GEOMETRY } from './table-placement';
 import type { PaperSection } from '@/types/paper';
 
 /** Helpers used while importing tables from Word (kept apart from the large docx-parser). */
@@ -96,10 +97,16 @@ export function applyTableLayoutHints(sections: PaperSection[], landscapeById: R
     if (s.type !== 'table' || !t) continue;
     const landscape = landscapeById[t.id] === true;
     const cols = Math.max(t.headers?.length ?? 0, ...(t.rows || []).map((r) => r.length), 1);
-    if (landscape && t.isRotated === undefined) t.isRotated = true;
     // the journals print the body of a table on the pale blue tint; a Word table that explicitly had stripes keeps them
     if (t.bodyFill === undefined && t.hasZebraStripes === undefined) t.bodyFill = 'shaded';
-    if (t.columnSpan === undefined) {
+    // where it goes is worked out from its size: one column, both columns, or turned on its side (see table-placement.ts)
+    if (t.columnSpan === undefined && t.isRotated === undefined) {
+      const place = choosePlacement(t, JOURNAL_GEOMETRY, { landscapeInWord: landscape && cols > 6 });
+      t.columnSpan = place.columnSpan;
+      t.isFullWidth = place.columnSpan === '2-column';
+      t.isRotated = place.rotated;
+      if (place.fontSize && !t.fontSize) t.fontSize = place.fontSize;
+    } else if (t.columnSpan === undefined) {
       t.columnSpan = wantsFullWidth(t, landscape, cols) ? '2-column' : '1-column';
       t.isFullWidth = t.columnSpan === '2-column';
     }

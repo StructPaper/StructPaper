@@ -44,6 +44,19 @@ export interface ExportItem {
   createdAt: string;
 }
 
+export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+/** The Word file kept for a paper. */
+export interface SourceInfo {
+  fileName: string;
+  sha256: string;
+  size: number;
+  uploadedAt: string;
+  /** Version of the importer that made the first reading. */
+  importerVersion: number;
+  hasBaseline: boolean;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -379,6 +392,79 @@ export class DocumentApi {
         `${this.resourcePath}/${encodeURIComponent(id)}/exports`
       );
       return (Array.isArray(res) ? res : []) as ExportItem[];
+    } catch (err) {
+      throw toApiError(err);
+    }
+  }
+
+  // ---- the Word file a paper was imported from (+ the first reading of it)
+
+  /** Name, date, importer version of the stored Word file, or null when the paper has none. */
+  async getSourceInfo(id: string): Promise<SourceInfo | null> {
+    const url = `${this.resourcePath}/${encodeURIComponent(id)}/source`;
+    try {
+      let m: any;
+      if (this.fetchImpl) m = await (await this.request(url)).json();
+      else {
+        const res = await this.httpClient.get<any>(url);
+        m = (res as any)?.data ?? res;
+      }
+      return m && m.fileName ? (m as SourceInfo) : null;
+    } catch (err) {
+      const e = toApiError(err);
+      if (e.status === 404) return null;
+      throw e;
+    }
+  }
+
+  async putSourceFile(id: string, blob: Blob, meta: { fileName: string; sha256: string; importerVersion: number }): Promise<SourceInfo> {
+    const url = `${this.resourcePath}/${encodeURIComponent(id)}/source`;
+    const headers: Record<string, string> = {
+      'Content-Type': DOCX_MIME,
+      'X-File-Name': encodeURIComponent(meta.fileName),
+      'X-Checksum-SHA256': meta.sha256,
+      'X-Importer-Version': String(meta.importerVersion),
+    };
+    if (this.fetchImpl) return (await this.request(url, { method: 'PUT', headers, body: blob })).json();
+    try {
+      const res = await this.httpClient.put<any>(url, blob, { headers });
+      return ((res as any)?.data ?? res) as SourceInfo;
+    } catch (err) {
+      throw toApiError(err);
+    }
+  }
+
+  async getSourceFile(id: string): Promise<Blob> {
+    const url = `${this.resourcePath}/${encodeURIComponent(id)}/source/file`;
+    if (this.fetchImpl) return (await this.request(url)).blob();
+    try {
+      return (await this.httpClient.get<Blob>(url, { responseType: 'blob' })) as unknown as Blob;
+    } catch (err) {
+      throw toApiError(err);
+    }
+  }
+
+  /** The paper the importer made of the file when it was read (pictures are fingerprints), or null when none was kept. */
+  async getSourceBaseline(id: string): Promise<any | null> {
+    const url = `${this.resourcePath}/${encodeURIComponent(id)}/source/baseline`;
+    try {
+      if (this.fetchImpl) return await (await this.request(url)).json();
+      const res = await this.httpClient.get<any>(url);
+      return (res as any)?.sections ? res : ((res as any)?.data ?? res);
+    } catch (err) {
+      const e = toApiError(err);
+      if (e.status === 404) return null;
+      throw e;
+    }
+  }
+
+  async putSourceBaseline(id: string, baseline: unknown, importerVersion: number): Promise<SourceInfo> {
+    const url = `${this.resourcePath}/${encodeURIComponent(id)}/source/baseline`;
+    const headers = { 'Content-Type': 'application/json', 'X-Importer-Version': String(importerVersion) };
+    if (this.fetchImpl) return (await this.request(url, { method: 'PUT', headers, body: JSON.stringify(baseline) })).json();
+    try {
+      const res = await this.httpClient.put<any>(url, baseline, { headers });
+      return ((res as any)?.data ?? res) as SourceInfo;
     } catch (err) {
       throw toApiError(err);
     }

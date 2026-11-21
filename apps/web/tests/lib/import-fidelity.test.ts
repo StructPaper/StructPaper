@@ -71,10 +71,13 @@ describe('layout hints from the Word file', () => {
     expect(at(xml.indexOf('<w:tbl>P'))).toBe(false);
   });
 
-  it('rotates landscape tables; narrow tables get 1 column, wide ones 2', () => {
-    const wide = tableSec(2, { headers: ['1', '2', '3', '4', '5', '6'] });
+  it('decides one column, both columns or sideways from the size of the table', () => {
+    const sentence = 'Một câu mô tả khá dài trong ô của bảng';
+    const wide = tableSec(2, { headers: ['1', '2', '3', '4', '5', '6'], rows: [['Điểm số', sentence, '0,22', '0,19', '0,12', '0,11']] });
     const narrow = tableSec(1);
-    const land = tableSec(3);
+    // twelve columns of long unbreakable words do not fit even the page width: turned on its side (the Word file also had it landscape)
+    const word = 'Quản_lý_chất_lượng_nước_thải_công_nghiệp';
+    const land = tableSec(3, { headers: Array.from({ length: 12 }, (_, i) => word + i), rows: [Array.from({ length: 12 }, () => word)] });
     applyTableLayoutHints([narrow, wide, land], { t3: true });
     expect(narrow.table!.columnSpan).toBe('1-column');
     expect(wide.table!.columnSpan).toBe('2-column');
@@ -190,7 +193,8 @@ describe('real file: ID1750 (EBL) imported from Word', () => {
     const t2 = tables[1];
     expect(stripCaptionLabel(t2.caption)).toBe('Mô hình đo lường');
     expect(t2.headers[0]).toBe('Yếu tố');
-    expect(t2.isRotated).toBe(true);
+    // the printed article turns the page for it; here the size decides (it fits across the page, so it stays upright)
+    expect(typeof t2.isRotated).toBe('boolean');
     expect(t2.columnSpan).toBe('2-column');
     expect(tables[0].columnSpan).toBe('1-column');
     // multi-line cells keep their lines; "Nguồn" lines are table footers

@@ -37,6 +37,16 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     .getInstance()
     .addContentTypeParser('application/pdf', { parseAs: 'buffer' }, (_req: any, body: Buffer, done: any) => done(null, body));
 
+  // The Word file a paper was imported from arrives as a raw .docx body.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      { parseAs: 'buffer' },
+      (_req: any, body: Buffer, done: any) => done(null, body),
+    );
+
   await app.register(helmet as any, {
     contentSecurityPolicy: process.env.NODE_ENV === 'production',
   });

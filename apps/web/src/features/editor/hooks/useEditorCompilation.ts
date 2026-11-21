@@ -128,6 +128,10 @@ export function useEditorCompilation({
   /** Outcome of the last finished compile, so callers can tell "cancelled" from "failed". */
   const lastOutcomeRef = useRef<'success' | 'cancelled' | 'error' | null>(null);
   const [compileStartedAt, setCompileStartedAt] = useState<number | null>(null);
+  /** What the PDF on screen was made from: the LaTeX plus the size of each picture. */
+  const compiledSignatureRef = useRef<string | null>(null);
+  const [hasChangesSinceCompile, setHasChangesSinceCompile] = useState(true);
+  const signatureOf = (p: CompletePaper, tex: string) => `${tex}|${(p.sections || []).map((s) => s.figure?.src?.length ?? '').join(',')}`;
 
   // NetworkMonitor subscription and Sticky Toast management
   useEffect(() => {
@@ -201,6 +205,7 @@ export function useEditorCompilation({
         setCompileStartedAt(Date.now());
         setCompileErrorInfo(null);
         const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
+        const signature = signatureOf(paperToCompile, texContent);
         const images = await extractPaperImagesAsync(paperToCompile);
 
         const scheduler = ensureInfra();
@@ -218,6 +223,8 @@ export function useEditorCompilation({
             (result.pdfBlob ? URL.createObjectURL(result.pdfBlob) : null);
           if (url && isLatest()) {
             setCompiledPdfUrl(url);
+            compiledSignatureRef.current = signature;
+            setHasChangesSinceCompile(false);
           }
           const pdf = result.pdfBlob ?? (result.pdfBuffer ? new Blob([result.pdfBuffer as any], { type: 'application/pdf' }) : null);
           if (publishPreview && pdf && isLatest()) void publishPdfPreview(paperToCompile.id, pdf);
@@ -288,6 +295,20 @@ export function useEditorCompilation({
     [formData, pdfLanguage]
   );
 
+  // Is there anything the PDF on screen does not show yet? (the recompile button is dimmed when not)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        const tex = exportToLatex(formData, resolvePaperLayout(formData), { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
+        setHasChangesSinceCompile(compiledSignatureRef.current !== signatureOf(formData, tex));
+      } catch {
+        setHasChangesSinceCompile(true);
+      }
+    }, 500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, pdfLanguage, compiledPdfUrl]);
+
   // Sync with paper changes and compile initial
   useEffect(() => {
     const isHs630 = paper.id === 'hs630' || paper.metadata?.doi?.includes('630');
@@ -337,6 +358,7 @@ export function useEditorCompilation({
     setCompileErrorInfo,
     compileLatexToPdf,
     handleRecompile,
+    hasChangesSinceCompile,
     networkMonitor: monitorRef.current,
     compilerRouter: routerRef.current,
   };

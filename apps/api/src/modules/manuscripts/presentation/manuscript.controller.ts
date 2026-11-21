@@ -54,6 +54,7 @@ import { ZodValidationPipe } from '../../platform/pipes/zod-validation.pipe';
 import { ManuscriptService } from '../application/manuscript.service';
 import { ManuscriptSharingService } from '../application/manuscript-sharing.service';
 import { ManuscriptPreviewService } from '../application/manuscript-preview.service';
+import { ManuscriptSourceService, DOCX_MIME } from '../application/manuscript-source.service';
 import { ManuscriptDuplicatesService } from '../application/manuscript-duplicates.service';
 import { RevisionService } from '../application/revision.service';
 import { TrashService } from '../application/trash.service';
@@ -82,6 +83,8 @@ export class ManuscriptController {
     private readonly sharing?: ManuscriptSharingService,
     @Inject(ManuscriptPreviewService)
     private readonly previews?: ManuscriptPreviewService,
+    @Inject(ManuscriptSourceService)
+    private readonly sources?: ManuscriptSourceService,
     @Inject(ManuscriptDuplicatesService)
     private readonly duplicates?: ManuscriptDuplicatesService,
     @Inject(RevisionService)
@@ -215,6 +218,57 @@ export class ManuscriptController {
   async putPreview(@Param('id', ManuscriptIdPipe) id: string, @Body() body: unknown, @Req() req: any) {
     const ability = await this.getAbility(req);
     return this.previews!.save(id, body, ability);
+  }
+
+  /** The Word file the paper was imported from: name, date, importer version (null when the paper has none). */
+  @Get(':id/source')
+  async getSource(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any) {
+    return (await this.sources!.info(id, await this.getAbility(req))) ?? { fileName: null };
+  }
+
+  @Put(':id/source')
+  @HttpCode(HttpStatus.OK)
+  async putSource(
+    @Param('id', ManuscriptIdPipe) id: string,
+    @Body() body: unknown,
+    @Headers('x-file-name') fileName: string | undefined,
+    @Headers('x-checksum-sha256') sha256: string | undefined,
+    @Headers('x-importer-version') importerVersion: string | undefined,
+    @Req() req: any,
+  ) {
+    let name = fileName;
+    try {
+      name = fileName ? decodeURIComponent(fileName) : undefined;
+    } catch {
+      /* keep the raw header */
+    }
+    return this.sources!.saveFile(id, body, { fileName: name, sha256, importerVersion: Number(importerVersion) }, await this.getAbility(req), req.user?.id);
+  }
+
+  @Get(':id/source/file')
+  async getSourceFile(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any, @Res({ passthrough: true }) res: any) {
+    const { buffer, fileName } = await this.sources!.readFile(id, await this.getAbility(req));
+    res.header('Content-Type', DOCX_MIME);
+    res.header('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.header('Cache-Control', 'private, no-store');
+    return new StreamableFile(buffer);
+  }
+
+  @Get(':id/source/baseline')
+  async getSourceBaseline(@Param('id', ManuscriptIdPipe) id: string, @Req() req: any, @Res({ passthrough: true }) res: any) {
+    res.header('Cache-Control', 'private, no-store');
+    return this.sources!.readBaseline(id, await this.getAbility(req));
+  }
+
+  @Put(':id/source/baseline')
+  @HttpCode(HttpStatus.OK)
+  async putSourceBaseline(
+    @Param('id', ManuscriptIdPipe) id: string,
+    @Body() body: unknown,
+    @Headers('x-importer-version') importerVersion: string | undefined,
+    @Req() req: any,
+  ) {
+    return this.sources!.saveBaseline(id, body, importerVersion === undefined ? undefined : Number(importerVersion), await this.getAbility(req));
   }
 
   @Post(':id/members')

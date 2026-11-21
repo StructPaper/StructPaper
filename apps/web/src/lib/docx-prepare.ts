@@ -132,6 +132,9 @@ export async function prepareDocx(buffer: ArrayBuffer): Promise<PreparedDocx> {
       .replace(/<\/?w:(?:ins|moveTo)\b[^>]*>/g, '');
   }
 
+  // a frequent typo in the label that the importer looks for ("Tác già liên hệ")
+  xml = xml.replace(/Tác(\s+)già(\s+)liên/g, 'Tác$1giả$2liên');
+
   // ---- symbols inserted from Word's Symbol font become the characters they are
   xml = replaceSymbolFont(xml).xml;
 

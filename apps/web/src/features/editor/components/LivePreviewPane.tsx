@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { LivePreviewPaneProps } from './types';
 import {
   PdfInteractiveViewer,
+  lastReadPage,
   type PdfFillIssue,
   type PdfPickContext,
   type PdfRotateContext,
@@ -118,9 +119,27 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
   const elapsed = isCompilingPdf && compileStartedAt ? Math.max(0, Math.floor((now - compileStartedAt) / 1000)) : 0;
   const [isOverlayActive, setIsOverlayActive] = useState<boolean>(false);
   const [justFinished, setJustFinished] = useState<boolean>(false);
+  // "Thử lại" answers at once: the strip turns to "processing" before the request even leaves (saving first can take a moment)
+  const [retrying, setRetrying] = useState(false);
+  const sawCompile = useRef(false);
+  const handleRetry = useCallback(() => {
+    sawCompile.current = false;
+    setRetrying(true);
+    onRecompile?.();
+  }, [onRecompile]);
+  useEffect(() => {
+    if (!retrying) return;
+    if (isCompilingPdf) sawCompile.current = true;
+    else if (sawCompile.current || compileErrorInfo) setRetrying(false);
+  }, [retrying, isCompilingPdf, compileErrorInfo]);
+  useEffect(() => {
+    if (!retrying) return;
+    const t = setTimeout(() => setRetrying(false), 90_000); // never stay stuck
+    return () => clearTimeout(t);
+  }, [retrying]);
 
   useEffect(() => {
-    if (isCompilingPdf) {
+    if (isCompilingPdf || retrying) {
       setIsOverlayActive(true);
       setJustFinished(false);
     } else if (isOverlayActive) {
@@ -129,13 +148,13 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
       const timer = setTimeout(() => {
         setIsOverlayActive(false);
         setJustFinished(false);
-      }, 900);
+      }, 1200); // the green "done" stays at least a second, so a quick compile does not flash by
       return () => clearTimeout(timer);
     }
-  }, [isCompilingPdf, isOverlayActive]);
+  }, [isCompilingPdf, isOverlayActive, retrying]);
 
-  const showError = Boolean(compileErrorInfo) && !isCompilingPdf;
-  const stripState: 'compiling' | 'done' | 'error' = isCompilingPdf ? 'compiling' : showError ? 'error' : justFinished ? 'done' : 'compiling';
+  const showError = Boolean(compileErrorInfo) && !isCompilingPdf && !retrying;
+  const stripState: 'compiling' | 'done' | 'error' = isCompilingPdf || retrying ? 'compiling' : showError ? 'error' : justFinished ? 'done' : 'compiling';
   const errorTitle = compileErrorInfo?.error || 'Không rõ nguyên nhân';
   const errorDetails = compileErrorInfo?.details || compileErrorInfo?.rawLog || '';
   const [showDetails, setShowDetails] = useState(false);
@@ -149,7 +168,7 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
       <div className="soft-card bg-white border border-[#E8E8EE] rounded-3xl overflow-hidden shadow-xs relative h-full flex flex-col min-h-0 flex-1">
         {/* Status strip: grows out of the frame's top edge while compiling, then folds away */}
         <AnimatePresence initial={false}>
-          {(isOverlayActive || showError) && (
+          {(isOverlayActive || showError || retrying) && (
             <motion.div
               key="compile-strip"
               initial={isTest ? false : { height: 0, opacity: 0 }}
@@ -188,7 +207,7 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
                         ? `Biên dịch thất bại: ${errorTitle}`
                         : stripState === 'done'
                           ? 'Đã hoàn tất biên dịch PDF'
-                          : `${busyLabel || 'Đang biên dịch PDF XeLaTeX…'} ${elapsed > 0 ? `${elapsed}s` : ''}`}
+                          : retrying && !isCompilingPdf ? 'Đang xử lý…' : `${busyLabel || 'Đang biên dịch PDF XeLaTeX…'} ${elapsed > 0 ? `${elapsed}s` : ''}`}
                     </span>
                   </div>
                   {stripState === 'compiling' && elapsed >= 5 && (
@@ -211,7 +230,7 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
                       {onRecompile && (
                         <button
                           type="button"
-                          onClick={onRecompile}
+                          onClick={handleRetry}
                           className="px-2.5 py-1 bg-white border border-red-200 text-red-700 rounded-lg text-[11px] font-bold hover:bg-red-50 cursor-pointer transition-colors"
                         >
                           Thử lại
@@ -250,20 +269,23 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
         {/* The PDF Viewport Wrapper - 100% full height */}
         <div className="w-full flex-1 min-h-0 overflow-hidden bg-zinc-100">
           {compiledPdfUrl && interactiveMode && !viewerFailed ? (
+            // "Focus định vị" on: our own viewer, which knows the page being read and keeps it when the PDF is made again
             <PdfInteractiveViewer
               url={compiledPdfUrl}
-              onPickText={onFocusSection ? handlePick : undefined}
-              onRotatePage={onSectionsChange ? handleRotate : undefined}
+              placeKey={paper.id}
+              onPickText={interactiveMode && onFocusSection ? handlePick : undefined}
+              onRotatePage={interactiveMode && onSectionsChange ? handleRotate : undefined}
               canFill={canFill}
-              onFillPage={onSectionsChange ? handleFill : undefined}
-              onUndoTurn={snapshot ? handleUndo : undefined}
+              onFillPage={interactiveMode && onSectionsChange ? handleFill : undefined}
+              onUndoTurn={interactiveMode && snapshot ? handleUndo : undefined}
               onLoadError={() => setViewerFailed(true)}
             />
           ) : compiledPdfUrl ? (
             // keyed by the PDF: changing an iframe's src adds an entry to the browser history (one more "back" per recompile); a new iframe does not
             <iframe
               key={compiledPdfUrl}
-              src={`${compiledPdfUrl}#toolbar=1&navpanes=0`}
+              // "Focus định vị" off: the browser's own PDF viewer, opened on the page last read in the other viewer (it cannot report its own)
+              src={`${compiledPdfUrl}#toolbar=1&navpanes=0${lastReadPage(paper.id) > 1 ? `&page=${lastReadPage(paper.id)}` : ''}`}
               className="w-full h-full border-none"
               title="XeLaTeX Compiled PDF Live Preview"
             />

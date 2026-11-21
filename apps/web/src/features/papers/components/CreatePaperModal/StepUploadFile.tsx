@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { UploadCloud, FileText, Loader2, Sparkles, FilePlus, AlertCircle } from 'lucide-react';
 import { parseDocxFile } from '@/lib/docx-parser';
+import { registerPendingSource } from '@/lib/documents/word-source';
 import type { CompletePaper } from '@/types/paper';
 import { MAX_BATCH_FILES } from '@/lib/batch-import/run-batch';
 
@@ -47,6 +48,7 @@ export const StepUploadFile: React.FC<StepUploadFileProps> = ({
       const buffer = await file.arrayBuffer();
       setStatusText('Đang phân tích cấu trúc OpenXML...');
       const parsed = await parseDocxFile(buffer, file.name);
+      registerPendingSource(parsed.id, buffer, file.name, parsed);
 
       if (targetJournalCode) {
         parsed.metadata.journalId = targetJournalCode;

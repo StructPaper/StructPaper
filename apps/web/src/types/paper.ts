@@ -93,7 +93,8 @@ export interface PaperTable {
   isFullWidth?: boolean;
   columnSpan?: '1-column' | '2-column';
   isRotated?: boolean; // Xoay bảng 90 độ ngang (sidewaystable)
-  fontSize?: '7pt' | '8pt' | '9pt' | '10pt';
+  /** Any size in points, as "8pt" or "8.5pt" (the table settings take a number). */
+  fontSize?: `${number}pt`;
   rowStretch?: number; // Giãn dòng 1.1x, 1.4x, 1.6x
   hasZebraStripes?: boolean; // Sọc màu hàng xen kẽ
   placement?: 'auto' | 'top' | 'here' | 'bottom';

@@ -10,6 +10,8 @@ import type { DocumentSaveState } from '@/lib/editor/save-status';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 import type { ExportFormat } from '@/features/editor';
 import type { PageLanguage } from '@/lib/page-labels';
+import type { SourceInfo } from '@/lib/documents/document-api';
+import type { Analysis } from '@/lib/documents/word-source';
 
 export interface EditorDocumentSession {
   paperId?: string;
@@ -54,6 +56,31 @@ export interface PaperProfileInfo {
   isOutdated: boolean;
   isUpgrading: boolean;
   onUpgrade: () => void;
+}
+
+/** The Word file the open paper was imported from, and reading it again (the dialog of the title bar's "?"). */
+export interface WordSourceState {
+  paperId: string;
+  loading: boolean;
+  /** The stored file, or null when the paper has none (an older paper). */
+  info: SourceInfo | null;
+  /** Version of the importer now; the file was read with `info.importerVersion`. */
+  currentImporterVersion: number;
+  busy: 'idle' | 'analyzing' | 'applying' | 'replanning';
+  error: string | null;
+  /** The comparison waiting for the author's decisions, if any. */
+  review: Analysis | null;
+  /** Read the stored file again with the current importer. */
+  reanalyze: () => void;
+  /** Read a new file in place of the stored one (or the first file of an older paper). */
+  replaceWith: (file: File) => void;
+  /** Take the accepted proposals (ids) into the paper. */
+  apply: (accepted: ReadonlySet<string>) => Promise<void>;
+  cancelReview: () => void;
+  /** Save the stored Word file to the computer. */
+  download: () => Promise<void>;
+  /** Redo the comparison listing (or not) the places where the paper differs from a file that did not change. */
+  showEdits: (on: boolean) => Promise<void>;
 }
 
 /** The paper's undo/redo, for the title bar's two buttons. */
@@ -106,6 +133,8 @@ export interface EditorSessionContextValue {
   setJournalBar: (state: JournalBarState | null) => void;
   paperProfile: PaperProfileInfo | null;
   setPaperProfile: (info: PaperProfileInfo | null) => void;
+  wordSource: WordSourceState | null;
+  setWordSource: (state: WordSourceState | null) => void;
   history: EditorHistoryState | null;
   setHistory: (state: EditorHistoryState | null) => void;
   paperHistoryBar: PaperHistoryBarState | null;
@@ -129,6 +158,8 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   setJournalBar: () => {},
   paperProfile: null,
   setPaperProfile: () => {},
+  wordSource: null,
+  setWordSource: () => {},
   history: null,
   setHistory: () => {},
   paperHistoryBar: null,
@@ -151,6 +182,7 @@ export function EditorSessionProvider({
   const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
   const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
   const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
+  const [wordSource, setWordSource] = useState<WordSourceState | null>(null);
   const [history, setHistory] = useState<EditorHistoryState | null>(null);
   const [paperHistoryBar, setPaperHistoryBar] = useState<PaperHistoryBarState | null>(null);
   const [trashBar, setTrashBar] = useState<TrashBarState | null>(null);
@@ -229,6 +261,8 @@ export function EditorSessionProvider({
       setJournalBar,
       paperProfile,
       setPaperProfile,
+      wordSource,
+      setWordSource,
       history,
       setHistory,
       paperHistoryBar,
@@ -236,7 +270,7 @@ export function EditorSessionProvider({
       trashBar,
       setTrashBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar, trashBar]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, wordSource, history, paperHistoryBar, trashBar]
   );
 
   return (

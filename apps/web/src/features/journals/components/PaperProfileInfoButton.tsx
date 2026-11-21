@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { TitleBarTip } from '@/components/titlebar/TitleBarTip';
 import { CircleHelp, ExternalLink, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { ModalCard } from '@/components/modals';
 import { useEditorSession, type PaperProfileInfo } from '@/context/EditorSessionContext';
+import { WordSourceSection } from '@/features/import-merge/components/WordSourceSection';
 
 const TIERS: { key: 'base' | 'journal' | 'articleType'; label: string; hint: string }[] = [
   { key: 'base', label: 'Quy tắc chung', hint: 'Dùng cho mọi tạp chí' },
@@ -103,6 +105,8 @@ export const PaperProfileInfoModal: React.FC<{ info: PaperProfileInfo; isOpen: b
           </button>
         </div>
       )}
+
+      <WordSourceSection />
     </div>
   </ModalCard>
 );
@@ -115,6 +119,7 @@ export const PaperProfileInfoButton: React.FC = () => {
 
   return (
     <>
+      <TitleBarTip label="Quy tắc đang áp dụng cho bài báo" align="right">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -127,6 +132,7 @@ export const PaperProfileInfoButton: React.FC = () => {
         <CircleHelp className="w-3.5 h-3.5" />
         {paperProfile.isOutdated && <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-gray-200" data-testid="paper-profile-dot" />}
       </button>
+      </TitleBarTip>
       <PaperProfileInfoModal info={paperProfile} isOpen={open} onClose={() => setOpen(false)} />
     </>
   );

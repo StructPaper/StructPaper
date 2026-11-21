@@ -1,5 +1,6 @@
 'use client';
 
+import { NumberInput } from '@/components/ui/NumberInput';
 import React, { useState } from 'react';
 import { PaperSection, PaperTable } from '@/types/paper';
 import {
@@ -245,21 +246,16 @@ export const TablesTab: React.FC<TablesTabProps> = ({ sections, onChange }) => {
 
                   <div className="flex items-center gap-1.5 ml-auto">
                     <span className="text-slate-500">Cỡ chữ bảng:</span>
-                    <select
-                      value={currentTable.fontSize || '8pt'}
-                      onChange={(e) =>
-                        handleUpdateCurrentTable({
-                          ...currentTable,
-                          fontSize: e.target.value as any,
-                        })
-                      }
-                      className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs font-bold"
-                    >
-                      <option value="7pt">7pt (Rất nhỏ)</option>
-                      <option value="8pt">8pt (Chuẩn khoa học)</option>
-                      <option value="9pt">9pt (Vừa)</option>
-                      <option value="10pt">10pt (Lớn)</option>
-                    </select>
+                    <NumberInput
+                      value={parseFloat(currentTable.fontSize || '8') || 8}
+                      onChange={(v) => handleUpdateCurrentTable({ ...currentTable, fontSize: `${Math.round(v * 2) / 2}pt` as `${number}pt` })}
+                      min={5}
+                      max={14}
+                      step={0.5}
+                      unit="pt"
+                      size="xs"
+                      ariaLabel="Cỡ chữ bảng (pt)"
+                    />
                   </div>
                 </div>
               </div>
