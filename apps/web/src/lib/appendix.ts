@@ -30,7 +30,10 @@ export const APPENDIX_PLACEMENTS: Array<{ value: AppendixPlacement; label: strin
 
 export const appendixSettingsOf = (paper: Pick<CompletePaper, 'metadata'>): AppendixSettings => ({ ...DEFAULT_APPENDIX, ...(paper.metadata?.appendix ?? {}) });
 
-export const isAppendix = (s: PaperSection): boolean => (s.type === 'table' && !!s.table?.appendix) || (s.type === 'figure' && !!s.figure?.appendix);
+export const isAppendix = (s: PaperSection): boolean => (s.type === 'table' && !!s.table?.appendix) || (s.type === 'figure' && !!s.figure?.appendix) || (s.type !== 'table' && s.type !== 'figure' && !!s.appendix);
+
+/** An appendix that has a number: a table or a figure (a heading or a paragraph of an appendix is text, numbered by what it says). */
+export const isNumberedAppendix = (s: PaperSection): boolean => (s.type === 'table' && !!s.table?.appendix) || (s.type === 'figure' && !!s.figure?.appendix);
 
 /** "1" or "A": the mark an appendix carries. */
 export const appendixMark = (n: number, numbering: AppendixSettings['numbering']): string => (numbering === 'letter' ? String.fromCharCode(64 + ((n - 1) % 26) + 1) : String(n));
@@ -42,7 +45,7 @@ export const appendixLabel = (n: number, numbering: AppendixSettings['numbering'
 export function renumberAppendices(sections: PaperSection[]): PaperSection[] {
   let n = 0;
   return sections.map((s) => {
-    if (!isAppendix(s)) return s;
+    if (!isNumberedAppendix(s)) return s;
     n += 1;
     if (s.type === 'table' && s.table) return s.table.num === n ? s : { ...s, table: { ...s.table, num: n } };
     if (s.type === 'figure' && s.figure) return s.figure.num === n ? s : { ...s, figure: { ...s.figure, num: n } };
@@ -130,7 +133,7 @@ export function mergeScopedSections(all: PaperSection[], next: PaperSection[], s
 
 /** A new appendix table or figure for the appendix list: flagged and numbered after the appendices there are. */
 export function nextAppendixNumber(all: PaperSection[]): number {
-  return all.filter(isAppendix).length + 1;
+  return all.filter(isNumberedAppendix).length + 1;
 }
 
 /**

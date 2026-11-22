@@ -435,6 +435,8 @@ export interface PaperSection {
   figure?: PaperFigure;
   table?: PaperTable;
   pageBreakAfter?: boolean;
+  /** A block of text (heading, paragraph, formula …) that belongs to the appendices; a table or figure carries the flag in itself. */
+  appendix?: boolean;
   /** Where an appendix stood in the Word file: after this block, or after the references. */
   appendixOrigin?: { after?: string; afterReferences: boolean };
   pageLayout?: SectionPageLayout; // new page here with these columns/orientation, until the next marker
@@ -505,7 +507,7 @@ export interface StructuralIssue {
   title: string;
   message: string;
   suggestion: string;
-  fixTab?: 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation';
+  fixTab?: 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation' | 'appendix';
   /** Stable machine code when the issue comes from the shared validation rules (e.g. "numbering.table"). */
   code?: string;
 }

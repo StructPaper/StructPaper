@@ -7,7 +7,7 @@ import { Search, X } from 'lucide-react';
 import type { PaperReference } from '@/types/paper';
 import { MathFormula, renderLatexToHtml } from '@/features/preview/components/MathText';
 import { latexFromClipboard } from '@/lib/math-paste';
-import { refLabel, type RefTarget } from '@/lib/cross-refs';
+import { labelOfTarget, type RefTarget } from '@/lib/cross-refs';
 import { POPUP_EDGE, POPUP_TOP } from '@/lib/popup-bounds';
 import { stripCaptionLabel } from '@/lib/docx-table-extras';
 
@@ -262,21 +262,21 @@ export const XrefDialog: React.FC<{ open: boolean; targets: RefTarget[]; lang?: 
   useEffect(() => {
     if (open) setSearch('');
   }, [open]);
-  const shown = targets.filter((t) => !search.trim() || `${refLabel(t.kind, t.order, lang)} ${t.caption}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const shown = targets.filter((t) => !search.trim() || `${labelOfTarget(t, lang)} ${t.caption}`.toLowerCase().includes(search.trim().toLowerCase()));
   return (
-    <InlineModal open={open} title="Tham chiếu đến bảng hoặc hình" subtitle="Hiện như “Bảng 2”, tự đúng số." onClose={onClose} testId="xref-dialog">
-      <SearchBox value={search} onChange={setSearch} placeholder="Tìm bảng hoặc hình..." />
+    <InlineModal open={open} title="Tham chiếu đến bảng, hình hoặc phụ lục" subtitle="Hiện như “Bảng 2”, tự đúng số." onClose={onClose} testId="xref-dialog">
+      <SearchBox value={search} onChange={setSearch} placeholder="Tìm bảng, hình hoặc phụ lục..." />
       <div className="max-h-56 overflow-y-auto space-y-0.5">
         {shown.length > 0 ? (
-          (['table', 'figure'] as const).map((kind) => {
+          (['table', 'figure', 'appendix'] as const).map((kind) => {
             const group = shown.filter((t) => t.kind === kind).sort((a, b) => a.order - b.order);
             if (group.length === 0) return null;
             return (
               <div key={kind} data-testid={`xref-group-${kind}`}>
-                <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-zinc-400">{kind === 'table' ? (lang === 'en' ? 'Tables' : 'Bảng') : lang === 'en' ? 'Figures' : 'Hình'}</div>
+                <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-zinc-400">{kind === 'table' ? (lang === 'en' ? 'Tables' : 'Bảng') : kind === 'appendix' ? (lang === 'en' ? 'Appendices' : 'Phụ lục') : lang === 'en' ? 'Figures' : 'Hình'}</div>
                 {group.map((t) => (
                   <button key={`${t.kind}:${t.id}`} type="button" data-testid={`xref-${t.kind}-${t.order}`} onClick={() => onSelect(t)} className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-lime-50 flex items-center gap-2 text-xs cursor-pointer">
-                    <span className="font-extrabold text-purple-700 whitespace-nowrap">{refLabel(t.kind, t.order, lang)}</span>
+                    <span className="font-extrabold text-purple-700 whitespace-nowrap">{labelOfTarget(t, lang)}</span>
                     <span className="truncate flex-1 text-zinc-600">{stripCaptionLabel(t.caption)}</span>
                   </button>
                 ))}
@@ -284,7 +284,7 @@ export const XrefDialog: React.FC<{ open: boolean; targets: RefTarget[]; lang?: 
             );
           })
         ) : (
-          <div className="text-zinc-500 text-center py-3 text-sm">{targets.length === 0 ? 'Bài chưa có bảng hoặc hình nào' : 'Không có bảng hoặc hình khớp'}</div>
+          <div className="text-zinc-500 text-center py-3 text-sm">{targets.length === 0 ? 'Bài chưa có bảng, hình hoặc phụ lục nào' : 'Không có mục khớp'}</div>
         )}
       </div>
     </InlineModal>

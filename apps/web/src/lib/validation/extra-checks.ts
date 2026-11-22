@@ -1,5 +1,6 @@
 import type { CompletePaper } from '@/types/paper';
 import { resolvePublication, UNKNOWN } from '../publication';
+import { arrangeForOutput, appendixLabel, appendixMark, appendixSettingsOf, isAppendix, isNumberedAppendix } from '../appendix';
 import type { ValidationGate, ValidationIssue } from './validators';
 
 type Issue = Omit<ValidationIssue, 'gate'>;
@@ -41,6 +42,19 @@ export function extraChecks(paper: CompletePaper, _gate: ValidationGate): Issue[
     out.push({ id: 'abstract_en_words', severity: 'warning', code: 'field.abstractEn.length', title: `Abstract có ${enWords} từ`, message: 'Bản tiếng Anh cũng nên dài 275–500 từ như bản tiếng Việt.', fixTab: 'abstract' });
   }
   // (the number of keywords, in either language, is not checked: it does not matter to the journal)
+
+  // ---- appendices: each should be named in the text, and have a title
+  const appendices = arrangeForOutput(paper).appendices.filter(isNumberedAppendix);
+  const numbering = appendixSettingsOf(paper).numbering;
+  const bodyText = sections.filter((x) => !isAppendix(x)).map((x) => `${x.title ?? ''} ${x.content ?? ''}`).join('\n');
+  appendices.forEach((a) => {
+    const n = (a.table ?? a.figure)!.num;
+    const mark = appendixMark(n, numbering);
+    const named = new RegExp(`(ph[uụ]\\s*l[uụ]c|appendix)\\s*${mark}(?![0-9A-Za-z])`, 'i').test(bodyText);
+    if (!named) out.push({ id: `appendix_unmentioned_${n}`, severity: 'warning', code: 'appendix.unmentioned', title: `${appendixLabel(n, numbering)} chưa được nhắc trong văn bản`, message: `Cần nhắc ${appendixLabel(n, numbering)} trong văn bản (ví dụ "xem ${appendixLabel(n, numbering)}").`, fixTab: 'sections' });
+    const caption = (a.table?.caption ?? a.figure?.caption ?? '').replace(/^\s*(ph[uụ]\s*l[uụ]c|appendix)\s*[0-9A-Z]*\s*[:.\-–]?\s*/i, '').trim();
+    if (!caption) out.push({ id: `appendix_untitled_${n}`, severity: 'warning', code: 'appendix.untitled', title: `${appendixLabel(n, numbering)} chưa có tiêu đề`, message: 'Phụ lục cần một tiêu đề ngắn sau số thứ tự.', fixTab: 'appendix' });
+  });
 
   // ---- article type
   if (!(md.articleType || '').trim()) {

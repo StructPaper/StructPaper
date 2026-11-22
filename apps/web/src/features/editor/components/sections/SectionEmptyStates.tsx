@@ -55,8 +55,10 @@ const EmptySectionsStateBase: React.FC<EmptySectionsStateProps> = ({
       <div className="p-8 text-center rounded-3xl bg-gray-200/50 space-y-3" data-testid="appendix-empty">
         <FileText className="w-8 h-8 text-zinc-400 mx-auto" />
         <p className="text-sm font-semibold text-zinc-600">Bài chưa có phụ lục nào.</p>
-        <p className="text-xs text-zinc-500">Thêm bảng hoặc hình vào phụ lục, hoặc chuyển một bảng, hình thành phụ lục trong cài đặt của nó.</p>
-        <div className="flex items-center justify-center gap-2">
+        <p className="text-xs text-zinc-500">Thêm bảng, hình hoặc phần chữ vào phụ lục, hoặc chuyển một bảng, hình thành phụ lục trong cài đặt của nó.</p>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <button data-edit-only type="button" onClick={() => onAddHeading('h1')} className="btn-pill-subtle text-xs">+ Tiêu đề phụ lục</button>
+          <button data-edit-only type="button" onClick={() => onAddParagraph()} className="btn-pill-subtle text-xs">+ Đoạn văn</button>
           <button data-edit-only type="button" onClick={() => onAddTable?.()} className="btn-pill-lime text-xs">+ Bảng phụ lục</button>
           <button data-edit-only type="button" onClick={() => onAddFigure?.()} className="btn-pill-subtle text-xs">+ Hình phụ lục</button>
         </div>

@@ -1,4 +1,4 @@
-import { arrangeForOutput, appendixLabel, appendixSettingsOf } from './appendix';
+import { arrangeForOutput, appendixLabel, appendixSettingsOf, isNumberedAppendix } from './appendix';
 import { hasMarkup, parseMarkup } from './inline-markup';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import { splitMathSegments, xmlEscape } from '@/lib/math-text';
@@ -191,7 +191,7 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions, sectionList: PaperS
       figId += 1;
       const n = s.figure.num || figId;
       out.push(
-        `<fig id="${uniqueId(`fig${n}`)}"><label>${s.figure.appendix ? 'Phụ lục' : 'Hình'} ${n}</label><caption><p>${inlineToJats(stripCaptionLabel(s.figure.caption))}</p></caption>` +
+        `<fig id="${uniqueId(`fig${n}`)}"><label>${s.figure.appendix ? appendixLabel(n, appendixSettingsOf(paper).numbering) : `Hình ${n}`}</label><caption><p>${inlineToJats(stripCaptionLabel(s.figure.caption))}</p></caption>` +
           `<graphic xlink:href="${xmlEscape(figureHref(paper, n, s.figure.src || '', opts))}"/>` +
           (s.figure.source ? `<attrib>${xmlEscape(s.figure.source)}</attrib>` : '') +
           `</fig>`
@@ -205,7 +205,7 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions, sectionList: PaperS
       const cell = (tag: 'th' | 'td', c: { text: string; colSpan?: number; rowSpan?: number }) =>
         `<${tag}${c.colSpan && c.colSpan > 1 ? ` colspan="${c.colSpan}"` : ''}${c.rowSpan && c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : ''}>${inlineToJats(c.text)}</${tag}>`;
       out.push(
-        `<table-wrap id="${uniqueId(`tbl${n}`)}"><label>${t.appendix ? 'Phụ lục' : 'Bảng'} ${n}</label><caption><p>${inlineToJats(stripCaptionLabel(t.caption))}</p></caption>` +
+        `<table-wrap id="${uniqueId(`tbl${n}`)}"><label>${t.appendix ? appendixLabel(n, appendixSettingsOf(paper).numbering) : `Bảng ${n}`}</label><caption><p>${inlineToJats(stripCaptionLabel(t.caption))}</p></caption>` +
           tableXml(headRows, bodyRows, cell) +
           (t.source ? `<table-wrap-foot><p>${xmlEscape(t.source)}</p></table-wrap-foot>` : '') +
           `</table-wrap>`
@@ -226,10 +226,19 @@ export function exportToJatsXml(paper: CompletePaper, opts: JatsOptions = {}): s
   const refsXmlIds = (paper.references || []).map((r) => ({ r, id: uniqueId(`R${r.id}`) }));
   // the order the paper is printed in: the appendices where the paper's setting puts them (those after the references go into <app-group>)
   const arranged = arrangeForOutput(paper, 'vi');
-  const appendixXml = arranged.afterReferences.length
-    ? `<app-group>\n${arranged.afterReferences
-        .map((s, k) => `<app id="${uniqueId(`app${k + 1}`)}"><title>${appendixLabel(s.table?.num ?? s.figure?.num ?? k + 1, appendixSettingsOf(paper).numbering)}</title>${bodyToJats(paper, opts, [s])}</app>`)
-        .join('\n')}\n</app-group>\n`
+  // one <app> for each numbered appendix (a table or a figure), and one for each run of text that begins at a heading
+  const appendixApps: Array<{ title: string; blocks: PaperSection[] }> = [];
+  for (const s of arranged.afterReferences) {
+    if (isNumberedAppendix(s)) {
+      appendixApps.push({ title: appendixLabel((s.table ?? s.figure)!.num, appendixSettingsOf(paper).numbering), blocks: [s] });
+    } else if (s.type === 'h1' || s.type === 'h2' || s.type === 'h3' || appendixApps.length === 0) {
+      appendixApps.push({ title: s.title || 'Phụ lục', blocks: s.type === 'h1' || s.type === 'h2' || s.type === 'h3' ? [] : [s] });
+    } else {
+      appendixApps[appendixApps.length - 1].blocks.push(s);
+    }
+  }
+  const appendixXml = appendixApps.length
+    ? `<app-group>\n${appendixApps.map((a, k) => `<app id="${uniqueId(`app${k + 1}`)}"><title>${xmlEscape(a.title)}</title>${bodyToJats(paper, opts, a.blocks)}</app>`).join('\n')}\n</app-group>\n`
     : '';
   const md = paper.metadata;
   const pubInfo = resolvePublication(md);

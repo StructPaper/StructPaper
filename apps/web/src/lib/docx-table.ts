@@ -33,7 +33,8 @@ const asCells = (rows: string[][]): PaperCell[][] => rows.map((r) => r.map((text
  * Word table block: caption, the table (header rows repeat on every page, rows never split,
  * merged cells kept: colSpan -> gridSpan, rowSpan -> vMerge), and the "Nguồn: …" source line.
  */
-export function buildDocxTable(table: PaperTable, theme: ResolvedTheme, widthTwips?: number): Array<Paragraph | Table> {
+/** `label` is the words in front of the caption of an appendix table ("Phụ lục B"), when the paper numbers them with letters. */
+export function buildDocxTable(table: PaperTable, theme: ResolvedTheme, widthTwips?: number, label?: string): Array<Paragraph | Table> {
   const out: Array<Paragraph | Table> = [];
   const bodyFill = resolveBodyFill(table);
   const COLOR_TITLE = theme.titleColor.slice(1);
@@ -42,7 +43,7 @@ export function buildDocxTable(table: PaperTable, theme: ResolvedTheme, widthTwi
       style: 'TableCaption',
       keepNext: true,
       children: [
-        new TextRun({ text: `${table.appendix ? 'Phụ lục' : 'Bảng'} ${table.num}: `, font: FONT_SANS, size: 17, bold: true, color: COLOR_TITLE }),
+        new TextRun({ text: `${label ?? `${table.appendix ? 'Phụ lục' : 'Bảng'} ${table.num}`}: `, font: FONT_SANS, size: 17, bold: true, color: COLOR_TITLE }),
         new TextRun({ text: stripCaptionLabel(table.caption), font: FONT_SANS, size: 17, bold: true }),
       ],
       spacing: { before: 200, after: 100 },

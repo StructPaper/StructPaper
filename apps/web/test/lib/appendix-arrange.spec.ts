@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import { createEmptyPaper } from '@/types/paper';
+import { extraChecks } from '@/lib/validation/extra-checks';
 import { generateFullJournalLatex } from '@/lib/latex-template';
-import { APPENDIX_BLOCK_DEFAULTS, arrangeForOutput, mergeScopedSections, renumberAppendices, scopedSections, appendixLabel } from '@/lib/appendix';
+import { APPENDIX_BLOCK_DEFAULTS, nextAppendixNumber, arrangeForOutput, mergeScopedSections, renumberAppendices, scopedSections, appendixLabel } from '@/lib/appendix';
 
 const para = (id: string): PaperSection => ({ id, type: 'paragraph', content: id });
 const tab = (id: string, num: number, appendix = false, origin?: PaperSection['appendixOrigin']): PaperSection => ({
@@ -107,5 +108,60 @@ describe('what the author sets on an appendix is in the PDF (so the recompile bu
     expect(latexOf({}, { appendix: { placement: 'beforeReferences' } })).not.toBe(base);
     expect(latexOf({}, { appendix: { numbering: 'letter' } })).toContain('Phụ lục A.');
     expect(latexOf({}, { appendix: { rotatePage: true } })).toContain('pdflscape');
+  });
+});
+
+describe('the checks for appendices', () => {
+  const paperWith = (text: string, caption = 'Phụ lục 1. Bảng khảo sát') => {
+    const p: any = createEmptyPaper();
+    p.sections = [
+      { id: 'h', type: 'h1', title: 'KQ', content: '' },
+      { id: 'p', type: 'paragraph', content: text },
+      { id: 'a1', type: 'table', content: '', table: { id: 'a1', num: 1, caption, headers: ['A'], rows: [['x']], appendix: true } },
+    ];
+    return p;
+  };
+  const codes = (p: any) => extraChecks(p, 'export').map((i) => i.code);
+  it('warns when an appendix is not named in the text, and when it has no title', () => {
+    expect(codes(paperWith('Không nhắc phụ lục nào.'))).toContain('appendix.unmentioned');
+    expect(codes(paperWith('Chi tiết ở Phụ lục 1.'))).not.toContain('appendix.unmentioned');
+    expect(codes(paperWith('Xem phụ lục 1 để biết thêm.'))).not.toContain('appendix.unmentioned');
+    expect(codes(paperWith('Xem Phụ lục 1.', 'Phụ lục 1.'))).toContain('appendix.untitled');
+    expect(codes(paperWith('Xem Phụ lục 1.'))).not.toContain('appendix.untitled');
+  });
+  it('knows the letter when the paper numbers with letters', () => {
+    const p = paperWith('Xem Phụ lục A.');
+    p.metadata.appendix = { numbering: 'letter' };
+    expect(codes(p)).not.toContain('appendix.unmentioned');
+  });
+});
+
+describe('appendices made of text', () => {
+  const text = (id: string, type: PaperSection['type'] = 'paragraph'): PaperSection => ({ id, type, content: id, title: id, appendix: true });
+  const S2 = [para('p1'), tab('t1', 1), text('ah', 'h1'), text('ap'), tab('a1', 5, true)];
+  it('a heading and a paragraph of the appendices go with the appendices, in order, and are not numbered', () => {
+    const a = arrangeForOutput(paper(S2));
+    expect(a.body.map((s) => s.id)).toEqual(['p1', 't1']);
+    expect(a.afterReferences.map((s) => s.id)).toEqual(['ah', 'ap', 'a1']);
+    // only the table is numbered
+    expect(a.afterReferences.find((s) => s.id === 'a1')!.table!.num).toBe(1);
+    expect(nextAppendixNumber(S2)).toBe(2);
+  });
+  it('the appendix list shows them, the content list does not (unless they stand in the content)', () => {
+    expect(scopedSections(S2, 'appendix', 'afterReferences').map((s) => s.id)).toEqual(['ah', 'ap', 'a1']);
+    expect(scopedSections(S2, 'content', 'afterReferences').map((s) => s.id)).toEqual(['p1', 't1']);
+    expect(scopedSections(S2, 'content', 'inContent').map((s) => s.id)).toEqual(['p1', 't1', 'ah', 'ap', 'a1']);
+  });
+  it('a block added in the appendix list, with its flag, stays there', () => {
+    const next = [...scopedSections(S2, 'appendix', 'afterReferences'), text('ap2')];
+    const merged = mergeScopedSections(S2, next, 'appendix', 'afterReferences');
+    expect(merged.map((s) => s.id)).toEqual(['p1', 't1', 'ah', 'ap', 'a1', 'ap2']);
+  });
+  it('they come back through saving and loading', async () => {
+    const { migrateV1toV2, adaptV2toV1 } = await import('@structpaper/doc-model');
+    const p: any = { ...createEmptyPaper(), sections: S2 };
+    const out: any = adaptV2toV1(migrateV1toV2(p) as any);
+    expect(out.sections.find((s: any) => s.id === 'ah').appendix).toBe(true);
+    expect(out.sections.find((s: any) => s.id === 'p1').appendix).toBeUndefined();
   });
 });

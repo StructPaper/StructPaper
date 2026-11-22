@@ -132,7 +132,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-zinc-200/80 text-zinc-800 flex items-center gap-1">
               <TableIcon className="w-3 h-3" />
-              Bảng số liệu {sec.table?.num ? `(Bảng ${sec.table.num})` : ''}
+              {sec.table?.appendix ? 'Bảng phụ lục' : 'Bảng số liệu'} {sec.table?.num ? `(${sec.table.appendix ? 'Phụ lục' : 'Bảng'} ${sec.table.num})` : ''}
             </span>
           </div>
         )}
@@ -140,7 +140,7 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
         {isFigure && (
           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-zinc-200/80 text-zinc-800 flex items-center gap-1">
             <ImageIcon className="w-3 h-3" />
-            Hình minh họa {sec.figure?.num ? `(Hình ${sec.figure.num})` : ''}
+            {sec.figure?.appendix ? 'Hình phụ lục' : 'Hình minh họa'} {sec.figure?.num ? `(${sec.figure.appendix ? 'Phụ lục' : 'Hình'} ${sec.figure.num})` : ''}
           </span>
         )}
 

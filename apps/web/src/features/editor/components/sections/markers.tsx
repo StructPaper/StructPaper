@@ -4,7 +4,7 @@ import React from 'react';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { CROSS_REF, kindOfMarker, refLabel, type RefTarget } from '@/lib/cross-refs';
+import { CROSS_REF, kindOfMarker, labelOfTarget, refLabel, type RefTarget } from '@/lib/cross-refs';
 import { useXrefTargets } from '../../xref-context';
 import './markers.css';
 
@@ -13,12 +13,14 @@ import './markers.css';
  * marker the paper keeps them as. In the text being edited the marker's own characters are hidden (the text is still there, and
  * the label is drawn over it); in the text at rest the marker is replaced by the label.
  */
-const MARKER = /\[\[fn:([\s\S]*?)\]\]|\[\[(tbl|fig):([^\]\s]+)\]\]/g;
+const MARKER = /\[\[fn:([\s\S]*?)\]\]|\[\[(tbl|fig|app):([^\]\s]+)\]\]/g;
 
-export function labelOfRef(m: 'tbl' | 'fig', id: string, targets: RefTarget[], lang: 'vi' | 'en'): string {
+export function labelOfRef(m: 'tbl' | 'fig' | 'app', id: string, targets: RefTarget[], lang: 'vi' | 'en'): string {
   const kind = kindOfMarker(m);
   const t = targets.find((x) => x.kind === kind && x.id === id);
-  return t ? refLabel(kind, t.order, lang) : `${kind === 'table' ? (lang === 'en' ? 'Table' : 'Bảng') : lang === 'en' ? 'Figure' : 'Hình'} ?`;
+  if (t) return labelOfTarget(t, lang);
+  if (kind === 'appendix') return `${lang === 'en' ? 'Appendix' : 'Phụ lục'} ?`;
+  return `${kind === 'table' ? (lang === 'en' ? 'Table' : 'Bảng') : lang === 'en' ? 'Figure' : 'Hình'} ?`;
 }
 
 /** The text with its markers drawn as labels. */
@@ -31,7 +33,7 @@ export const MarkerText: React.FC<{ text: string }> = ({ text }) => {
   for (const m of text.matchAll(MARKER)) {
     const at = m.index ?? 0;
     if (at > last) out.push(text.slice(last, at));
-    if (m[2]) out.push(<span key={k++} className="marker-chip marker-xref-chip">{labelOfRef(m[2] as 'tbl' | 'fig', m[3], targets, lang)}</span>);
+    if (m[2]) out.push(<span key={k++} className="marker-chip marker-xref-chip">{labelOfRef(m[2] as 'tbl' | 'fig' | 'app', m[3], targets, lang)}</span>);
     else out.push(<sup key={k++} className="marker-fn-mark" title={m[1].trim()} />);
     last = at + m[0].length;
   }
@@ -77,7 +79,7 @@ export const MarkerChips = Extension.create<{ getContext: () => { targets: RefTa
                 const from = pos + (m.index ?? 0);
                 const to = from + m[0].length;
                 if (m[2]) {
-                  decos.push(Decoration.inline(from, to, { class: 'marker-edit marker-xref-edit', 'data-label': labelOfRef(m[2] as 'tbl' | 'fig', m[3], targets, lang) }));
+                  decos.push(Decoration.inline(from, to, { class: 'marker-edit marker-xref-edit', 'data-label': labelOfRef(m[2] as 'tbl' | 'fig' | 'app', m[3], targets, lang) }));
                 } else {
                   decos.push(Decoration.inline(from, to, { class: 'marker-edit marker-fn-edit' }));
                   decos.push(Decoration.inline(from, from + 5, { class: 'marker-fn-open' }));

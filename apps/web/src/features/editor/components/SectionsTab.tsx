@@ -388,7 +388,9 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   }, []);
 
   const handleInsertSection = useCallback(
-    (insertAfterIndex: number | undefined, newSection: PaperSection) => {
+    (insertAfterIndex: number | undefined, added: PaperSection) => {
+      // a block added in the appendix list belongs to the appendices (a table or a figure carries the flag in itself)
+      const newSection: PaperSection = scope === 'appendix' && added.type !== 'table' && added.type !== 'figure' ? { ...added, appendix: true } : added;
       dispatchAddSection(
         activeBusRef.current,
         newSection,
@@ -403,7 +405,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         updateSectionsFilter('all');
       }
     },
-    [updateSectionsFilter]
+    [updateSectionsFilter, scope]
   );
 
   // Inspector and Media hooks

@@ -657,6 +657,13 @@
 .ov-table-block[data-appendix] td.ov-continued::before {
   content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) var(--ov-tab-cont, ' (tiếp theo)');
 }
+.ov-figure[data-appendix='letter'] .ov-fig-caption::before,
+.ov-table-block[data-appendix='letter'] .ov-tab-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app, upper-alpha) '. ';
+}
+.ov-table-block[data-appendix='letter'] td.ov-continued::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app, upper-alpha) var(--ov-tab-cont, ' (tiếp theo)');
+}
 .ov-fig-source,
 .ov-tab-source {
   font-family: var(--ov-sans);

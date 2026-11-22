@@ -506,6 +506,7 @@ function collectSectionExtras(sections: V1PaperSection[] | undefined): Record<st
     if (sec.pageLayout) e.pageLayout = sec.pageLayout;
     if (sec.pageBreakAfter) e.pageBreakAfter = true;
     if ((sec as any).appendixOrigin) e.appendixOrigin = (sec as any).appendixOrigin;
+    if ((sec as any).appendix) e.appendix = true;
     if (sec.equation?.num !== undefined) e.eqNum = sec.equation.num;
     if (sec.equation?.columnSpan) e.eqSpan = sec.equation.columnSpan;
     if (Object.keys(e).length > 0) out[sec.id] = e;

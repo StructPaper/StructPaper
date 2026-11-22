@@ -203,7 +203,7 @@ function staticHtml(value: string, targets: RefTarget[], lang: 'vi' | 'en'): str
   };
   let t = value
     .replace(/\[\[fn:([\s\S]*?)\]\]/g, () => hold('<sup style="color:#2b74b7;font-weight:700">[•]</sup>'))
-    .replace(/\[\[(tbl|fig):([^\]\s]+)\]\]/g, (_m, k: 'tbl' | 'fig', id: string) => hold(`<span class="marker-chip marker-xref-chip">${labelOfRef(k, id, targets, lang)}</span>`))
+    .replace(/\[\[(tbl|fig|app):([^\]\s]+)\]\]/g, (_m, k: 'tbl' | 'fig' | 'app', id: string) => hold(`<span class="marker-chip marker-xref-chip">${labelOfRef(k, id, targets, lang)}</span>`))
     .replace(/\$([^$]+)\$/g, (_m, latex: string) => {
       const r = renderLatexToHtml(latex, false);
       return hold(r.error ? `<code>${latex.replace(/</g, '&lt;')}</code>` : r.html);

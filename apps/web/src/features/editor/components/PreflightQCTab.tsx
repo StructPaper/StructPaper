@@ -39,6 +39,7 @@ const GROUP_ICON: Record<ValidationGroupKey, React.ReactNode> = {
   authors: <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
   abstract: <AlignLeft className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
   sections: <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
+  appendix: <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
   refs: <BookOpen className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
   citation: <Quote className="w-3.5 h-3.5 text-zinc-400 shrink-0" />,
 };

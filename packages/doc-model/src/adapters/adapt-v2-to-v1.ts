@@ -401,6 +401,7 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
     if (e.pageLayout) sec.pageLayout = e.pageLayout;
     if (e.pageBreakAfter) sec.pageBreakAfter = true;
     if (e.appendixOrigin) (sec as any).appendixOrigin = e.appendixOrigin;
+    if (e.appendix) (sec as any).appendix = true;
     if (sec.equation) {
       if (e.eqNum !== undefined && sec.equation.numbered) sec.equation.num = e.eqNum;
       if (e.eqSpan) sec.equation.columnSpan = e.eqSpan;

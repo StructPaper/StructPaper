@@ -37,13 +37,13 @@ const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${(count
 export function textToContent(text: string | undefined, options: { legacyStars?: boolean } = {}): JSONContent[] {
   if (!text) return [];
   // a footnote [[fn: …]] is one mark in the text, numbered by the page as the PDF numbers it; what is between the brackets is kept as it is
-  if (text.includes('[[fn:') || text.includes('[[tbl:') || text.includes('[[fig:')) {
+  if (text.includes('[[fn:') || text.includes('[[tbl:') || text.includes('[[fig:') || text.includes('[[app:')) {
     const out: JSONContent[] = [];
     let last = 0;
-    for (const m of text.matchAll(/\[\[fn:([\s\S]*?)\]\]|\[\[(tbl|fig):([^\]\s]+)\]\]/g)) {
+    for (const m of text.matchAll(/\[\[fn:([\s\S]*?)\]\]|\[\[(tbl|fig|app):([^\]\s]+)\]\]/g)) {
       const at = m.index ?? 0;
       if (at > last) out.push(...textToContent(text.slice(last, at), options));
-      if (m[2]) out.push({ type: 'xref', attrs: { targetId: m[3], kind: m[2] === 'tbl' ? 'table' : 'figure', label: '' } });
+      if (m[2]) out.push({ type: 'xref', attrs: { targetId: m[3], kind: m[2] === 'tbl' ? 'table' : m[2] === 'app' ? 'appendix' : 'figure', label: '' } });
       else out.push({ type: 'footnote', attrs: { raw: m[1] } });
       last = at + m[0].length;
     }
@@ -77,7 +77,7 @@ export function contentToText(content: JSONContent[] | undefined): string {
       const marks = [names.includes('bold') ? 'b' : '', names.includes('italic') ? 'i' : '', names.includes('underline') ? 'u' : '', names.includes('superscript') ? 'sup' : '', names.includes('subscript') ? 'sub' : ''].filter(Boolean);
       t = wrapInlineMarks(node.text ?? '', marks);
       color = (node.marks ?? []).find((m) => m.type === 'textColor')?.attrs?.color as string | undefined;
-    } else if (node.type === 'xref' && (node.attrs?.kind === 'table' || node.attrs?.kind === 'figure')) {
+    } else if (node.type === 'xref' && (node.attrs?.kind === 'table' || node.attrs?.kind === 'figure' || node.attrs?.kind === 'appendix')) {
       t = markerOf(node.attrs.kind, String(node.attrs.targetId));
     } else if (node.type === 'footnote') {
       t = `[[fn:${String(node.attrs?.raw ?? '')}]]`;

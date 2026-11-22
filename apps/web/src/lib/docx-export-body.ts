@@ -1,3 +1,4 @@
+import { appendixLabel } from './appendix';
 import {
   AlignmentType,
   ImageRun,
@@ -80,7 +81,7 @@ function headingPara(sec: PaperSection, theme: ResolvedTheme, color: string): Pa
 }
 
 /** Figure in a light-blue box: picture, then "Hình N: caption", like the printed journal. */
-function figureBlock(sec: PaperSection, image: DocxImage | undefined, boxW: number, color: string, lang: 'vi' | 'en'): Table {
+function figureBlock(sec: PaperSection, image: DocxImage | undefined, boxW: number, color: string, lang: 'vi' | 'en', appendixText?: string): Table {
   const fig = sec.figure!;
   const scale = Math.min(100, fig.scalePercent ?? 100) / 100;
   const widthPx = Math.round(((boxW - 300) / 15) * scale);
@@ -96,7 +97,7 @@ function figureBlock(sec: PaperSection, image: DocxImage | undefined, boxW: numb
   const caption = new Paragraph({
     style: 'FigureCaption',
     children: [
-      new TextRun({ text: `${fig.appendix ? (lang === 'en' ? 'Appendix' : 'Phụ lục') : lang === 'en' ? 'Figure' : 'Hình'} ${fig.num}: `, font: FONT_SANS, size: 17, bold: true, color }),
+      new TextRun({ text: `${appendixText && fig.appendix ? appendixText : `${fig.appendix ? (lang === 'en' ? 'Appendix' : 'Phụ lục') : lang === 'en' ? 'Figure' : 'Hình'} ${fig.num}`}: `, font: FONT_SANS, size: 17, bold: true, color }),
       new TextRun({ text: stripCaptionLabel(fig.caption || ''), font: FONT_SANS, size: 17 }),
       ...(fig.source ? [new TextRun({ text: ` ${fig.source}`, font: FONT_SANS, size: 17 })] : []),
     ],
@@ -155,6 +156,8 @@ export function buildBody(
     /** The appendices that are printed after the references (arrangeForOutput), and whether their sheets are turned. */
     appendices?: PaperSection[];
     appendixLandscape?: boolean;
+    /** 'letter': the appendices are Phụ lục A, B, C. */
+    appendixNumbering?: 'number' | 'letter';
   }
 ): Segment[] {
   const layout = new SegmentBuilder(!!ctx.oneColumn, !!ctx.landscape);
@@ -174,12 +177,13 @@ export function buildBody(
       push(full, equationPara(sec, layout.width(full)));
     } else if (sec.type === 'figure' && sec.figure) {
       const full = sec.figure.columnSpan === '2-column' || (sec.figure.columnSpan !== '1-column' && !!sec.figure.isFullWidth);
-      push(full, figureBlock(sec, ctx.figures.get(sec.id), layout.width(full), color, ctx.lang), new Paragraph({ spacing: { after: 120 }, children: [] }));
+      push(full, figureBlock(sec, ctx.figures.get(sec.id), layout.width(full), color, ctx.lang, sec.figure.appendix ? appendixLabel(sec.figure.num, ctx.appendixNumbering ?? 'number', ctx.lang) : undefined), new Paragraph({ spacing: { after: 120 }, children: [] }));
     } else if (sec.type === 'table' && sec.table) {
       const t = sec.table;
+      const tableLabel = t.appendix ? appendixLabel(t.num, ctx.appendixNumbering ?? 'number', ctx.lang) : undefined;
       const full = t.columnSpan === '2-column' || (t.columnSpan !== '1-column' && t.isFullWidth !== false && (t.headers?.length ?? 0) > 3);
-      if (t.isRotated && !layout.isLandscape) layout.rotated((w) => buildDocxTable(t, theme, w));
-      else push(full, ...buildDocxTable(t, theme, layout.width(full)));
+      if (t.isRotated && !layout.isLandscape) layout.rotated((w) => buildDocxTable(t, theme, w, tableLabel));
+      else push(full, ...buildDocxTable(t, theme, layout.width(full), tableLabel));
     }
   };
   sections.forEach(emit);

@@ -14,7 +14,7 @@ import { citationLabel, citationNumbers } from './cite-label';
 import { useOverview } from './overview-context';
 import { useXrefTargets } from '../xref-context';
 import '../components/sections/markers.css';
-import { refLabel } from '@/lib/cross-refs';
+import { labelOfTarget, refLabel } from '@/lib/cross-refs';
 import { figureSpansBoth, tableLook, tablePlacement } from './overview-layout';
 import { RowHeights, SourceNotes, type RowHeightOptions } from './overview-table-plugins';
 import { BlockSelect } from './overview-select';
@@ -186,9 +186,9 @@ const XrefView: React.FC<NodeViewProps> = ({ node, selected }) => {
   const kind = node.attrs.kind as string;
   let label = String(node.attrs.label ?? '');
   let missing = false;
-  if (kind === 'table' || kind === 'figure') {
+  if (kind === 'table' || kind === 'figure' || kind === 'appendix') {
     const t = targets.find((x) => x.kind === kind && x.id === node.attrs.targetId);
-    label = t ? refLabel(kind, t.order, lang) : refLabel(kind, 0, lang).replace(/ 0$/, ' ?');
+    label = t ? labelOfTarget(t, lang) : refLabel(kind, 0, lang).replace(/ 0$/, ' ?');
     missing = !t;
   } else if (!label) label = `${kind} (${node.attrs.targetId})`;
   return (
@@ -445,7 +445,7 @@ const FigureView: React.FC<NodeViewProps> = ({ node }) => {
   const spans = fig ? figureSpansBoth(fig, isOneColumn) : false;
   const width = Math.min(100, fig?.scalePercent ?? 100);
   return (
-    <NodeViewWrapper data-sid={node.attrs.sid} data-appendix={fig?.appendix ? 'true' : undefined} className={`ov-figure ${spans ? 'ov-span-all' : ''}`} data-align={fig?.alignment ?? 'center'} style={{ ['--ov-app-label' as string]: lang === 'en' ? "'Appendix '" : "'Phụ lục '", ['--ov-fig-label' as string]: lang === 'en' ? "'Figure '" : "'Hình '" }}>
+    <NodeViewWrapper data-sid={node.attrs.sid} data-appendix={fig?.appendix ? (paper.metadata.appendix?.numbering === 'letter' ? 'letter' : 'true') : undefined} className={`ov-figure ${spans ? 'ov-span-all' : ''}`} data-align={fig?.alignment ?? 'center'} style={{ ['--ov-app-label' as string]: lang === 'en' ? "'Appendix '" : "'Phụ lục '", ['--ov-fig-label' as string]: lang === 'en' ? "'Figure '" : "'Hình '" }}>
       <div ref={frameRef} className="ov-figure-frame" contentEditable={false}>
         {fig?.src || pendingSrc ? <img src={(fig?.src ?? pendingSrc) as string} alt="" style={{ width: `${width}%` }} draggable={false} /> : <div className="ov-figure-missing">Chưa có ảnh</div>}
         {fig && typeof node.attrs.sid === 'string' && <FigureHandle frame={frameRef} sid={node.attrs.sid} />}
@@ -483,7 +483,7 @@ const TableBlockView: React.FC<NodeViewProps> = ({ node }) => {
     <NodeViewWrapper
       data-sid={node.attrs.sid}
       className={`ov-table-block ${place.spansBoth ? 'ov-span-all' : ''}`}
-      data-appendix={table?.appendix ? 'true' : undefined}
+      data-appendix={table?.appendix ? (paper.metadata.appendix?.numbering === 'letter' ? 'letter' : 'true') : undefined}
       data-border={look?.border ?? 'journal'}
       data-fill={look?.fill ?? 'plain'}
       // how the lines under the table are set, when the author chose (otherwise the lines decide: a note is italic, a source upright)

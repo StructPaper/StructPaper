@@ -6,6 +6,7 @@ export type ValidationGroupKey =
   | 'authors'
   | 'abstract'
   | 'sections'
+  | 'appendix'
   | 'refs'
   | 'citation';
 
@@ -34,6 +35,7 @@ const GROUP_ORDER: readonly ValidationGroupKey[] = [
   'authors',
   'abstract',
   'sections',
+  'appendix',
   'refs',
   'citation',
 ];
@@ -44,6 +46,7 @@ const GROUP_META: Record<ValidationGroupKey, ValidationGroupMeta> = {
   authors: { key: 'authors', label: 'Tác giả & Đơn vị', hint: 'Thẻ Tác giả' },
   abstract: { key: 'abstract', label: 'Tóm tắt & Từ khóa', hint: 'Thẻ Tóm tắt' },
   sections: { key: 'sections', label: 'Nội dung, Bảng & Hình', hint: 'Thẻ Nội dung' },
+  appendix: { key: 'appendix', label: 'Phụ lục', hint: 'Thẻ Phụ lục' },
   refs: { key: 'refs', label: 'Tài liệu tham khảo', hint: 'Thẻ Tham khảo' },
   citation: { key: 'citation', label: 'Trích dẫn bài báo', hint: 'How to cite' },
 };

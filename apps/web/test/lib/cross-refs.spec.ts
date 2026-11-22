@@ -62,3 +62,27 @@ describe('a formula that was copied', () => {
     expect(latexFromClipboard('', '$$y = 2x$$')).toBe('y = 2x');
   });
 });
+
+describe('references to an appendix', () => {
+  const withAppendix = (numbering?: 'number' | 'letter') => {
+    const p: any = createEmptyPaper();
+    if (numbering) p.metadata.appendix = { numbering };
+    p.sections = [
+      { id: 'a', type: 'paragraph', content: 'Xem [[app:a2]] và [[tbl:t1]].' },
+      { id: 'c', type: 'table', content: '', table: { id: 't1', num: 1, caption: 'Bảng một', headers: ['A'], rows: [['1']] } },
+      { id: 'x', type: 'table', content: '', table: { id: 'a1', num: 7, caption: 'Phụ lục 7. Một', headers: ['A'], rows: [['1']], appendix: true } },
+      { id: 'y', type: 'figure', content: '', figure: { id: 'a2', num: 9, caption: 'Phụ lục 9. Hai', src: 'x', appendix: true } },
+    ];
+    return p;
+  };
+  it('are numbered on their own, apart from the tables and figures, and listed last', () => {
+    const t = crossRefTargets(withAppendix());
+    expect(t.map((x) => `${x.kind}:${x.id}:${x.order}`)).toEqual(['table:t1:1', 'appendix:a1:1', 'appendix:a2:2']);
+    expect(markerOf('appendix', 'a2')).toBe('[[app:a2]]');
+  });
+  it('are printed as "Phụ lục 2", or with a letter, in either language', () => {
+    expect(resolveCrossRefs(withAppendix()).sections[0].content).toBe('Xem Phụ lục 2 và Bảng 1.');
+    expect(resolveCrossRefs(withAppendix('letter')).sections[0].content).toBe('Xem Phụ lục B và Bảng 1.');
+    expect(resolveCrossRefs(withAppendix('letter'), 'en').sections[0].content).toBe('Xem Appendix B và Table 1.');
+  });
+});
