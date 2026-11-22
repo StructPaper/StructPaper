@@ -103,8 +103,8 @@ export function tableToLatex(
   // an appendix table is numbered on its own ("Phụ lục 2."), apart from the table counter of the text: its caption has no label of the counter
   // (the label is set as the journal sets "Bảng 1": bold, sans, in the title colour; then the title)
   const appendixLabelText = table.appendix ? (appendix ?? APPENDIX_WORDS).label(table.num) : '';
-  const capText = table.appendix ? `{\\color{titlecolor}${escapeLatex(appendixLabelText)}.}\\ ${escapeLatex(stripCaptionLabel(table.caption))}` : `\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}`;
-  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption${table.appendix ? '*' : ''}{{${capText}}}`;
+  const capText = table.appendix ? `{\\sffamily\\bfseries\\color{titlecolor}${escapeLatex(appendixLabelText)}.}\\ \\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}` : `\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}`;
+  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false,font={small,sf,bf}}\\caption${table.appendix ? '*' : ''}{{${capText}}}`;
   const label = table.appendix ? '' : `\\label{tab:${table.num || 1}}`;
   // Multi-row headers keep their merged cells ("Quan trắc" over 3 columns, "Dự báo" over 2 rows)
   const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + `\\textbf{${escapeLatex(c?.text ?? '')}}`, 'c', rules, spanWidth);

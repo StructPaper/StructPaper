@@ -43,7 +43,7 @@ describe.skipIf(!FILE)('the appendix of a Word file (HS 722)', () => {
     const t = paper.sections.find((s) => s.type === 'table' && s.table?.appendix)!.table!;
     const tex = tableToLatex(t, { isOneColumn: false, theme: resolveTheme(undefined) });
     // (the label as the journal sets "Bảng 1": in the title colour, then the title; no counter)
-    expect(tex).toMatch(/\\caption\*\{\{\{\\color\{titlecolor\}Phụ lục 1\.\}\\ /);
+    expect(tex).toMatch(/\\caption\*\{\{\{\\sffamily\\bfseries\\color\{titlecolor\}Phụ lục 1\.\}\\ \\textbf\{/);
     // each appendix table is set across the whole page and turned, as its own settings say (the sheet itself stays upright)
     expect(tex).toContain('\\spwidegeometry');
     expect(tex).toContain('\\begin{landscape}');

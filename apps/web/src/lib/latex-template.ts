@@ -622,7 +622,7 @@ ${isOneColumn
         const pic = `width=${((sec.figure.scalePercent || 100) / 100).toFixed(2)}\\linewidth,height=\\dimexpr\\textheight-2.6cm\\relax,keepaspectratio`;
         const isApp = !!sec.figure.appendix;
         const capTitle = escapeLatex(stripCaptionLabel(sec.figure.caption));
-        const capBody = isApp ? `{\\color{titlecolor}${escapeLatex(appendixLabelFor(sec.figure.num))}.}\\ ${capTitle}` : `\\textbf{${capTitle}}`;
+        const capBody = isApp ? `{\\sffamily\\bfseries\\color{titlecolor}${escapeLatex(appendixLabelFor(sec.figure.num))}.}\\ \\textbf{${capTitle}}` : `\\textbf{${capTitle}}`;
         const capTex = `{\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false,font={small,sf,bf}}\\captionof${isApp ? '*' : ''}{figure}{${capBody}}}`;
         const imageTex = `\\begin{center}\\IfFileExists{images/${imgName}}{\\includegraphics[${pic}]{images/${imgName}}}{\\IfFileExists{${imgName}}{\\includegraphics[${pic}]{${imgName}}}{\\fbox{\\parbox[c][2.4cm][c]{0.6\\linewidth}{\\centering\\sffamily\\footnotesize Chưa có ảnh cho ${isApp ? appendixLabelFor(sec.figure.num) : 'Hình ' + figNum}}}}}\\end{center}`;
         const sourceTex = sec.figure.source ? `{\\footnotesize\\textit{${escapeLatex(sec.figure.source)}}}\\par\n` : '';
