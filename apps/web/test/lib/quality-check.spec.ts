@@ -89,11 +89,12 @@ describe('what the shared rules now catch', () => {
     for (const c of ['field.email.format', 'field.doi.format', 'field.publication.pages', 'field.date.future']) expect(found).toContain(c);
   });
 
-  it('second language: abstract length, keyword count', () => {
+  it('second language: abstract length (the number of keywords is not checked)', () => {
     const p = base();
     p.metadata.abstractEn = 'too short';
     p.metadata.keywordsEn = ['a', 'b', 'c', 'd', 'e', 'f'];
-    expect(codes(p)).toEqual(expect.arrayContaining(['field.abstractEn.length', 'field.keywordsEn.count']));
+    expect(codes(p)).toEqual(expect.arrayContaining(['field.abstractEn.length']));
+    expect(codes(p)).not.toContain('field.keywordsEn.count');
   });
 
   it('text the template leaves as a prompt', () => {

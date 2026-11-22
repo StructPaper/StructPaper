@@ -1,5 +1,6 @@
 'use client';
 
+import { isInView } from '@/lib/history/focus';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -335,10 +336,14 @@ export const PaperOverview: React.FC<PaperOverviewProps> = ({ paper, lang, citat
     const root = scrollRef.current;
     const el = root?.querySelector<HTMLElement>(`[data-sid="${CSS.escape(focusRequest.id)}"]`);
     if (!el) return;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    el.classList.remove('ov-flash');
-    void el.offsetWidth;
-    el.classList.add('ov-flash');
+    // (undo/redo: a block already in front of the author stays still, with no flash)
+    const fromHistory = typeof (focusRequest as { edit?: boolean }).edit === 'boolean';
+    if (!(fromHistory && isInView(el))) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (!fromHistory) {
+      el.classList.remove('ov-flash');
+      void el.offsetWidth;
+      el.classList.add('ov-flash');
+    }
     try {
       editor.commands.setTextSelection(editor.view.posAtDOM(el, 0) + 1);
     } catch {

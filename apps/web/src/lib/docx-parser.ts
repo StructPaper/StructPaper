@@ -20,6 +20,7 @@ import { splitReferenceDoi } from './reference-format';
 import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
 import { findJournalTemplate, getJournalTemplate } from './templates';
+import { datesInLine } from './editorial-dates';
 
 /**
  * Decode XML entities
@@ -234,6 +235,8 @@ export function parseOpenXmlTable(tblXml: string): {
     rawText: string;
     /** The cell's text with <b>/<i> where the Word runs are bold or italic (only when something in it is). */
     markup?: string;
+    /** Where Word centres or right-aligns the cell's text (left is what every cell is without a choice). */
+    align?: 'center' | 'right';
     isContinuation: boolean;
     isVContinue: boolean;
     vMerge: 'restart' | 'continue' | 'none';
@@ -286,6 +289,7 @@ export function parseOpenXmlTable(tblXml: string): {
       // one line per paragraph: multi-line cells (e.g. 4 value lines) must stay aligned across columns
       const cellText = pTexts.join('\n').trim();
       const cellMarkup = cellEmphasis(pMatches, cellText);
+      const cellAlign = cellAlignment(pMatches);
 
       if (vMerge === 'continue') {
         let parentRow = r - 1;
@@ -317,6 +321,7 @@ export function parseOpenXmlTable(tblXml: string): {
             text: cellText,
             rawText: s === 0 ? cellText : '',
             ...(s === 0 && cellMarkup ? { markup: cellMarkup } : {}),
+            ...(s === 0 && cellAlign ? { align: cellAlign } : {}),
             isContinuation: s > 0,
             isVContinue: false,
             vMerge: vMerge === 'restart' ? 'restart' : 'none',
@@ -431,6 +436,7 @@ export function parseOpenXmlTable(tblXml: string): {
           colSpan: cell.gridSpan > 1 ? cell.gridSpan : undefined,
           rowSpan: rowSpan > 1 ? rowSpan : undefined,
           isHeader: r < headerRowCount,
+          ...(cell.align ? { align: cell.align } : {}),
         });
       }
       if (rowCells.length > 0) rows.push(rowCells);
@@ -451,6 +457,22 @@ export function parseOpenXmlTable(tblXml: string): {
     totalRowCount: matrix.length,
     allCellTexts: matrix.flatMap((row) => row.map((cell) => cell.text).filter(Boolean)),
   };
+}
+
+/** The alignment Word gives the text of a cell (<w:jc> of the paragraphs that hold text): centre or right when most of them have it. */
+function cellAlignment(paragraphs: string[]): 'center' | 'right' | undefined {
+  const votes = { center: 0, right: 0, other: 0 };
+  for (const p of paragraphs) {
+    if (!/<w:t\b[^>]*>[^<]+<\/w:t>/i.test(p)) continue;
+    const pPr = p.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/i)?.[1] ?? '';
+    const v = pPr.match(/<w:jc\b[^>]*w:val="(\w+)"/i)?.[1];
+    if (v === 'center') votes.center++;
+    else if (v === 'right' || v === 'end') votes.right++;
+    else votes.other++;
+  }
+  if (votes.center > votes.right && votes.center >= votes.other) return 'center';
+  if (votes.right > votes.center && votes.right >= votes.other) return 'right';
+  return undefined;
 }
 
 export async function extractOpenXmlTables(
@@ -1008,22 +1030,16 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
       continue;
     }
 
-    // Dates & History
-    if (/ngày nhận( bài)?:/i.test(line)) {
-      dates.received = line.replace(/.*ngày nhận( bài)?:\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày (nhận )?chỉnh sửa|ngày sửa (đổi|bài):/i.test(line)) {
-      dates.revised = line.replace(/.*(ngày (nhận )?chỉnh sửa|ngày sửa (đổi|bài)):\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày chấp nhận:/i.test(line)) {
-      dates.accepted = line.replace(/.*ngày chấp nhận:\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày (đăng|xuất bản)( trực tuyến)?:/i.test(line)) {
-      dates.published = line.replace(/.*ngày (đăng|xuất bản)( trực tuyến)?:\s*/i, '').replace(/;$/, '').trim();
-      continue;
+    // Dates & History: one label per line, or every label on one line ("Ngày nhận bài: …Ngày chỉnh sửa: …Ngày chấp nhận: …")
+    {
+      const lineDates = line.length < 300 && (/ngày/i.test(line) || (!isFrontMatterDone && !isReadingReferences)) ? datesInLine(line) : {};
+      const keys = Object.keys(lineDates) as Array<keyof typeof dates>;
+      if (keys.length > 0) {
+        keys.forEach((k) => {
+          dates[k] = lineDates[k] ?? '';
+        });
+        continue;
+      }
     }
 
     // Article DOI: only the labelled line in the front matter / side box. References and body text

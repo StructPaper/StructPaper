@@ -1,5 +1,6 @@
 'use client';
 
+import { repairDates } from '@/lib/editorial-dates';
 import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -127,6 +128,20 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   const { autoSaveEnabled, pdfLanguage, setPdfLanguage, editorView, setEditorView } = useEditorSession();
   // The title bar's language picker follows the paper: opening a paper selects the language it was written in (found when its Word
   // file was imported), and a later choice in the picker is kept with the paper. Papers with no stored language are left untouched.
+  // A paper is always opened in the form; the overview page is a choice made while working on it.
+  useEffect(() => {
+    setEditorView('form');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id]);
+  // Editorial dates glued into one field (or written another way) are put right when the paper opens, so nobody has to retype them.
+  useEffect(() => {
+    const fixed = repairDates(paper.metadata?.dates, false);
+    if (fixed && fixed !== paper.metadata?.dates) {
+      setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, dates: repairDates(prev.metadata?.dates, false) ?? prev.metadata.dates } }));
+      setIsDirty(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id]);
   const langPaperRef = useRef<string | null>(null);
   const langSeenRef = useRef<string>(pdfLanguage);
   useEffect(() => {

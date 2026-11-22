@@ -241,7 +241,9 @@ function spanRenderer(maxCols: number, fmt: (cell: any) => string, groupAlign: '
         body = '';
       }
       const align = cell?.align === 'center' || rs > 1 ? 'c' : cell?.align === 'right' ? 'r' : cell?.align === 'left' ? 'l' : groupAlign;
-      out.push(cs > 1 ? `\\multicolumn{${cs}}{${spec(col, cs, align)}}{${body}}` : body);
+      // a single column is a paragraph column set to the left: a centred or right cell says so itself
+      const single = align === 'c' ? `\\centering\\arraybackslash ${body}` : align === 'r' ? `\\raggedleft\\arraybackslash ${body}` : body;
+      out.push(cs > 1 ? `\\multicolumn{${cs}}{${spec(col, cs, align)}}{${body}}` : single);
       col += cs;
     }
     return out.join(' & ');

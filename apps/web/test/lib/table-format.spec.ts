@@ -210,3 +210,15 @@ describe('the abstract keeps the emphasis of the Word paragraphs it came from', 
     expect(emphasiseText('Cả đoạn nghiêng', [para([['Cả đoạn nghiêng', { i: true }]]) as any])).toBe('Cả đoạn nghiêng');
   });
 });
+
+describe('alignment of a cell, as the Word file has it', () => {
+  it('a centred or right cell in a single column is set so in the PDF, a plain one stays to the left', () => {
+    const t = base({
+      bodyRows: [[{ text: 'M1', align: 'center' }, { text: '7,2', align: 'right' }, { text: '30' }]],
+    } as Partial<PaperTable>);
+    const out = tex(t);
+    expect(out).toContain('\\centering\\arraybackslash M1');
+    expect(out).toContain('\\raggedleft\\arraybackslash 7,2');
+    expect(out).toMatch(/ & 30 \\\\/);
+  });
+});

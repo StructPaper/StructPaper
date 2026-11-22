@@ -243,7 +243,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                                         </span>
                                       </div>
                                       {issue.message && (
-                                        <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug">
+                                        <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug whitespace-pre-line">
                                           {issue.message}
                                         </p>
                                       )}
@@ -318,7 +318,7 @@ export const PreflightQCTab: React.FC<PreflightQCTabProps> = ({
                                             </span>
                                           </div>
                                           {issue.message && (
-                                            <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug">
+                                            <p className="text-[11.5px] text-zinc-600 mt-0.5 leading-snug whitespace-pre-line">
                                               {issue.message}
                                             </p>
                                           )}

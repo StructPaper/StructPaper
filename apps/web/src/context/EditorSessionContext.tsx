@@ -199,7 +199,7 @@ export function EditorSessionProvider({
     try {
       setPdfFocusModeState(localStorage.getItem('structpaper_pdf_interactive_mode') === 'true');
       setPdfLanguageState(localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi');
-      setEditorViewState(localStorage.getItem('structpaper_editor_view') === 'overview' ? 'overview' : 'form');
+      // (the view is not restored: a paper always opens in the form, see UnifiedEditorView)
     } catch {
       // storage unavailable: keep the defaults
     }

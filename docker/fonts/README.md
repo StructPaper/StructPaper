@@ -7,7 +7,7 @@ the deployed image: the LaTeX template's main font (Times New Roman, else Palati
 and every compile would fail.
 
 What the template uses: Times New Roman (body), Source Sans 3 / Calibri (headings, abstract, side column),
-Arial, Palatino Linotype (last resort for the body) and Microsoft YaHei (CJK).
+Arial, Palatino Linotype (last resort for the body), SimSun (Han characters, as the printed journal sets them) and Microsoft YaHei (CJK fallback).
 
 `SourceSans3-*.ttf` (SIL Open Font License) stand in for Myriad Pro in the journal template.
 

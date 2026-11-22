@@ -159,10 +159,7 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
   if (md.abstract?.trim() && (words < 275 || words > 500)) {
     push({ id: 'abstract_words', severity: 'warning', code: 'field.abstract.length', title: `Tóm tắt có ${words} từ`, message: 'Template quy định tóm tắt dài 275–500 từ.', suggestion: words < 275 ? 'Bổ sung nội dung tóm tắt.' : 'Rút gọn tóm tắt.', fixTab: 'abstract' });
   }
-  const kw = (md.keywords || []).filter((k) => k.trim()).length;
-  if (kw > 0 && (kw < 3 || kw > 5)) {
-    push({ id: 'keywords_count', severity: 'warning', code: 'field.keywords.count', title: `Có ${kw} từ khóa`, message: 'Template quy định 3–5 từ khóa.', fixTab: 'abstract' });
-  }
+  // (the number of keywords is not checked: it does not matter to the journal)
 
   // ---- numbering (STT) ----
   const labels: Record<string, string> = { table: 'Bảng', figure: 'Hình', equation: 'Phương trình' };

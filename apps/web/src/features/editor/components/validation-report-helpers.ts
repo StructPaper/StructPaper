@@ -113,9 +113,6 @@ export function getCompactIssueDetail(issue: ValidationIssue): string | null {
   if (code === 'field.abstract.length') {
     return 'chuẩn 275–500 từ';
   }
-  if (code === 'field.keywords.count') {
-    return 'chuẩn 3–5 từ khóa';
-  }
   if (code === 'citation.uncited') {
     const bracket = message.match(/\[[^\]]+\]/);
     return bracket ? bracket[0] : null;
