@@ -20,9 +20,12 @@ import { sourceLinesOf, sourceLook } from './table-source';
  * Long tables repeat the header row on every page and show the "continued" markers used by the
  * journal ("Table N continued" on top, "Continued on next page" at the bottom).
  */
+/** The words of an appendix table when the caller gives none (a Vietnamese paper). */
+const APPENDIX_WORDS = { label: (n: number): string => `Phụ lục ${n}`, continued: "(tiếp theo)", foot: "Xem tiếp ở trang sau" };
+
 export function tableToLatex(
   table: PaperTable,
-  { isOneColumn, theme, inline = false }: { isOneColumn: boolean; theme: ResolvedTheme; /** Set in the flow of a page that is already turned and as wide as it can be (an appendix page): no float, no page of its own. */ inline?: boolean }
+  { isOneColumn, theme, inline = false, appendix }: { isOneColumn: boolean; theme: ResolvedTheme; /** The words of an appendix table: its label ("Phụ lục 2"), the "(tiếp theo)" on its next pages and the foot line. */ appendix?: { label: (n: number) => string; continued: string; foot: string }; /** Set in the flow of a page that is already turned and as wide as it can be (an appendix page): no float, no page of its own. */ inline?: boolean }
 ): string {
   const rawHeaders = table.headers && table.headers.length > 0 ? table.headers : ['Cột 1'];
   const rawRows = table.rows || [];
@@ -98,8 +101,10 @@ export function tableToLatex(
 
   // the caption is as wide as the table and starts at its left edge (not centred in a narrower box), as in the printed journals
   // an appendix table is numbered on its own ("Phụ lục 2."), apart from the table counter of the text: its caption has no label of the counter
-  const capText = table.appendix ? `Phụ lục ${table.num}. ${stripCaptionLabel(table.caption)}` : stripCaptionLabel(table.caption);
-  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption${table.appendix ? '*' : ''}{{\\textbf{${escapeLatex(capText)}}}}`;
+  // (the label is set as the journal sets "Bảng 1": bold, sans, in the title colour; then the title)
+  const appendixLabelText = table.appendix ? (appendix ?? APPENDIX_WORDS).label(table.num) : '';
+  const capText = table.appendix ? `{\\color{titlecolor}${escapeLatex(appendixLabelText)}.}\\ ${escapeLatex(stripCaptionLabel(table.caption))}` : `\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}`;
+  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption${table.appendix ? '*' : ''}{{${capText}}}`;
   const label = table.appendix ? '' : `\\label{tab:${table.num || 1}}`;
   // Multi-row headers keep their merged cells ("Quan trắc" over 3 columns, "Dự báo" over 2 rows)
   const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + `\\textbf{${escapeLatex(c?.text ?? '')}}`, 'c', rules, spanWidth);
@@ -112,8 +117,9 @@ export function tableToLatex(
       ? table.headerRows.map((r) => `${headCmd}\n${headStrut}${headSpans(r)} \\\\${headRule}`).join('\n')
       : // as printed: the header band is grey with bold centred titles, and no rule between it and the body (the rules are above and below the table)
         `${headCmd}\n${headStrut}${headers.map((h) => `\\centering\\arraybackslash\\textbf{${escapeLatex(h)}}`).join(' & ')} \\\\${headRule}`;
-  const continuedTitle = escapeLatex(theme.continuedTitleText.replace('{n}', String(table.num || '')));
-  const continuedFoot = escapeLatex(theme.continuedFootText);
+  // an appendix says "Phụ lục 2 (tiếp theo)", not "Table 2 continued"
+  const continuedTitle = table.appendix ? escapeLatex(`${appendixLabelText} ${(appendix ?? APPENDIX_WORDS).continued}`) : escapeLatex(theme.continuedTitleText.replace('{n}', String(table.num || '')));
+  const continuedFoot = table.appendix ? escapeLatex((appendix ?? APPENDIX_WORDS).foot) : escapeLatex(theme.continuedFootText);
   // Column widths like a typeset journal table: the longest line of a column decides, softened by a square root so that a column of
   // short names still gets about a third of the width next to a column of long sentences (the printed tables are set that way).
   // A banner merged over several columns ("Điểm đánh giá … " over six) says nothing about one column's width: the leaf header row decides,
@@ -153,14 +159,15 @@ export function tableToLatex(
     ? { width: JOURNAL_GEOMETRY.sidewaysWidth, height: JOURNAL_GEOMETRY.sidewaysHeight }
     : { width: spansOneColumn ? JOURNAL_GEOMETRY.column : JOURNAL_GEOMETRY.page, height: JOURNAL_GEOMETRY.pageHeight * 0.85 };
   const tooTall = breakMode !== 'never' && estimateHeight(measureTable({ headers, rows: paddedRows, bodyRows: table.bodyRows }, fontPt), room.width, fontPt) > room.height;
-  const isLong = breakMode === 'always' || tooTall || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
+  // (a table set "across the whole page" takes pages of its own, however short)
+  const isLong = breakMode === 'always' || tooTall || table.sideColumn === 'full' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
 
   // ---- long table, flowing inside one column ----
   if (isLong && spansOneColumn && !isRotated && !inline) {
     const contLine = `\\multicolumn{${maxCols}}{c}{\\textit{${continuedTitle}}}\\\\`;
     const repeat = theme.repeatTableHeader ? `\\tablehead{\\hline ${contLine}\n${headRow}}\n` : `\\tablehead{${contLine}}\n`;
     return `\n${sizeOpen}
-${table.appendix ? `\\captionof*{table}{{\\textbf{${escapeLatex(capText)}}}}` : `\\topcaption{{\\textbf{${escapeLatex(capText)}}}${label}}`}
+${table.appendix ? `\\captionof*{table}{{${capText}}}` : `\\topcaption{{${capText}}${label}}`}
 \\tablefirsthead{${topRule}${headRow}}
 ${repeat}\\tabletail{\\hline \\multicolumn{${maxCols}}{r}{\\textit{${continuedFoot}}}\\\\}
 \\tablelasttail{${bottomRule}}
@@ -174,7 +181,7 @@ ${bodyRows.map(renderRow).join('\n')}
   if (isLong || inline) {
     // on pages of its own a large table takes the whole width of the page, over the side column (as the printed journal's appendix tables
     // do), unless the author keeps it in the text; a table turned on its side keeps the text area
-    const wide = !inline && !isRotated && (table.sideColumn === 'full' || (table.sideColumn !== 'text' && !spansOneColumn));
+    const wide = !inline && (table.sideColumn === 'full' || (table.sideColumn !== 'text' && !spansOneColumn));
     const leave = inline ? "" : (wide ? '\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n' : '') + (isOneColumn ? '' : '\\onecolumn\n');
     // (the text area is put back first, so the two columns are measured from it)
     const back = inline ? "" : (wide ? '\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n' : '') + (isOneColumn ? '' : '\\twocolumn\n');

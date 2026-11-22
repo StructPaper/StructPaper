@@ -146,7 +146,7 @@ export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOp
   const arranged = arrangeForOutput(paper, 'vi');
   const segments = buildBody(arranged.body, paper.references || [], {
     appendices: arranged.afterReferences,
-    appendixLandscape: appendixSettingsOf(paper).landscape,
+    appendixLandscape: appendixSettingsOf(paper).rotatePage,
     theme,
     color,
     figures: assets.figures,

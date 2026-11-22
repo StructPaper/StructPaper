@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { CompletePaper, PaperSection } from '@/types/paper';
-import { arrangeForOutput, mergeScopedSections, renumberAppendices, scopedSections, appendixLabel } from '@/lib/appendix';
+import { createEmptyPaper } from '@/types/paper';
+import { generateFullJournalLatex } from '@/lib/latex-template';
+import { APPENDIX_BLOCK_DEFAULTS, arrangeForOutput, mergeScopedSections, renumberAppendices, scopedSections, appendixLabel } from '@/lib/appendix';
 
 const para = (id: string): PaperSection => ({ id, type: 'paragraph', content: id });
 const tab = (id: string, num: number, appendix = false, origin?: PaperSection['appendixOrigin']): PaperSection => ({
@@ -74,5 +76,36 @@ describe('the two lists of the editor', () => {
   it('renumbering leaves the sections that need no change as they are', () => {
     const list = renumberAppendices([tab('a', 1, true), tab('b', 2, true)]);
     expect(list.map((s) => s.table!.num)).toEqual([1, 2]);
+  });
+});
+
+describe('what the author sets on an appendix is in the PDF (so the recompile button sees it)', () => {
+  const latexOf = (table: Partial<NonNullable<PaperSection['table']>>, metadata: Record<string, unknown> = {}) => {
+    const p: any = createEmptyPaper();
+    p.metadata = { ...p.metadata, ...metadata };
+    p.references = [{ id: 1, raw: 'Tác giả. Bài báo. 2020.', isCited: true, citationCount: 1 }];
+    p.sections = [
+      { id: 'h', type: 'h1', title: 'KQ', content: '' },
+      { id: 'a1', type: 'table', content: '', table: { id: 'a1', num: 1, caption: 'Phụ lục 1. Bảng', headers: ['A'], rows: [['x']], appendix: true, ...APPENDIX_BLOCK_DEFAULTS, ...table } },
+    ];
+    return generateFullJournalLatex(p);
+  };
+  it('an appendix table is turned and across the whole page by default, the sheet upright', () => {
+    const tex = latexOf({});
+    expect(tex).toContain('\\begin{landscape}');
+    expect(tex).toContain('\\spwidegeometry');
+    expect(tex).not.toContain('pdflscape');
+  });
+  it('turning it off, or keeping it in the text, changes the LaTeX', () => {
+    const base = latexOf({});
+    expect(latexOf({ isRotated: false })).not.toBe(base);
+    expect(latexOf({ sideColumn: 'text' })).not.toBe(base);
+    expect(latexOf({ sideColumn: 'text', isRotated: false })).not.toContain('\\begin{landscape}');
+  });
+  it('the paper settings show too: placement, letters, turned sheet', () => {
+    const base = latexOf({});
+    expect(latexOf({}, { appendix: { placement: 'beforeReferences' } })).not.toBe(base);
+    expect(latexOf({}, { appendix: { numbering: 'letter' } })).toContain('Phụ lục A.');
+    expect(latexOf({}, { appendix: { rotatePage: true } })).toContain('pdflscape');
   });
 });

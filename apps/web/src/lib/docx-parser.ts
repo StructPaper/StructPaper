@@ -21,6 +21,7 @@ import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
 import { findJournalTemplate, getJournalTemplate } from './templates';
 import { datesInLine } from './editorial-dates';
+import { APPENDIX_BLOCK_DEFAULTS } from './appendix';
 
 /**
  * Decode XML entities
@@ -1405,7 +1406,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
             rows: targetApp.rows,
             headerRows: targetApp.headerRows,
             bodyRows: targetApp.bodyRows,
-            isFullWidth: true,
+            ...APPENDIX_BLOCK_DEFAULTS,
             appendix: true,
           },
         });
@@ -1424,7 +1425,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
             num: appNum,
             caption,
             src: figureImageMap.get(APPENDIX_KEY + appNum) || '',
-            isFullWidth: true,
+            ...APPENDIX_BLOCK_DEFAULTS,
             appendix: true,
           },
         });
@@ -1464,7 +1465,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
         type: 'table',
         content: t.caption,
         appendixOrigin: { after: undefined, afterReferences: true },
-        table: { id: t.id, num: t.num, caption: t.caption, headers: t.headers, rows: t.rows, headerRows: t.headerRows, bodyRows: t.bodyRows, isFullWidth: true, appendix: true },
+        table: { id: t.id, num: t.num, caption: t.caption, headers: t.headers, rows: t.rows, headerRows: t.headerRows, bodyRows: t.bodyRows, ...APPENDIX_BLOCK_DEFAULTS, appendix: true },
       });
     } else if (!t.placed && t.type === 'table') {
       t.placed = true;

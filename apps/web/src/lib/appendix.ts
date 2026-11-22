@@ -13,13 +13,13 @@ export type AppendixPlacement = 'afterReferences' | 'beforeReferences' | 'inCont
 
 export interface AppendixSettings {
   placement: AppendixPlacement;
-  /** The pages of the appendices are turned on their side (the whole page, as the journal's appendix pages are). */
-  landscape: boolean;
+  /** The sheets of the appendices are turned on their side (as the standard PDF does), whatever each table or figure says. Off by default: only a table or figure is turned, the sheet stays upright. */
+  rotatePage: boolean;
   /** "Phụ lục 1, 2, 3" or "Phụ lục A, B, C". */
   numbering: 'number' | 'letter';
 }
 
-export const DEFAULT_APPENDIX: AppendixSettings = { placement: 'afterReferences', landscape: true, numbering: 'number' };
+export const DEFAULT_APPENDIX: AppendixSettings = { placement: 'afterReferences', rotatePage: false, numbering: 'number' };
 
 export const APPENDIX_PLACEMENTS: Array<{ value: AppendixPlacement; label: string; hint: string }> = [
   { value: 'afterReferences', label: 'Sau tài liệu tham khảo', hint: 'Phụ lục in sau danh mục tài liệu tham khảo (mặc định)' },
@@ -132,3 +132,10 @@ export function mergeScopedSections(all: PaperSection[], next: PaperSection[], s
 export function nextAppendixNumber(all: PaperSection[]): number {
   return all.filter(isAppendix).length + 1;
 }
+
+/**
+ * What a table or a figure gets when it becomes an appendix: turned on its side and set across the whole page (over the side column), as
+ * the standard PDF prints them. They are the same settings every table and figure has; the author changes them one by one. (The sheet
+ * itself stays upright unless the paper asks to turn it: `rotatePage`.)
+ */
+export const APPENDIX_BLOCK_DEFAULTS = { columnSpan: '2-column' as const, isFullWidth: true, isRotated: true, sideColumn: 'full' as const };

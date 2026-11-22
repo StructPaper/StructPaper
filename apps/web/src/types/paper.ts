@@ -32,7 +32,7 @@ export interface PaperMetadata {
   /** Language the first page is written in ('vi' | 'en'): found when the Word file is imported, changed with the title-bar language picker. */
   primaryLanguage?: 'vi' | 'en';
   /** How the appendices are set (see lib/appendix): where they go, turned or not, numbered 1,2,3 or A,B,C. */
-  appendix?: { placement?: 'afterReferences' | 'beforeReferences' | 'inContent' | 'original'; landscape?: boolean; numbering?: 'number' | 'letter' };
+  appendix?: { placement?: 'afterReferences' | 'beforeReferences' | 'inContent' | 'original'; rotatePage?: boolean; numbering?: 'number' | 'letter' };
   /** Code of the article type in the paper's journal ("research"): the author's choice; the server applies that type's rules. */
   articleTypeCode?: string;
   articleType: string; // 'Bài tổng quan' | 'Bài báo nghiên cứu' | 'Báo cáo ca lâm sàng' | 'Research Article' | 'Review Article'
@@ -70,6 +70,8 @@ export interface PaperFigure {
   appendix?: boolean;
   /** 'full': the figure takes a page of its own across the whole width, over the side column (QR code, contact). */
   sideColumn?: 'auto' | 'text' | 'full';
+  /** Turned on its side (only when the figure has a page of its own, see sideColumn). */
+  isRotated?: boolean;
   isFullWidth?: boolean;
   columnSpan?: '1-column' | '2-column';
   scalePercent?: number; // 50 to 100

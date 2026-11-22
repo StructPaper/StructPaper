@@ -30,7 +30,7 @@ import {
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
 import { lookOfText, setWholeLook } from '@/lib/inline-markup';
 import { SectionScopeContext } from './sections/section-scope';
-import { nextAppendixNumber } from '@/lib/appendix';
+import { nextAppendixNumber, APPENDIX_BLOCK_DEFAULTS } from '@/lib/appendix';
 
 
 const useIsomorphicLayoutEffect =
@@ -444,7 +444,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: tableCount,
         caption: appendix ? `Phụ lục ${tableCount}: Tiêu đề bảng phụ lục mới` : `Bảng ${tableCount}: Tiêu đề bảng số liệu mới`,
-        ...(appendix ? { appendix: true } : {}),
+        ...(appendix ? { appendix: true, ...APPENDIX_BLOCK_DEFAULTS } : {}),
         headers: [],
         rows: [],
         isFullWidth: true,
@@ -470,7 +470,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         id: `fig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: figCount,
         caption: appendix ? `Phụ lục ${figCount}: Chú thích hình phụ lục mới` : `Hình ${figCount}: Chú thích hình ảnh minh họa mới`,
-        ...(appendix ? { appendix: true } : {}),
+        ...(appendix ? { appendix: true, ...APPENDIX_BLOCK_DEFAULTS } : {}),
         src: '',
         isFullWidth: true,
       };

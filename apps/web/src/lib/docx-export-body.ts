@@ -152,7 +152,7 @@ export function buildBody(
     oneColumn?: boolean;
     /** Document default: the whole body on landscape pages (layoutSettings.orientation). */
     landscape?: boolean;
-    /** The appendices that are printed after the references (arrangeForOutput), and whether their pages are turned. */
+    /** The appendices that are printed after the references (arrangeForOutput), and whether their sheets are turned. */
     appendices?: PaperSection[];
     appendixLandscape?: boolean;
   }
@@ -200,8 +200,10 @@ export function buildBody(
   }
   // the appendices after the references (see lib/appendix), on pages turned on their side when the paper asks
   if (ctx.appendices && ctx.appendices.length > 0) {
-    layout.enter({ columns: '1-column', orientation: ctx.appendixLandscape === false ? 'portrait' : 'landscape' });
-    ctx.appendices.forEach((sec) => emit(sec.type === 'table' && sec.table ? { ...sec, table: { ...sec.table, isRotated: false } } : sec));
+    // (the sheet is turned only when the paper asks; otherwise each table keeps its own setting, as a table of the text does)
+    const turn = ctx.appendixLandscape === true;
+    if (turn) layout.enter({ columns: '1-column', orientation: 'landscape' });
+    ctx.appendices.forEach((sec) => emit(turn && sec.type === 'table' && sec.table ? { ...sec, table: { ...sec.table, isRotated: false } } : sec));
   }
   return layout.done();
 }

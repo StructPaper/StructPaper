@@ -166,7 +166,21 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
         <div className={`flex-1 overflow-y-auto px-5 py-3 custom-scrollbar ${sectionListClass}`}>
           {/* 0. Appendix */}
           <SettingsCard title="Phụ lục" hint="Bảng phụ lục có số riêng (Phụ lục 1, 2, 3) và được in thành nhóm riêng, không tính vào các bảng của bài.">
-            <ToggleRow checked={appendix} onChange={setAppendix} label="Đây là phụ lục" hint="Chuyển bảng này sang thẻ Phụ lục." testId="table-appendix-toggle" />
+            <ToggleRow
+              checked={appendix}
+              onChange={(on) => {
+                setAppendix(on);
+                // an appendix table is turned and set across the whole page, as the journal prints them (each setting below can be changed)
+                if (on) {
+                  setIsRotated(true);
+                  setColumnSpan('2-column');
+                  setSideColumn('full');
+                }
+              }}
+              label="Đây là phụ lục"
+              hint="Chuyển bảng này sang thẻ Phụ lục; mặc định xoay ngang và chiếm cả trang."
+              testId="table-appendix-toggle"
+            />
           </SettingsCard>
 
           {/* 1. Where the table sits */}

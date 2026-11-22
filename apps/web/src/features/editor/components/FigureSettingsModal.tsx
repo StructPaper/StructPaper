@@ -57,6 +57,7 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
   const [alignment, setAlignment] = useState<'center' | 'left' | 'right'>(figure.alignment || 'center');
   const [hasBorder, setHasBorder] = useState<boolean>(figure.hasBorder !== false);
   const [appendix, setAppendix] = useState<boolean>(!!figure.appendix);
+  const [isRotated, setIsRotated] = useState<boolean>(!!figure.isRotated);
   const [sideColumn, setSideColumn] = useState<'auto' | 'text' | 'full'>(figure.sideColumn || 'auto');
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(figure.placement || 'auto');
   const [assetId, setAssetId] = useState<string>(figure.assetId || '');
@@ -108,6 +109,7 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
       setHasBorder(figure.hasBorder !== false);
       setPlacement(figure.placement || 'auto');
       setAppendix(!!figure.appendix);
+      setIsRotated(!!figure.isRotated);
       setSideColumn(figure.sideColumn || 'auto');
       const initialAsset = figure.assetId || '';
       setAssetId(initialAsset);
@@ -129,6 +131,7 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
     setHasBorder(true);
     setPlacement('auto');
     setSideColumn('auto');
+    setIsRotated(false);
     setAssetId(figure.assetId || '');
     if (figure.assetId) {
       checkAssetHash(figure.assetId);
@@ -148,6 +151,7 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
       hasBorder,
       placement,
       sideColumn,
+      isRotated: isRotated || undefined,
       appendix: appendix || undefined,
       assetId: assetId.trim() || undefined,
     };
@@ -279,7 +283,22 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
 
           {/* Appendix and the whole page */}
           <SettingsCard title="Phụ lục và cả trang" hint="Hình phụ lục có số riêng. Hình chiếm cả trang nằm riêng một trang, kể cả chỗ cột mã QR và liên hệ.">
-            <ToggleRow checked={appendix} onChange={setAppendix} label="Đây là phụ lục" hint="Chuyển hình này sang thẻ Phụ lục." testId="figure-appendix-toggle" />
+            <ToggleRow
+              checked={appendix}
+              onChange={(on) => {
+                setAppendix(on);
+                // an appendix figure is turned and set across the whole page, as the journal prints them (each setting can be changed)
+                if (on) {
+                  setIsRotated(true);
+                  setSideColumn('full');
+                  setColumnSpan('2-column');
+                }
+              }}
+              label="Đây là phụ lục"
+              hint="Chuyển hình này sang thẻ Phụ lục; mặc định xoay ngang và chiếm cả trang."
+              testId="figure-appendix-toggle"
+            />
+            <ToggleRow checked={isRotated} onChange={setIsRotated} label="Xoay ngang 90°" hint="Chỉ có tác dụng khi hình nằm riêng một trang (Cả trang)." testId="figure-rotate-toggle" />
             <SegmentedOptions
               ariaLabel="Hình chiếm cột bên"
               value={sideColumn}

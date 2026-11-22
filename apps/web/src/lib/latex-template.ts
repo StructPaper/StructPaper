@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { CompletePaper, LayoutSettings, JournalTemplate, PaperSection } from '@/types/paper';
-import { arrangeForOutput, appendixSettingsOf, isAppendix } from './appendix';
+import { arrangeForOutput, appendixSettingsOf, appendixLabel, isAppendix } from './appendix';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { getJournalTemplate } from './templates';
 import { hasFootnotes, splitFootnotes } from './footnotes';
@@ -370,7 +370,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     .replace('TITLE_COLOR_R', String(rgb.r))
     .replace('TITLE_COLOR_G', String(rgb.g))
     .replace('TITLE_COLOR_B', String(rgb.b))
-    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.rotateTablePage || (appendixSettingsOf(paper).landscape && paper.sections.some(isAppendix)) ? 'pdflscape' : 'lscape'}}`)
+    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.rotateTablePage || (appendixSettingsOf(paper).rotatePage && paper.sections.some(isAppendix)) ? 'pdflscape' : 'lscape'}}`)
     .replace('\\definecolor{tableheadrcolor}{RGB}{229, 229, 229}', `\\definecolor{tableheadrcolor}{RGB}{${headRgb.r}, ${headRgb.g}, ${headRgb.b}}\n\\definecolor{tablezebracolor}{RGB}{${zebraRgb.r}, ${zebraRgb.g}, ${zebraRgb.b}}`)
     .replace('left=1.7cm,headsep=.2cm,right=1.3cm,top=1.8cm]', `left=${theme.margins.left}cm,headsep=.2cm,right=${theme.margins.right}cm,top=${theme.margins.top}cm,bottom=${theme.margins.bottom}cm]`)
     // xeCJK treats curly quotes (U+2018-201F) as CJK punctuation and sets them in a full-width CJK font
@@ -567,6 +567,9 @@ ${isOneColumn
   // the order the paper is printed in: the appendices where the paper's setting puts them (see lib/appendix)
   const arranged = arrangeForOutput(paper, lang);
   const appendixSettings = appendixSettingsOf(paper);
+  const appendixLabelFor = (n: number): string => appendixLabel(n, appendixSettings.numbering, lang);
+  // the words of an appendix table: its label, and what its next pages say
+  const appendixWords = { label: appendixLabelFor, continued: en ? '(continued)' : '(tiếp theo)', foot: en ? 'Continued on next page' : 'Xem tiếp ở trang sau' };
   const renderSections = (list: PaperSection[], indexBase = 0, inAppendix = false): string => {
   let bodyLatex = '';
   list.forEach((sec, k) => {
@@ -611,22 +614,33 @@ ${isOneColumn
       const figNum = sec.figure.num || (secIdx + 1);
       const imgName = resolveLatexFigureFilename(sec.figure, figNum);
 
-      // an appendix figure stands on the turned page as it is: caption above, the picture under it (not a float, which would be sent off the page)
-      if (inAppendix) {
-        const pic = `width=${((sec.figure.scalePercent || 100) / 100).toFixed(2)}\\linewidth,height=0.42\\textheight,keepaspectratio`;
-        bodyLatex += `\n\\par\\vspace{0.6em}\\noindent{\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\captionof*{figure}{\\textbf{${escapeLatex(`Phụ lục ${sec.figure.num}. ${stripCaptionLabel(sec.figure.caption)}`)}}}}\\par\\nopagebreak[4]\\vspace{0.3em}\\nopagebreak[4]
-\\begin{center}\\IfFileExists{images/${imgName}}{\\includegraphics[${pic}]{images/${imgName}}}{\\IfFileExists{${imgName}}{\\includegraphics[${pic}]{${imgName}}}{\\fbox{\\parbox[c][2.4cm][c]{0.6\\linewidth}{\\centering\\sffamily\\footnotesize Chưa có ảnh cho Phụ lục ${sec.figure.num}}}}}\\end{center}
-${sec.figure.source ? `{\\footnotesize\\textit{${escapeLatex(sec.figure.source)}}}\\par\n` : ''}`;
+      // A figure on a page of its own (an appendix figure, or one the author sets across the whole page, over the side column): not a float,
+      // which could not be turned or sent off the page. The caption stands above an appendix figure, under any other, as the journal sets them.
+      const figWide = sec.figure.sideColumn === 'full';
+      if (inAppendix || figWide) {
+        const turned = !inAppendix && !!sec.figure.isRotated;
+        const pic = `width=${((sec.figure.scalePercent || 100) / 100).toFixed(2)}\\linewidth,height=\\dimexpr\\textheight-2.6cm\\relax,keepaspectratio`;
+        const isApp = !!sec.figure.appendix;
+        const capTitle = escapeLatex(stripCaptionLabel(sec.figure.caption));
+        const capBody = isApp ? `{\\color{titlecolor}${escapeLatex(appendixLabelFor(sec.figure.num))}.}\\ ${capTitle}` : `\\textbf{${capTitle}}`;
+        const capTex = `{\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false,font={small,sf,bf}}\\captionof${isApp ? '*' : ''}{figure}{${capBody}}}`;
+        const imageTex = `\\begin{center}\\IfFileExists{images/${imgName}}{\\includegraphics[${pic}]{images/${imgName}}}{\\IfFileExists{${imgName}}{\\includegraphics[${pic}]{${imgName}}}{\\fbox{\\parbox[c][2.4cm][c]{0.6\\linewidth}{\\centering\\sffamily\\footnotesize Chưa có ảnh cho ${isApp ? appendixLabelFor(sec.figure.num) : 'Hình ' + figNum}}}}}\\end{center}`;
+        const sourceTex = sec.figure.source ? `{\\footnotesize\\textit{${escapeLatex(sec.figure.source)}}}\\par\n` : '';
+        const block = isApp ? `${capTex}\\par\\nopagebreak[4]\\vspace{0.3em}\\nopagebreak[4]\n${imageTex}\n${sourceTex}` : `${imageTex}\n${capTex}\\par\n${sourceTex}`;
+        if (inAppendix) {
+          bodyLatex += `\n\\par\\vspace{0.6em}${block}`;
+        } else {
+          bodyLatex += `\n\\clearpage\n\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n${oneCol ? '' : '\\onecolumn\n'}${turned ? '\\begin{landscape}\n{\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}\n' : ''}${block}${turned ? '}\n\\end{landscape}\n' : ''}\\clearpage\n\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n${oneCol ? '' : '\\twocolumn\n'}`;
+        }
         return;
       }
 
       // Column layout for figure: 1-column vs 2-column
-      const figWide = sec.figure.sideColumn === 'full';
-      const isFigOneCol = figWide || oneCol || sec.figure.columnSpan === '1-column' || sec.figure.isFullWidth === false;
+      const isFigOneCol = oneCol || sec.figure.columnSpan === '1-column' || sec.figure.isFullWidth === false;
       const figEnv = isFigOneCol ? 'figure' : 'figure*';
 
       // Placement: auto -> !htbp, top -> t, here -> !h, bottom -> b
-      let placement = figWide ? 'p' : '!htbp';
+      let placement = '!htbp';
       if (sec.figure.placement === 'top') placement = 't';
       else if (sec.figure.placement === 'here') placement = '!h';
       else if (sec.figure.placement === 'bottom') placement = 'b';
@@ -659,14 +673,11 @@ ${sec.figure.src?.trim() ? '' : `\\fbox{\\parbox[c][2.4cm][c]{0.92\\linewidth}{\
 ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${escapeLatex(sec.figure.source)}}}\\\\\n` : ''}${sec.figure.appendix ? '' : `\\label{figure-${figNum}}`}${mdframedEnd}
 \\end{${figEnv}}
 \\egroup\n`;
-      // a figure the author sets across the whole page, over the side column (QR code, contact), takes a page of its own, as a wide table does
-      bodyLatex += figWide
-        ? `\n\\clearpage\n\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n${oneCol ? '' : '\\onecolumn\n'}${figureLatex}\\clearpage\n\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n${oneCol ? '' : '\\twocolumn\n'}`
-        : figureLatex;
+      bodyLatex += figureLatex;
     } else if (sec.type === 'table' && sec.table) {
       // a rotated table inside a landscape page is already sideways
       // (on an appendix page the table is already across the turned page: it flows there, a float would be sent off the page)
-      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix });
+      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix, appendix: appendixWords });
     }
 
     if (sec.pageBreakAfter) {
@@ -675,14 +686,16 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
   });
   return bodyLatex;
   };
-  // the appendices set together on pages of their own: the whole width of the page (over the side column), turned on their side
+  // The appendices are tables and figures like any other, each with its own settings (turned, across the whole page): they are set one by
+  // one, each on its own page where its settings say so. Only when the author asks to turn the sheet itself ("Xoay luôn tờ giấy") are they
+  // set together on turned sheets, whatever the settings of each.
   const appendixRegion = (list: PaperSection[], indexBase: number): string => {
     if (list.length === 0) return '';
+    if (!appendixSettings.rotatePage) return `\n\\clearpage\n${renderSections(list, indexBase, false)}`;
     const inner = renderSections(list, indexBase, true);
-    const rotate = appendixSettings.landscape;
     return (
       `\n\\clearpage\n\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n${isOneColumn ? '' : '\\onecolumn\n'}` +
-      `${rotate ? '\\begin{landscape}\n' : ''}{\\setlength{\\linewidth}{\\dimexpr\\linewidth-${rotate ? '1.6' : '0'}cm\\relax}\n${inner}\n}\n${rotate ? '\\end{landscape}\n' : ''}` +
+      `\\begin{landscape}\n{\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}\n${inner}\n}\n\\end{landscape}\n` +
       `\\clearpage\n\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n${isOneColumn ? '' : '\\twocolumn\n'}`
     );
   };

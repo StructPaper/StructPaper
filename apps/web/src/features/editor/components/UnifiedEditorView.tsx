@@ -480,8 +480,8 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   }, []);
   const contentSections = useMemo(() => scopedSections(formData.sections, 'content', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
   const appendixSections = useMemo(() => scopedSections(formData.sections, 'appendix', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
-  const handleAppendixSettings = useCallback((patch: Partial<AppendixSettings>) => {
-    setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, appendix: { ...(prev.metadata.appendix ?? {}), ...patch } } }));
+  const handleAppendixSettings = useCallback((next: AppendixSettings) => {
+    setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, appendix: { ...(prev.metadata.appendix ?? {}), ...next } } }));
     setIsDirty(true);
   }, []);
 

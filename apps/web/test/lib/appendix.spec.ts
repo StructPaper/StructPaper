@@ -42,7 +42,12 @@ describe.skipIf(!FILE)('the appendix of a Word file (HS 722)', () => {
   it('is printed as "Phụ lục N." with no label of the table counter', () => {
     const t = paper.sections.find((s) => s.type === 'table' && s.table?.appendix)!.table!;
     const tex = tableToLatex(t, { isOneColumn: false, theme: resolveTheme(undefined) });
-    expect(tex).toMatch(/\\caption\*\{\{\\textbf\{Phụ lục 1\. /);
+    // (the label as the journal sets "Bảng 1": in the title colour, then the title; no counter)
+    expect(tex).toMatch(/\\caption\*\{\{\{\\color\{titlecolor\}Phụ lục 1\.\}\\ /);
+    // each appendix table is set across the whole page and turned, as its own settings say (the sheet itself stays upright)
+    expect(tex).toContain('\\spwidegeometry');
+    expect(tex).toContain('\\begin{landscape}');
+    expect(tex).toContain('Phụ lục 1 (tiếp theo)');
     expect(tex).not.toContain('\\label{tab:');
   });
 });
