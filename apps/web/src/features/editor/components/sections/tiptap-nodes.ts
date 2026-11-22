@@ -1,4 +1,5 @@
 import { Node } from '@tiptap/core';
+import { renderLatexToHtml } from '@/features/preview/components/MathText';
 
 /**
  * Custom TipTap Node: cite
@@ -135,6 +136,32 @@ export const MathNode = Node.create({
         },
       },
     ];
+  },
+
+  // The formula is drawn as a formula; a click on it opens it for editing (whoever holds the editor answers, see `onEditMath`).
+  addNodeView() {
+    return ({ node, editor, getPos }) => {
+      const latex = String(node.attrs.latex ?? '');
+      const dom = document.createElement('span');
+      dom.setAttribute('data-type', 'math');
+      dom.setAttribute('data-latex', latex);
+      dom.contentEditable = 'false';
+      dom.title = 'Bấm để sửa công thức';
+      const { html, error } = renderLatexToHtml(latex, false);
+      if (error || !html) {
+        dom.className = 'inline-math font-mono text-red-600 text-xs mx-0.5 px-1 rounded bg-red-50 cursor-pointer';
+        dom.textContent = '$' + latex + '$';
+      } else {
+        dom.className = 'inline-math mx-0.5 px-0.5 rounded cursor-pointer hover:bg-blue-50';
+        dom.innerHTML = html;
+      }
+      dom.addEventListener('click', (e) => {
+        e.preventDefault();
+        const pos = typeof getPos === 'function' ? getPos() : undefined;
+        (editor.storage as unknown as { onEditMath?: (pos: number | undefined, latex: string) => void }).onEditMath?.(pos, latex);
+      });
+      return { dom };
+    };
   },
 
   renderHTML({ HTMLAttributes, node }) {

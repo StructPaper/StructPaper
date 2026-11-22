@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { PaperFigure } from '@/types/paper';
 import { IndexedDbAssetRepo, defaultDatabase } from '@structpaper/storage';
 import { Check, Columns, Maximize2, RotateCcw, Image as ImageIcon, Database } from 'lucide-react';
+import { POPUP_EDGE, POPUP_TOP } from '@/lib/popup-bounds';
 import { SegmentedOptions } from './sections/SegmentedOptions';
 import {
   ChoiceCard,
@@ -149,17 +150,17 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
 
   // never taller than the window, and placed so the whole dialog stays on screen
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const maxH = Math.min(680, viewportH - 32);
+  const maxH = Math.min(680, viewportH - POPUP_TOP - POPUP_EDGE);
   const modalStyle: React.CSSProperties = triggerRect
     ? {
       position: 'fixed',
-      top: Math.max(16, Math.min(triggerRect.top, viewportH - maxH - 16)),
+      top: Math.max(POPUP_TOP, Math.min(triggerRect.top, viewportH - maxH - POPUP_EDGE)),
       maxHeight: maxH,
       right: Math.max(16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - triggerRect.right),
     }
     : {
       position: 'fixed',
-      top: 16,
+      top: POPUP_TOP,
       maxHeight: maxH,
       right: '25%',
     };

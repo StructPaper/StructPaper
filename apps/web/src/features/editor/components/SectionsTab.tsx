@@ -28,6 +28,7 @@ import {
   dispatchReorderSections,
 } from './dispatchers/sections-dispatchers';
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
+import { lookOfText, setWholeLook } from '@/lib/inline-markup';
 
 
 const useIsomorphicLayoutEffect =
@@ -323,6 +324,16 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
     );
   }, []);
 
+  // every heading of one level takes the look (bold, italic, underline, colour) of one of them; the text stays
+  const handleApplyHeadingLook = useCallback((fromIndex: number, mode: 'copy' | 'reset') => {
+    const list = sectionsRef.current;
+    const from = list[fromIndex];
+    if (!from || !(from.type === 'h1' || from.type === 'h2' || from.type === 'h3')) return;
+    const look = mode === 'copy' ? lookOfText(from.title || '') : { b: false, i: false, u: false };
+    const next = list.map((s) => (s.type === from.type && s.title ? { ...s, title: setWholeLook(s.title, look) } : s));
+    onChangeRef.current(next);
+  }, []);
+
   const handleRemoveSection = useCallback((index: number) => {
     const sec = sectionsRef.current[index];
     if (!sec) return;
@@ -614,6 +625,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         onMoveDown={handleMoveDown}
         onConvertToHeading={handleConvertToHeading}
         onConvertToParagraph={handleConvertToParagraph}
+        onApplyHeadingLook={handleApplyHeadingLook}
         onOpenTableZoom={inspectors.handleOpenTableZoom}
         onOpenFigureSettings={inspectors.handleOpenFigureSettings}
         onOpenTableSettings={inspectors.handleOpenTableSettings}

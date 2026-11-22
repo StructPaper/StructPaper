@@ -257,3 +257,29 @@ describe('planMerge', () => {
     });
   });
 });
+
+describe('a change of look in the Word file', () => {
+  it('is found as a proposal marked "only the look", with the words diffed without tags', () => {
+    const base = paper([p('s_1', LONG_A), p('s_2', LONG_B)]);
+    const ours = clone(base);
+    const theirs = paper([p('s_1', LONG_A.replace('nhiệt độ', '<i>nhiệt độ</i>')), p('s_2', LONG_B)]);
+    const plan = planMerge(base, ours, theirs);
+    const prop = plan.proposals.find((x) => x.id === 'block:s_1')!;
+    expect(prop).toBeDefined();
+    expect(prop.formatOnly).toBe(true);
+    expect(prop.accept).toBe(true); // the author never touched it
+    expect(prop.inline.every((seg) => !/<\/?i>/.test(seg.text))).toBe(true);
+    expect(plan.proposals.some((x) => x.id === 'block:s_2')).toBe(false);
+    const applied = applyMerge(ours, plan, suggestedSelection(plan));
+    expect(applied.sections![0].content).toContain('<i>nhiệt độ</i>');
+  });
+
+  it('marks the abstract the same way, and a change of words is not "only the look"', () => {
+    const base = paper([p('s_1', LONG_A)], { abstract: 'Tóm tắt gốc có từ khóa' });
+    const theirsLook = paper([p('s_1', LONG_A)], { abstract: 'Tóm tắt gốc có <b>từ khóa</b>' });
+    const planLook = planMerge(base, clone(base), theirsLook);
+    expect(planLook.proposals.find((x) => x.id === 'field:abstract')?.formatOnly).toBe(true);
+    const theirsWords = paper([p('s_1', LONG_A)], { abstract: 'Tóm tắt khác hẳn' });
+    expect(planMerge(base, clone(base), theirsWords).proposals.find((x) => x.id === 'field:abstract')?.formatOnly).toBeUndefined();
+  });
+});

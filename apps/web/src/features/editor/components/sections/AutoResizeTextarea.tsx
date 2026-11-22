@@ -11,6 +11,9 @@ export interface AutoResizeTextareaProps {
   autoFocus?: boolean;
   onBlur?: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** Extra styles (the field of a table's source shows its own bold, italic and alignment). */
+  style?: React.CSSProperties;
+  ariaLabel?: string;
 }
 
 export const AutoResizeTextarea: React.FC<AutoResizeTextareaProps> = ({
@@ -21,6 +24,8 @@ export const AutoResizeTextarea: React.FC<AutoResizeTextareaProps> = ({
   autoFocus,
   onBlur,
   onKeyDown,
+  style,
+  ariaLabel,
 }) => {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -70,10 +75,11 @@ export const AutoResizeTextarea: React.FC<AutoResizeTextareaProps> = ({
       onKeyDown={onKeyDown}
       rows={1}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       spellCheck={false}
       autoCorrect="off"
       autoCapitalize="off"
-      style={{ resize: 'none', overflow: 'hidden' }}
+      style={{ resize: 'none', overflow: 'hidden', ...style }}
       className={`[field-sizing:content] ${className}`}
     />
   );

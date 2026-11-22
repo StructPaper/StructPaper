@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { onGoToPdfPage } from '@/lib/editor/pdf-nav';
 import { LivePreviewPaneProps } from './types';
 import {
   PdfInteractiveViewer,
@@ -122,6 +123,22 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
   // "Thử lại" answers at once: the strip turns to "processing" before the request even leaves (saving first can take a moment)
   const [retrying, setRetrying] = useState(false);
   const sawCompile = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // the overview page can ask the browser's own viewer for a page too (its address takes the page; the viewer turns to it)
+  useEffect(
+    () =>
+      onGoToPdfPage((page) => {
+        const frame = iframeRef.current;
+        if (!frame || !compiledPdfUrl) return;
+        const next = `${compiledPdfUrl}#toolbar=1&navpanes=0&page=${page}`;
+        try {
+          frame.contentWindow?.location.replace(next);
+        } catch {
+          frame.src = next;
+        }
+      }),
+    [compiledPdfUrl]
+  );
   const handleRetry = useCallback(() => {
     sawCompile.current = false;
     setRetrying(true);
@@ -283,6 +300,7 @@ export const LivePreviewPane: React.FC<LivePreviewPaneProps> = ({
           ) : compiledPdfUrl ? (
             // keyed by the PDF: changing an iframe's src adds an entry to the browser history (one more "back" per recompile); a new iframe does not
             <iframe
+              ref={iframeRef}
               key={compiledPdfUrl}
               // "Focus định vị" off: the browser's own PDF viewer, opened on the page last read in the other viewer (it cannot report its own)
               src={`${compiledPdfUrl}#toolbar=1&navpanes=0${lastReadPage(paper.id) > 1 ? `&page=${lastReadPage(paper.id)}` : ''}`}

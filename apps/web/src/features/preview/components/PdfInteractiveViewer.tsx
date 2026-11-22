@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import './pdf-viewer.css';
+import { onGoToPdfPage } from '@/lib/editor/pdf-nav';
 import { groupItemsIntoLines, type PdfLine, type PdfTextItem } from '@/lib/editor/pdf-section-map';
 import { lineForClick, pageFill } from '@/lib/editor/pdf-click-target';
 
@@ -105,6 +106,16 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
   const [findOpen, setFindOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<{ current: number; total: number } | null>(null);
+
+  // the overview page can ask for a page
+  useEffect(
+    () =>
+      onGoToPdfPage((page) => {
+        const v = pdfViewerRef.current;
+        if (v && page <= (v.pagesCount ?? 0)) v.currentPageNumber = page;
+      }),
+    []
+  );
 
   // a copy of the pane that is not on screen (width 0) loads nothing
   useEffect(() => {

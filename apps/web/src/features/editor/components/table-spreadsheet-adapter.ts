@@ -1,5 +1,6 @@
 import { PaperTable, TableCell, synthesizeHeaderRows, normalizePaperTable } from '@/types/paper';
 import type { Cell } from '@structpaper/doc-model';
+import { parseMarkup } from '@/lib/inline-markup';
 
 export interface SheetCell {
   text: string;
@@ -7,8 +8,46 @@ export interface SheetCell {
   rowSpan?: number;
   mergedInto?: { r: number; c: number };
   align?: 'left' | 'center' | 'right';
+  /** Header marker: header cells are bold and decide where the header rows end (not an emphasis the author chose). */
   bold?: boolean;
   italic?: boolean;
+  /** Emphasis chosen by the author for the whole cell. */
+  strong?: boolean;
+  underline?: boolean;
+  /** Text colour "#RRGGBB". */
+  color?: string;
+  /** Background "#RRGGBB". */
+  fill?: string;
+}
+
+/**
+ * The text of a table cell as the sheet shows it: when the whole text has one emphasis, it becomes flags (the sheet draws them) and the
+ * tags are taken off the text; text with mixed emphasis keeps its tags.
+ */
+export function unpackCellText(raw: string): Pick<SheetCell, 'text' | 'strong' | 'italic' | 'underline' | 'color'> {
+  const segs = parseMarkup(raw || '');
+  if (segs.length === 0) return { text: raw || '' };
+  const first = segs[0];
+  const uniform = segs.every((s) => !!s.b === !!first.b && !!s.i === !!first.i && !!s.u === !!first.u && (s.color ?? '') === (first.color ?? ''));
+  if (!uniform || (!first.b && !first.i && !first.u && !first.color)) return { text: raw || '' };
+  return {
+    text: segs.map((s) => s.text).join(''),
+    ...(first.b ? { strong: true } : {}),
+    ...(first.i ? { italic: true } : {}),
+    ...(first.u ? { underline: true } : {}),
+    ...(first.color ? { color: first.color } : {}),
+  };
+}
+
+/** The sheet cell's text with its emphasis written back as tags (what the model stores). */
+export function packCellText(cell: SheetCell): string {
+  let t = cell.text ?? '';
+  if (!t) return t;
+  if (cell.underline) t = `<u>${t}</u>`;
+  if (cell.italic) t = `<i>${t}</i>`;
+  if (cell.strong) t = `<b>${t}</b>`;
+  if (cell.color) t = `<color=${cell.color}>${t}</color>`;
+  return t;
 }
 
 // Convert column index 0 -> 'A', 1 -> 'B', 25 -> 'Z', 26 -> 'AA'
@@ -107,11 +146,12 @@ export function initMatrixFromTable(t: PaperTable): SheetCell[][] {
       const rowArr: SheetCell[] = [];
       for (const cell of hRow) {
         rowArr.push({
-          text: cell.text || '',
+          ...unpackCellText(cell.text || ''),
           colSpan: cell.colSpan && cell.colSpan > 1 ? cell.colSpan : undefined,
           rowSpan: cell.rowSpan && cell.rowSpan > 1 ? cell.rowSpan : undefined,
           align: cell.align || 'center',
           bold: true,
+          ...(cell.fill ? { fill: cell.fill } : {}),
         });
       }
       while (rowArr.length < maxCols) {
@@ -121,7 +161,7 @@ export function initMatrixFromTable(t: PaperTable): SheetCell[][] {
     }
   } else {
     const singleHeaderRow: SheetCell[] = headers.map((h) => ({
-      text: h || '',
+      ...unpackCellText(h || ''),
       align: 'center',
       bold: true,
     }));
@@ -136,11 +176,12 @@ export function initMatrixFromTable(t: PaperTable): SheetCell[][] {
       const rowArr: SheetCell[] = [];
       for (const cell of bRow) {
         rowArr.push({
-          text: cell.text || '',
+          ...unpackCellText(cell.text || ''),
           colSpan: cell.colSpan && cell.colSpan > 1 ? cell.colSpan : undefined,
           rowSpan: cell.rowSpan && cell.rowSpan > 1 ? cell.rowSpan : undefined,
           align: cell.align || 'left',
           bold: cell.isHeader || false,
+          ...(cell.fill ? { fill: cell.fill } : {}),
         });
       }
       while (rowArr.length < maxCols) {
@@ -151,7 +192,7 @@ export function initMatrixFromTable(t: PaperTable): SheetCell[][] {
   } else if (norm.rows && norm.rows.length > 0) {
     for (const r of norm.rows) {
       const rowArr: SheetCell[] = r.map((cellText) => ({
-        text: cellText || '',
+        ...unpackCellText(cellText || ''),
         align: 'left',
       }));
       while (rowArr.length < maxCols) {
@@ -192,7 +233,7 @@ export function matrixToDocModelGrid(matrix: SheetCell[][]): Cell[][] {
       .filter((cell) => !cell.mergedInto)
       .map((cell) => {
         const marks: ('b' | 'i')[] = [];
-        if (cell.bold) marks.push('b');
+        if (cell.bold || cell.strong) marks.push('b');
         if (cell.italic) marks.push('i');
         return {
           content: [{ t: 'text' as const, v: cell.text, marks: marks.length > 0 ? marks : undefined }],
@@ -215,18 +256,19 @@ export function matrixToPaperTableData(matrix: SheetCell[][]): {
   const headerRowsCount = matrix.findIndex((r) => r.some((c) => !c.bold && c.text.trim() !== ''));
   const actualHeaderRowsCount = headerRowsCount <= 0 ? 1 : headerRowsCount;
 
-  const headers: string[] = matrix[0] ? matrix[0].map((c) => c.text) : [];
-  const rows: string[][] = matrix.slice(actualHeaderRowsCount).map((r) => r.map((c) => c.text));
+  const headers: string[] = matrix[0] ? matrix[0].map((c) => packCellText(c)) : [];
+  const rows: string[][] = matrix.slice(actualHeaderRowsCount).map((r) => r.map((c) => packCellText(c)));
 
   const bodyRows: TableCell[][] = matrix.slice(actualHeaderRowsCount).map((r) =>
     r
       .filter((c) => !c.mergedInto)
       .map((c) => ({
-        text: c.text,
+        text: packCellText(c),
         colSpan: c.colSpan,
         rowSpan: c.rowSpan,
         align: c.align,
         isHeader: c.bold,
+        ...(c.fill ? { fill: c.fill } : {}),
       }))
   );
 
@@ -235,11 +277,12 @@ export function matrixToPaperTableData(matrix: SheetCell[][]): {
         r
           .filter((c) => !c.mergedInto)
           .map((c) => ({
-            text: c.text,
+            text: packCellText(c),
             colSpan: c.colSpan,
             rowSpan: c.rowSpan,
             align: c.align,
             isHeader: true,
+            ...(c.fill ? { fill: c.fill } : {}),
           }))
       )
     : synthesizeHeaderRows(headers);

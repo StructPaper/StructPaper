@@ -5,4 +5,5 @@
  * new field...). It is stored with every Word file kept for a paper, so the paper's dialog can tell the author that the importer
  * has improved since that file was read, and offer to read it again ("Phân tích lại").
  */
-export const IMPORTER_VERSION = 1;
+// 2: the bold and italic of the Word file are kept in paragraphs, the abstract and table cells
+export const IMPORTER_VERSION = 2;

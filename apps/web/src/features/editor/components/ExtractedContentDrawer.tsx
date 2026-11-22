@@ -20,6 +20,8 @@ import {
 import { CompletePaper } from '@/lib/sample-papers';
 import { synthesizeHeaderRows, normalizePaperTable, isPaperEmpty } from '@/types/paper';
 import { renderColoredTextCitations, generateStandardCitation } from './sections/utils';
+import { Markup } from '@/components/ui/Markup';
+import { stripMarkup } from '@/lib/inline-markup';
 
 interface ExtractedContentDrawerProps {
   isOpen: boolean;
@@ -401,13 +403,15 @@ export const ExtractedContentDrawer: React.FC<ExtractedContentDrawerProps> = ({
                     <div className="bg-gray-200/50 p-4 rounded-3xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-zinc-700">
-                          Tóm tắt tiếng Việt ({metadata.abstract.split(/\s+/).length} từ)
+                          Tóm tắt tiếng Việt ({stripMarkup(metadata.abstract).split(/\s+/).length} từ)
                         </span>
                         <span className="text-xs text-[#14532D] bg-[#D9F99D] px-2 py-0.5 rounded-full font-bold">
                           Đạt chuẩn độ dài
                         </span>
                       </div>
-                      <p className="text-sm text-zinc-900 leading-relaxed text-justify">{metadata.abstract}</p>
+                      <p className="text-sm text-zinc-900 leading-relaxed text-justify">
+                        <Markup text={metadata.abstract} />
+                      </p>
                     </div>
 
                     {metadata.abstractEn && (

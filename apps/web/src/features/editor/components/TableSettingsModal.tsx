@@ -7,8 +7,11 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { PaperTable } from '@/types/paper';
 import { NumberInput } from '@/components/ui/NumberInput';
-import { Check, Columns, RotateCw, RotateCcw, Type } from 'lucide-react';
+import { Check, Columns, RotateCw, RotateCcw, Type, Grid3x3 } from 'lucide-react';
 import { SegmentedOptions } from './sections/SegmentedOptions';
+import { DEFAULT_THEME } from '@/lib/theme-config';
+import { POPUP_EDGE, POPUP_TOP } from '@/lib/popup-bounds';
+import { TableLookControls, applyLook, lookOf, type TableLookValue } from './TableLookControls';
 import { ChoiceCard, Field, MiniLines, MiniPage, SettingsCard, SettingsFooter, SettingsHeader, ValueBadge, sectionListClass } from './settings-ui';
 
 interface TableSettingsModalProps {
@@ -47,6 +50,12 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   const [bodyFill, setBodyFill] = useState<'plain' | 'zebra' | 'shaded'>(resolveBodyFill(table));
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(table.placement || 'auto');
   const [breakAcrossPages, setBreakAcrossPages] = useState<'auto' | 'always' | 'never'>(table.breakAcrossPages || 'auto');
+  const [look, setLook] = useState<TableLookValue>(() => lookOf(table));
+  const [rowHeightTouched, setRowHeightTouched] = useState(false);
+  const changeLook = (patch: Partial<TableLookValue>) => {
+    if ('rowHeight' in patch) setRowHeightTouched(true);
+    setLook((prev) => ({ ...prev, ...patch }));
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -70,6 +79,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       setBodyFill(resolveBodyFill(table));
       setPlacement(table.placement || 'auto');
       setBreakAcrossPages(table.breakAcrossPages || 'auto');
+      setLook(lookOf(table));
+      setRowHeightTouched(false);
     }
   }, [isOpen, table]);
 
@@ -82,11 +93,15 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     setRowStretch(1.2);
     setBodyFill('plain');
     setPlacement('auto');
+    setLook({ borderStyle: 'journal', rowHeight: 0, headerHeight: 0 });
+    setRowHeightTouched(true);
   };
+
+  const rowCount = table.bodyRows?.length || table.rows?.length || 0;
 
   const handleSave = () => {
     const updated: PaperTable = {
-      ...table,
+      ...applyLook(table, look, rowCount, rowHeightTouched),
       columnSpan,
       isFullWidth: columnSpan === '2-column',
       isRotated,
@@ -103,17 +118,17 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
 
   // never taller than the window, and placed so the whole dialog stays on screen
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const maxH = Math.min(680, viewportH - 32);
+  const maxH = Math.min(680, viewportH - POPUP_TOP - POPUP_EDGE);
   const modalStyle: React.CSSProperties = triggerRect
     ? {
       position: 'fixed',
-      top: Math.max(16, Math.min(triggerRect.top, viewportH - maxH - 16)),
+      top: Math.max(POPUP_TOP, Math.min(triggerRect.top, viewportH - maxH - POPUP_EDGE)),
       maxHeight: maxH,
       right: Math.max(16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - triggerRect.right),
     }
     : {
       position: 'fixed',
-      top: 16,
+      top: POPUP_TOP,
       maxHeight: maxH,
       right: '25%',
     };
@@ -209,7 +224,12 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
             </div>
           </SettingsCard>
 
-          {/* 3. Fill, anchor, page breaks */}
+          {/* 3. Lines, colours and row heights */}
+          <SettingsCard title="Đường kẻ và màu" hint="Kẻ ngang, kẻ dọc, lưới, màu dải tiêu đề và chiều cao hàng." icon={<Grid3x3 />} testId="table-look">
+            <TableLookControls value={look} onChange={changeLook} themeHeader={DEFAULT_THEME.tableHeaderColor} themeTint={DEFAULT_THEME.tableZebraColor} />
+          </SettingsCard>
+
+          {/* 4. Fill, anchor, page breaks */}
           <SettingsCard title="Nền và ngắt trang" hint="Màu thân bảng, nơi bảng được ưu tiên đặt và cách bảng dài sang trang kế.">
             <TablePlacementAndBreak
               placement={placement}

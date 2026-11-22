@@ -7,7 +7,7 @@ import {
   hydrateFigureAssetById,
   revokeTrackedObjectUrl,
 } from '@/lib/media/blob-image-registry';
-import { AutoResizeTextarea } from './AutoResizeTextarea';
+import { RichLineInput } from './RichLineInput';
 import {
   Image as ImageIcon,
   Maximize2,
@@ -115,7 +115,8 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1">
           Chú thích hình ảnh (Caption):
         </label>
-        <AutoResizeTextarea
+        <RichLineInput
+          lazy
           value={sec.figure.caption || ''}
           onChange={(val) =>
             onUpdateSection(idx, {
@@ -125,7 +126,9 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
             })
           }
           placeholder="Hình 1: Biểu đồ kết quả nghiên cứu..."
-          className="w-full p-2 rounded-xl text-xs font-bold text-zinc-900 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300"
+          ariaLabel="Chú thích hình"
+          textClassName="font-bold"
+          className="w-full p-2 rounded-xl text-xs text-zinc-900 bg-zinc-50 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 cursor-text"
         />
       </div>
 
@@ -147,7 +150,8 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
             </button>
           )}
         </div>
-        <AutoResizeTextarea
+        <RichLineInput
+          lazy
           value={sec.figure.source || ''}
           onChange={(val) =>
             onUpdateSection(idx, {
@@ -156,7 +160,9 @@ const FigureSectionItemBase: React.FC<FigureSectionItemProps> = ({
             })
           }
           placeholder="vd: (Nguồn: Nhóm tác giả thực hiện, 2024) hoặc (Source: [12])..."
-          className="w-full p-2 rounded-xl text-xs text-zinc-800 italic bg-zinc-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300"
+          ariaLabel="Nguồn hình"
+          textClassName="italic"
+          className="w-full p-2 rounded-xl text-xs text-zinc-800 bg-zinc-50 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 cursor-text"
         />
       </div>
 

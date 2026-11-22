@@ -3,6 +3,9 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 
+// the editor of a heading (TipTap) is loaded the first time the list is drawn, which takes a while on a busy machine
+vi.setConfig({ testTimeout: 20000 });
+
 // Mock framer-motion to prevent unhandled animation issues in happy-dom
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('framer-motion');
@@ -141,7 +144,8 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
       ];
 
       const displayText = inlinesToDisplayText(inlines);
-      expect(displayText).toBe('Đoạn mở đầu có *từ khóa nghiêng* và trích dẫn [1, 2]');
+      // emphasis is stored as <b>, <i>, <u> tags, which the PDF and Word exports turn into real formatting
+      expect(displayText).toBe('Đoạn mở đầu có <i>từ khóa nghiêng</i> và trích dẫn [1, 2]');
     });
 
     it('renders preview with formatted badges and triggers onStartEdit on click', () => {
@@ -196,7 +200,7 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
   });
 
   describe('2. SectionsTab Rendering & Filtering', () => {
-    it('renders full list of sections and block elements properly', () => {
+    it('renders full list of sections and block elements properly', async () => {
       const paper = createMockPaper();
       const onChange = vi.fn();
 
@@ -218,13 +222,17 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
       expect(screen.getByText(/Hình \(1\)/i)).toBeDefined();
 
       // Verify section items
-      expect(screen.getByDisplayValue('1. ĐẶT VẤN ĐỀ')).toBeDefined();
+      // a heading is a line of formatted text now, not a plain input
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      expect(screen.getByText('1. ĐẶT VẤN ĐỀ')).toBeDefined();
       expect(screen.getByText(/Nghiên cứu của/i)).toBeDefined();
       expect(screen.getByText(/Bảng 1: Bảng thông số thực nghiệm/i)).toBeDefined();
       expect(screen.getByText(/Hình 1: Sơ đồ kiến trúc mô hình/i)).toBeDefined();
     });
 
-    it('filters blocks correctly when filter chips are clicked', () => {
+    it('filters blocks correctly when filter chips are clicked', async () => {
       const paper = createMockPaper();
       const onChange = vi.fn();
 
@@ -241,7 +249,10 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
       const headingFilterBtn = screen.getByText(/Tiêu đề \(1\)/i);
       fireEvent.click(headingFilterBtn);
 
-      expect(screen.getByDisplayValue('1. ĐẶT VẤN ĐỀ')).toBeDefined();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      expect(screen.getByText('1. ĐẶT VẤN ĐỀ')).toBeDefined();
       expect(screen.queryByText(/Bảng 1: Bảng thông số thực nghiệm/i)).toBeNull();
 
       // Filter by "Bảng"
@@ -249,7 +260,7 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
       fireEvent.click(tableFilterBtn);
 
       expect(screen.getByText(/Bảng 1: Bảng thông số thực nghiệm/i)).toBeDefined();
-      expect(screen.queryByDisplayValue('1. ĐẶT VẤN ĐỀ')).toBeNull();
+      expect(screen.queryByText('1. ĐẶT VẤN ĐỀ')).toBeNull();
     });
   });
 
@@ -472,5 +483,29 @@ describe('Task 4.4: SectionsTab & TemporaryParagraphInput Refactor', () => {
       );
       expect(onChange).toHaveBeenCalled();
     });
+  });
+});
+
+describe('emphasis in paragraphs (tags and older asterisks)', () => {
+  it('reads <b>, <i>, <u> tags and the older markers into marks, and writes tags back', () => {
+    const inlines = displayTextToInlines('a <b>b</b> <i><u>c</u></i> *d* **e**');
+    const texts = inlines.filter((x) => x.t === 'text') as Array<{ v: string; marks?: string[] }>;
+    expect(texts.find((x) => x.v === 'b')!.marks).toEqual(['b']);
+    expect(texts.find((x) => x.v === 'c')!.marks!.sort()).toEqual(['i', 'u']);
+    expect(texts.find((x) => x.v === 'd')!.marks).toEqual(['i']);
+    expect(texts.find((x) => x.v === 'e')!.marks).toEqual(['b']);
+    expect(inlinesToDisplayText(inlines)).toBe('a <b>b</b> <i><u>c</u></i> <i>d</i> <b>e</b>');
+  });
+});
+
+import { lookOfText, setWholeLook } from '@/lib/inline-markup';
+describe('the look of a whole title', () => {
+  it('is read from the tags and set without keeping an older one', () => {
+    expect(lookOfText('<b><i>Introduction</i></b>')).toEqual({ b: true, i: true, u: false });
+    expect(lookOfText('plain')).toEqual({ b: false, i: false, u: false });
+    expect(lookOfText('a <b>b</b>').b).toBe(false); // only part of it is bold
+    expect(setWholeLook('<b>Kết quả</b>', { i: true })).toBe('<i>Kết quả</i>');
+    expect(setWholeLook('Kết quả', { b: true, color: '#FF0000' })).toBe('<color=#FF0000><b>Kết quả</b></color>');
+    expect(lookOfText(setWholeLook('Kết quả', { b: true, color: '#FF0000' }))).toEqual({ b: true, i: false, u: false, color: '#FF0000' });
   });
 });

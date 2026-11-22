@@ -1,4 +1,11 @@
-import { diffInline, type InlineSegment } from '@structpaper/doc-diff';
+import { diffInline as diffRaw, type InlineSegment } from '@structpaper/doc-diff';
+import { stripMarkup } from '../inline-markup';
+
+/** The words that changed, read without the <b>/<i> tags the text carries (a change of look alone is shown apart). */
+const diffInline = (before: string, after: string) => diffRaw(stripMarkup(before), stripMarkup(after));
+
+/** The text is the same but its bold, italic or underline is not. */
+const onlyLook = (before: string, after: string) => before !== after && stripMarkup(before) === stripMarkup(after);
 
 /**
  * Three-way comparison for "read the Word file again".
@@ -53,6 +60,8 @@ export interface MergeProposal {
   before: string;
   after: string;
   inline: InlineSegment[];
+  /** Only the bold, italic or underline differs: the words are the same. */
+  formatOnly?: boolean;
   /** Why the author is asked although the file did not change it ("Bạn đã sửa tay..."). */
   note?: string;
   /** A block: the type ("paragraph", "table"...) and the block itself on each side. */
@@ -162,7 +171,7 @@ export function blockText(s: Json): string {
   return parts.filter(Boolean).join('\n');
 }
 
-const normalizeText = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+const normalizeText = (t: string) => stripMarkup(t).toLowerCase().replace(/\s+/g, ' ').trim();
 
 function wordSet(t: string): Set<string> {
   return new Set(normalizeText(t).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
@@ -341,6 +350,7 @@ export function planMerge(base: PaperLike, ours: PaperLike, theirs: PaperLike, o
       before,
       after,
       inline: diffInline(before, after),
+      ...(onlyLook(before, after) ? { formatOnly: true } : {}),
     });
   }
 
@@ -410,6 +420,7 @@ export function planMerge(base: PaperLike, ours: PaperLike, theirs: PaperLike, o
       before,
       after,
       inline: diffInline(before, after),
+      ...(onlyLook(before, after) ? { formatOnly: true } : {}),
       blockType: t.type,
       oursBlock: o,
       theirsBlock: t,

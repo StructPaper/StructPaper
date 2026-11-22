@@ -50,6 +50,16 @@ describe('the page number', () => {
     expect(tex).toContain('\\AddToShipoutPictureFG');
     expect(tex).toMatch(/\\put\([^)]*,29\.4\)/);
   });
+
+  it('is low on the right on the closing summary page too, set like the first page, so it does not run into the "how to cite" strip', () => {
+    const p = createEmptyPaper();
+    p.metadata.titleEn = 'An English title';
+    p.metadata.abstractEn = 'An English abstract of the paper.';
+    const tex = generateFullJournalLatex(p);
+    // the page marks itself, and the number is placed by that mark as it is on page 1
+    expect(tex).toContain('\\csname ovlowpage\\thepage\\endcsname{}');
+    expect(tex).toMatch(/\\ifcsname ovlowpage\\thepage\\endcsname\\put\([^)]*,29\.4\)/);
+  });
 });
 
 import { bracketCitation as bc } from '@/lib/latex-template';

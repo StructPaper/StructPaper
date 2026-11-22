@@ -5,6 +5,8 @@ import { AbstractTabProps } from './types';
 import { BookOpen, Tag, Info } from 'lucide-react';
 import { useTabScrollRestoration } from '../hooks';
 import { KeywordsInput } from './KeywordsInput';
+import { RichLineInput } from './sections/RichLineInput';
+import { stripMarkup } from '@/lib/inline-markup';
 
 interface AutoResizeTextareaProps {
   value: string;
@@ -62,11 +64,11 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
   useTabScrollRestoration('abstract', scrollContainerRef);
 
   const vnWordCount = metadata.abstract
-    ? metadata.abstract.trim().split(/\s+/).filter(Boolean).length
+    ? stripMarkup(metadata.abstract).trim().split(/\s+/).filter(Boolean).length
     : 0;
 
   const enWordCount = metadata.abstractEn
-    ? metadata.abstractEn.trim().split(/\s+/).filter(Boolean).length
+    ? stripMarkup(metadata.abstractEn).trim().split(/\s+/).filter(Boolean).length
     : 0;
 
   const handleKeywordsChange = (list: string[]) => onChange({ ...metadata, keywords: list });
@@ -100,10 +102,12 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
             {vnWordCount} từ {vnWordCount > 0 && '(Khuyến nghị 150 - 250 từ)'}
           </span>
         </div>
-        <AutoResizeTextarea
+        {/* the abstract shows its bold and italic as they print (the paper keeps them as tags in the text) */}
+        <RichLineInput
           value={metadata.abstract || ''}
           onChange={(val) => onChange({ ...metadata, abstract: val })}
-          className="w-full p-3.5 rounded-2xl border border-zinc-200 text-sm leading-relaxed text-zinc-900 bg-white shadow-2xs focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all"
+          ariaLabel="Tóm tắt tiếng Việt"
+          className="w-full min-h-[8rem] p-3.5 rounded-2xl border border-zinc-200 text-sm leading-relaxed text-zinc-900 bg-white shadow-2xs focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all cursor-text"
           placeholder="Nội dung tóm tắt tiếng Việt nêu rõ mục tiêu, phương pháp, kết quả và ý nghĩa..."
         />
       </div>
@@ -120,10 +124,11 @@ export const AbstractTab: React.FC<AbstractTabProps> = ({ metadata, onChange }) 
             </span>
           )}
         </div>
-        <AutoResizeTextarea
+        <RichLineInput
           value={metadata.abstractEn || ''}
           onChange={(val) => onChange({ ...metadata, abstractEn: val })}
-          className="w-full p-3.5 rounded-2xl border border-zinc-200 text-sm leading-relaxed italic text-zinc-800 bg-white shadow-2xs focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all"
+          ariaLabel="English abstract"
+          className="w-full min-h-[8rem] p-3.5 rounded-2xl border border-zinc-200 text-sm leading-relaxed text-zinc-800 bg-white shadow-2xs focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all cursor-text"
           placeholder="English abstract including objectives, methods, results and conclusion..."
         />
       </div>

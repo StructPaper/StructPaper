@@ -96,3 +96,51 @@ export function extractListHeadings(docXml: string, stylesXml?: string): Map<str
 export function isNoneMark(line: string, prev: { type: string; content?: string } | undefined): boolean {
   return /^[-–—]$/.test(line.trim()) && prev?.type === 'h1' && !prev.content;
 }
+
+/**
+ * The paragraphs of a Word file that are items of a list (a bullet or a number Word draws by itself), by their text: for each text,
+ * the marks to write in front of it in order ("• ", "1. ", "a) "). The mark is not in the text Word gives, so it is put there:
+ * a list item is a paragraph that starts with its mark (see lib/list-marks). Headings numbered by a list are not list items.
+ */
+export function extractListItems(docXml: string, numberingXml: string | undefined, headings: Map<string, number>): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  if (!numberingXml) return out;
+  const abstractOf = new Map<string, string>();
+  for (const m of numberingXml.matchAll(/<w:num\b[^>]*w:numId="(\d+)"[^>]*>([\s\S]*?)<\/w:num>/gi)) {
+    const abs = m[2].match(/<w:abstractNumId\s+w:val="(\d+)"/i)?.[1];
+    if (abs) abstractOf.set(m[1], abs);
+  }
+  const formatOf = new Map<string, string>();
+  for (const m of numberingXml.matchAll(/<w:abstractNum\b[^>]*w:abstractNumId="(\d+)"[^>]*>([\s\S]*?)<\/w:abstractNum>/gi)) {
+    for (const l of m[2].matchAll(/<w:lvl\b[^>]*w:ilvl="(\d+)"[^>]*>([\s\S]*?)<\/w:lvl>/gi)) {
+      formatOf.set(`${m[1]}:${l[1]}`, l[2].match(/<w:numFmt\s+w:val="([^"]+)"/i)?.[1] ?? 'bullet');
+    }
+  }
+  const withoutTables = docXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/gi, '');
+  const counters = new Map<string, number>();
+  for (const m of withoutTables.matchAll(/<w:p\b[\s>][\s\S]*?<\/w:p>/gi)) {
+    const p = m[0];
+    const numPr = p.match(/<w:numPr>([\s\S]*?)<\/w:numPr>/i)?.[1];
+    if (!numPr) continue;
+    const numId = numPr.match(/<w:numId\s+w:val="(\d+)"/i)?.[1];
+    const lvl = numPr.match(/<w:ilvl\s+w:val="(\d+)"/i)?.[1] ?? '0';
+    if (!numId || numId === '0') continue;
+    const text = p.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!text || headings.has(text)) continue;
+    const fmt = formatOf.get(`${abstractOf.get(numId) ?? ''}:${lvl}`) ?? 'bullet';
+    // a short numbered line with no full stop is a section title numbered by Word, not an item of a list
+    if (fmt !== 'bullet' && fmt !== 'none' && lvl === '0' && text.length < 90 && !/[.;:,?!]$/.test(text)) continue;
+    const key = `${numId}:${lvl}`;
+    const n = (counters.get(key) ?? 0) + 1;
+    counters.set(key, n);
+    let mark: string;
+    if (fmt === 'bullet' || fmt === 'none') mark = '• ';
+    else if (fmt === 'lowerLetter') mark = `${String.fromCharCode(96 + ((n - 1) % 26) + 1)}) `;
+    else if (fmt === 'upperLetter') mark = `${String.fromCharCode(64 + ((n - 1) % 26) + 1)}. `;
+    else mark = `${n}. `;
+    const list = out.get(text) ?? [];
+    list.push(mark);
+    out.set(text, list);
+  }
+  return out;
+}

@@ -11,6 +11,8 @@ import { usePaperProfile, usePaperProfileSession, useArticleTypeSync } from '@/f
 import { useEditorHistory } from '../hooks/useEditorHistory';
 import { isUuid } from '@/features/papers/components/types';
 import { PANEL_ATTR } from '@/lib/history/focus';
+import { PaperOverview, type OverviewPatch } from '../overview/PaperOverview';
+import { XrefProvider } from '../xref-context';
 import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
 import { getJournalTemplate } from '@/lib/templates';
@@ -122,7 +124,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   );
   useHydrateDisplayName(formData.id, formData.displayName, handleHydrateDisplayName);
 
-  const { autoSaveEnabled, pdfLanguage, setPdfLanguage } = useEditorSession();
+  const { autoSaveEnabled, pdfLanguage, setPdfLanguage, editorView, setEditorView } = useEditorSession();
   // The title bar's language picker follows the paper: opening a paper selects the language it was written in (found when its Word
   // file was imported), and a later choice in the picker is kept with the paper. Papers with no stored language are left untouched.
   const langPaperRef = useRef<string | null>(null);
@@ -444,6 +446,11 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   }, [editorHistory.canUndo, editorHistory.canRedo, editorHistory.undoLabel, editorHistory.redoLabel, editorHistory.undo, editorHistory.redo, setHistory]);
   useEffect(() => () => setHistory(null), [setHistory]);
 
+  const handleOverviewChange = useCallback((patch: OverviewPatch) => {
+    setFormData((prev) => ({ ...prev, ...patch }));
+    setIsDirty(true);
+  }, []);
+
   const handleSectionsChange = useCallback((sections: PaperSection[]) => {
     setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(sections) }));
     setIsDirty(true);
@@ -482,7 +489,26 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     setIsDirty(true);
   };
 
-  const leftEditorContent = (
+  const overviewContent = (
+    <div className="h-full min-h-0 min-w-0 w-full overflow-hidden">
+      <PaperOverview
+        paper={formData}
+        lang={pdfLanguage}
+        citationText={citationText}
+        onChange={handleOverviewChange}
+        normalizeSections={assignEquationNumbers}
+        compiledPdfUrl={compiledPdfUrl}
+        focusRequest={focusRequest}
+        openTab={(tab) => {
+          // the page only shows these (authors, citation): the form tab that edits them opens in the form view
+          setEditorView('form');
+          setActiveSubTab(tab as typeof activeSubTab);
+        }}
+      />
+    </div>
+  );
+
+  const leftEditorContent = editorView === 'overview' ? overviewContent : (
     <div className="h-full flex flex-col min-h-0 min-w-0 w-full overflow-hidden space-y-2">
       <div className="flex-shrink-0">
         <EditorTabNav
@@ -541,6 +567,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   return (
     <EditorTabStateProvider paperId={formData.id} store={tabStateStore}>
+     <XrefProvider paper={formData} lang={pdfLanguage === 'en' ? 'en' : 'vi'}>
       <div className="h-full w-full flex flex-row p-3 min-h-0 gap-2 sm:gap-3 overflow-hidden">
       <EditorLeftDock
         homeHref="/papers"
@@ -658,6 +685,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         confirmTestId="editor-save-and-exit-btn"
       />
       </div>
+     </XrefProvider>
     </EditorTabStateProvider>
   );
 };

@@ -9,6 +9,7 @@ import {
   inlinesToDisplayText,
 } from './TemporaryParagraphInput';
 import { TipTapActiveEditor } from './TipTapActiveEditor';
+import { MarkerNotes } from './markers';
 
 export { TipTapActiveEditor, type TipTapActiveEditorProps } from './TipTapActiveEditor';
 export {
@@ -34,6 +35,8 @@ export interface TipTapParagraphEditorProps {
   onStartEdit?: () => void;
   ariaLabel?: string;
   references?: PaperReference[];
+  /** How many footnotes stand before this paragraph in the paper (their letters go on from there). */
+  noteOffset?: number;
 }
 
 const TipTapParagraphEditorBase: React.FC<TipTapParagraphEditorProps> = ({
@@ -49,6 +52,7 @@ const TipTapParagraphEditorBase: React.FC<TipTapParagraphEditorProps> = ({
   onStartEdit,
   ariaLabel = 'Nội dung đoạn văn',
   references = [],
+  noteOffset = 0,
 }) => {
   const [internalIsEditing, setInternalIsEditing] = useState(false);
   const isEditing = controlledIsEditing !== undefined ? controlledIsEditing : internalIsEditing;
@@ -89,6 +93,7 @@ const TipTapParagraphEditorBase: React.FC<TipTapParagraphEditorProps> = ({
         onKeyDown={onKeyDown}
         ariaLabel={ariaLabel}
         references={references}
+        noteOffset={noteOffset}
       />
     );
   }
@@ -98,6 +103,7 @@ const TipTapParagraphEditorBase: React.FC<TipTapParagraphEditorProps> = ({
 
   return (
     <div
+      style={{ counterReset: `ov-fn ${noteOffset} ov-fnn ${noteOffset}` }}
       onClick={handleStartEditing}
       role="textbox"
       tabIndex={0}
@@ -115,6 +121,7 @@ const TipTapParagraphEditorBase: React.FC<TipTapParagraphEditorProps> = ({
       ) : (
         renderInlineNodes(currentInlines, handleStartEditing)
       )}
+      <MarkerNotes text={currentText} />
     </div>
   );
 };

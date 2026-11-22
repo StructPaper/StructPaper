@@ -129,7 +129,10 @@ export interface DocxExportOptions {
   loadImage?: ImageLoader;
 }
 
+import { resolveCrossRefs } from './cross-refs';
+
 export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOptions = {}): Promise<Blob> {
+  paper = resolveCrossRefs(paper, 'vi');
   const theme = resolveTheme(paper.layoutSettings);
   const color = theme.titleColor.slice(1);
   const pub = resolvePublication(paper.metadata);

@@ -2,12 +2,15 @@
 
 import React from 'react';
 import type { Editor } from '@tiptap/react';
-import { Bold, Italic, Bookmark, Sigma } from 'lucide-react';
+import { Bold, Italic, Underline, Bookmark, Sigma, Asterisk, List, Link2 } from 'lucide-react';
+import { toggleBullet } from '../../overview/overview-lists';
 
 export interface TipTapFormattingToolbarProps {
   editor: Editor | null;
   onToggleRefPicker: () => void;
   onToggleMathModal: () => void;
+  onToggleXref?: () => void;
+  onToggleNote?: () => void;
 }
 
 const preventBlurOnMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => e.preventDefault();
@@ -16,6 +19,8 @@ export const TipTapFormattingToolbar: React.FC<TipTapFormattingToolbarProps> = (
   editor,
   onToggleRefPicker,
   onToggleMathModal,
+  onToggleXref,
+  onToggleNote,
 }) => {
   const markBtnClass = (mark: string, base: string) =>
     `${base} ${editor?.isActive(mark) ? 'bg-zinc-200 text-blue-600 font-bold' : 'text-zinc-600'}`;
@@ -44,6 +49,17 @@ export const TipTapFormattingToolbar: React.FC<TipTapFormattingToolbarProps> = (
           aria-label="In nghiêng"
         >
           <Italic className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={preventBlurOnMouseDown}
+          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+          className={markBtnClass('underline', 'p-1 rounded hover:bg-zinc-200 transition-colors')}
+          title="Gạch chân (Ctrl+U)"
+          aria-label="Gạch chân"
+        >
+          <Underline className="w-3.5 h-3.5" />
         </button>
         <button
           type="button"
@@ -97,6 +113,45 @@ export const TipTapFormattingToolbar: React.FC<TipTapFormattingToolbarProps> = (
         >
           <Sigma className="w-3.5 h-3.5" />
           <span>Toán</span>
+        </button>
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={preventBlurOnMouseDown}
+          onClick={() => editor && toggleBullet(editor)}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-zinc-200 text-zinc-700 text-[11px] transition-colors"
+          title="Đầu dòng danh sách: thêm hoặc bỏ dấu chấm ở đầu đoạn này"
+          aria-label="Danh sách chấm đầu dòng"
+          data-testid="toggle-bullet"
+        >
+          <List className="w-3.5 h-3.5" />
+          <span>Danh sách</span>
+        </button>
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={preventBlurOnMouseDown}
+          onClick={onToggleXref}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-purple-50 text-purple-700 text-[11px] font-medium transition-colors"
+          title="Chèn tham chiếu đến một bảng hoặc hình (như “Bảng 2”)"
+          aria-label="Chèn tham chiếu bảng hình"
+          data-testid="insert-xref"
+        >
+          <Link2 className="w-3.5 h-3.5" />
+          <span>Bảng/Hình</span>
+        </button>
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={preventBlurOnMouseDown}
+          onClick={onToggleNote}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-zinc-200 text-zinc-700 text-[11px] transition-colors"
+          title="Chèn chú thích chân trang: nội dung in ở cuối trang có câu này"
+          aria-label="Chèn chú thích chân trang"
+          data-testid="insert-footnote"
+        >
+          <Asterisk className="w-3.5 h-3.5" />
+          <span>Chú thích</span>
         </button>
       </div>
     </div>

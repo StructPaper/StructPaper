@@ -9,6 +9,9 @@ import { sanitizeMathForLatex } from './math-text';
 import { equationToLatex, EQUATION_FIT_MACRO } from './latex-equation';
 import { PageLayoutTracker } from './latex-page-layout';
 import { escapeLatex } from './latex-escape';
+import { stripMarkup } from './inline-markup';
+import { resolveCrossRefs } from './cross-refs';
+import { isBullet, splitListItem } from './list-marks';
 import { tableToLatex } from './latex-table';
 import { SIZE9_PREAMBLE } from './latex-size9';
 import { displayHeading } from './headings';
@@ -82,6 +85,16 @@ function formatParagraphText(text: string): string {
  * "[15]", "[10,11]", "[16–18]", "[15; 19-20]" -> one natbib citation of those references (a range is expanded; natbib prints a run of three
  * or more as "16–18" and two as "10,11", as the printed journals do).
  */
+/**
+ * A paragraph; or an item of a list (it starts with its mark: "• ", "1. ", "a) "), set with the mark hanging to the left of the text.
+ */
+export function paragraphOrItemLatex(content: string): string {
+  const item = splitListItem(content);
+  if (!item) return formatParagraphText(content);
+  const mark = isBullet(item.mark) ? '$\\bullet$' : escapeLatex(item.mark);
+  return `{\\hangindent=1.6em\\hangafter=1\\noindent\\hspace*{0.5em}\\makebox[1.1em][l]{${mark}}${formatParagraphText(item.rest)}\\par}`;
+}
+
 export function bracketCitation(list: string): string {
   const keys: string[] = [];
   for (const part of list.split(/\s*[,;]\s*/)) {
@@ -210,6 +223,8 @@ export interface LatexOptions {
 }
 
 export function generateFullJournalLatex(paper: CompletePaper, customSettings?: LayoutSettings, options: LatexOptions = {}): string {
+  // a reference to a table or a figure ("[[tbl:ID]]") is printed as its label, with the number the block has
+  paper = resolveCrossRefs(paper, options.primaryLanguage ?? 'vi');
   const { metadata, sections, references } = paper;
   const lang: PageLanguage = options.primaryLanguage ?? 'vi';
   const en = lang === 'en';
@@ -343,7 +358,9 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
           ? low(textRight, 'br')
           : bottomKind === 'C'
             ? low(textMiddle, 'b')
-            : `\\ifnum\\value{page}=${Math.max(1, startPage)}${low(textRight, 'br')}\\else\\ifodd\\value{page}${at(textRight, ALTERNATING_FROM_BOTTOM, 'br', 10)}\\else${at(textLeft, ALTERNATING_FROM_BOTTOM, 'bl', 10)}\\fi\\fi`;
+            : // the first page, and the closing summary page (set like the first, with the "how to cite" strip in its foot; it marks itself
+              // with \ovlowpage<n>), carry the number low on the right; the pages between alternate
+              `\\ifnum\\value{page}=${Math.max(1, startPage)}${low(textRight, 'br')}\\else\\ifcsname ovlowpage\\thepage\\endcsname${low(textRight, 'br')}\\else\\ifodd\\value{page}${at(textRight, ALTERNATING_FROM_BOTTOM, 'br', 10)}\\else${at(textLeft, ALTERNATING_FROM_BOTTOM, 'bl', 10)}\\fi\\fi\\fi`;
     const shown = pageNum.suppressOnFirstPage ? `\\ifnum\\value{page}=${Math.max(1, startPage)}\\else${body}\\fi` : body;
     absolutePageNumber = `\\usepackage{eso-pic}\\AddToShipoutPictureFG{${shown}}`;
   }
@@ -558,8 +575,11 @@ ${isOneColumn
     const oneCol = layoutTracker.oneColumn; // columns in force here (a page-layout marker may change them)
 
     if (sec.type === 'h1' && sec.title) {
-      const displayTitle = displayHeading(sec.title, theme.keepSectionNumbers).toUpperCase().replace(/TÁ\s+TRÀNG/g, 'TÁ~TRÀNG');
-      bodyLatex += `\n${bookmark('section', displayTitle)}\\section*\n  {\\textbf{${escapeLatex(displayTitle)}}}\n`;
+      // capitals for the words only: the tags of bold/italic/colour ("<i>…</i>") must stay lower case to be read as tags
+      const displayTitle = displayHeading(sec.title, theme.keepSectionNumbers)
+        .replace(/<[^>]*>|[^<]+/g, (part) => (part.startsWith('<') ? part : part.toUpperCase()))
+        .replace(/TÁ\s+TRÀNG/g, 'TÁ~TRÀNG');
+      bodyLatex += `\n${bookmark('section', stripMarkup(displayTitle))}\\section*\n  {\\textbf{${escapeLatex(displayTitle)}}}\n`;
       if (sec.content) bodyLatex += `${formatParagraphText(sec.content)}\n`;
     } else if (sec.type === 'h2' && sec.title) {
       bodyLatex += `\n${bookmark('subsection', displayHeading(sec.title, theme.keepSectionNumbers))}\\subsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
@@ -568,7 +588,7 @@ ${isOneColumn
       bodyLatex += `\n${bookmark('subsubsection', displayHeading(sec.title, theme.keepSectionNumbers))}\\subsubsection*\n  {\\textbf{${escapeLatex(displayHeading(sec.title, theme.keepSectionNumbers))}}}\n`;
       if (sec.content) bodyLatex += `${formatParagraphText(sec.content)}\n`;
     } else if (sec.type === 'paragraph' && sec.content) {
-      bodyLatex += `\n${formatParagraphText(sec.content)}\n`;
+      bodyLatex += `\n${paragraphOrItemLatex(sec.content)}\n`;
     } else if (sec.type === 'citation' && sec.content) {
       bodyLatex += `\n\\begin{mdframed}[backgroundcolor=unitednationsblue,linecolor=journalBlue,linewidth=0.5pt,innerleftmargin=0.8pc,innerrightmargin=0.8pc,innertopmargin=0.5pc,innerbottommargin=0.5pc]
 {\\footnotesize\\textbf{\\color{journalBlue}Trích dẫn bài báo này: }\\textit{${escapeLatex(sec.content)}}}

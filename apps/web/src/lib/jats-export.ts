@@ -1,3 +1,4 @@
+import { hasMarkup, parseMarkup } from './inline-markup';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import { splitMathSegments, xmlEscape } from '@/lib/math-text';
 
@@ -90,6 +91,18 @@ const CITE_RE = /\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g;
 
 /** Text -> JATS inline XML: formulas become <inline-formula>, [n] becomes <xref ref-type="bibr">. */
 export function inlineToJats(text: string): string {
+  // <b>, <i>, <u> become JATS emphasis (colour has no JATS equivalent and is dropped)
+  if (hasMarkup(text)) {
+    return parseMarkup(text)
+      .map((s) => {
+        let t = inlineToJats(s.text);
+        if (s.u) t = `<underline>${t}</underline>`;
+        if (s.i) t = `<italic>${t}</italic>`;
+        if (s.b) t = `<bold>${t}</bold>`;
+        return t;
+      })
+      .join('');
+  }
   // footnotes ([[fn: ...]]) become inline <fn> elements, right where they are cited
   if (hasFootnotes(text || '')) {
     return splitFootnotes(text)
@@ -202,7 +215,10 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
   return out.join('\n');
 }
 
+import { resolveCrossRefs } from './cross-refs';
+
 export function exportToJatsXml(paper: CompletePaper, opts: JatsOptions = {}): string {
+  paper = resolveCrossRefs(paper, 'vi');
   usedIds = new Set<string>();
   knownRefs = new Set((paper.references || []).map((r) => r.id));
   // reserve R<n> first so duplicated numbers cannot steal a citation target
@@ -270,7 +286,7 @@ ${val(pubInfo.issue) ? `<issue>${xmlEscape(val(pubInfo.issue))}</issue>` : ''}
 ${val(pubInfo.firstPage) ? `<fpage>${xmlEscape(val(pubInfo.firstPage))}</fpage>` : ''}${val(pubInfo.lastPage) ? `<lpage>${xmlEscape(val(pubInfo.lastPage))}</lpage>` : ''}
 ${history ? `<history>${history}</history>` : ''}
 <abstract><p>${inlineToJats(md.abstract || '')}</p></abstract>
-${md.abstractEn ? `<trans-abstract xml:lang="en"><p>${xmlEscape(md.abstractEn)}</p></trans-abstract>` : ''}
+${md.abstractEn ? `<trans-abstract xml:lang="en"><p>${inlineToJats(md.abstractEn)}</p></trans-abstract>` : ''}
 <kwd-group kwd-group-type="author">${(md.keywords || []).map((k) => `<kwd>${xmlEscape(k)}</kwd>`).join('')}</kwd-group>
 </article-meta>
 </front>

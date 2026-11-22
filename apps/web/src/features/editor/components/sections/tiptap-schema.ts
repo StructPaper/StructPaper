@@ -1,6 +1,7 @@
 import { type JSONContent } from '@tiptap/core';
 import type { Inline, InlineMark } from '@structpaper/doc-model';
 import { parseCitationNumbers } from '@structpaper/doc-model';
+import { wrapInlineMarks } from '@/lib/inline-markup';
 
 export { CiteNode, XrefNode, MathNode } from './tiptap-nodes';
 
@@ -40,6 +41,7 @@ export function tiptapDocToInlines(doc?: JSONContent | null): Inline[] {
           for (const m of node.marks) {
             if (m.type === 'bold') marks.push('b');
             else if (m.type === 'italic') marks.push('i');
+            else if (m.type === 'underline') marks.push('u');
             else if (m.type === 'superscript') marks.push('sup');
             else if (m.type === 'subscript') marks.push('sub');
             else if (m.type === 'code') marks.push('code');
@@ -136,6 +138,7 @@ export function inlinesToTiptapDoc(inlines?: Inline[]): JSONContent {
           for (const m of item.marks) {
             if (m === 'b') marks.push({ type: 'bold' });
             else if (m === 'i') marks.push({ type: 'italic' });
+            else if (m === 'u') marks.push({ type: 'underline' });
             else if (m === 'sup') marks.push({ type: 'superscript' });
             else if (m === 'sub') marks.push({ type: 'subscript' });
             else if (m === 'code') marks.push({ type: 'code' });
@@ -228,10 +231,7 @@ export function tiptapDocToPlainText(doc?: JSONContent | null): string {
   let res = '';
   for (const item of inlines) {
     if (item.t === 'text') {
-      let v = item.v;
-      if (item.marks?.includes('i')) v = `*${v}*`;
-      if (item.marks?.includes('b')) v = `**${v}**`;
-      res += v;
+      res += wrapInlineMarks(item.v, item.marks);
     } else if (item.t === 'cite') {
       const nums = item.refIds.map((id) => {
         const match = id.match(/\d+/);

@@ -7,11 +7,12 @@ import { findEnglishBackMatter, splitKeywords } from './docx-english-backmatter'
 import { identifyJournal } from './journal-identify';
 import { detectPrimaryLanguage, findVietnameseBackMatter, foldVietnamese } from './docx-language';
 import { findArticleTypePreset } from './article-types';
-import { enrichScriptRuns } from './docx-richtext';
+import { emphasiseText, enrichScriptRuns } from './docx-richtext';
+import { parseMarkup, serializeMarkup, stripMarkup } from './inline-markup';
 import { loadFigureImages } from './docx-figure-images';
 import { figureCaptionNumber } from './docx-figures';
 import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } from './docx-figure-tables';
-import { extractListHeadings, isNoneMark } from './docx-headings';
+import { extractListHeadings, extractListItems, isNoneMark } from './docx-headings';
 import { articleIdFromFileName } from './publication';
 import { normalizeImportedTitle } from './title-case';
 import { prepareDocx } from './docx-prepare';
@@ -76,6 +77,33 @@ export function detectJournalFromContent(
   return { journalId: id, journalName: template.name, journalAbbv: template.shortName };
 }
 
+/**
+ * The text of a table cell with <b>/<i> around its bold and italic runs; undefined when nothing in it is emphasised (or when the
+ * tags would change what the cell says, as with reference-manager codes that are cleaned elsewhere).
+ */
+function cellEmphasis(paragraphXml: string[], plain: string): string | undefined {
+  const lines: string[] = [];
+  let any = false;
+  for (const p of paragraphXml) {
+    let line = '';
+    for (const m of p.matchAll(/<w:r\b[\s>]([\s\S]*?)<\/w:r>/gi)) {
+      const rXml = m[1];
+      const t = (rXml.match(/<w:t\b[^>]*>[\s\S]*?<\/w:t>/gi) || []).map((x) => x.replace(/<[^>]+>/g, '')).join('');
+      if (!t) continue;
+      const text = decodeXml(t);
+      const own = rXml.replace(/<w:rPrChange\b[\s\S]*?<\/w:rPrChange>/gi, '');
+      const bold = /<w:b[\s\/>]/i.test(own) && !/<w:b\s+w:val="(?:0|false)"/i.test(own);
+      const italic = /<w:i[\s\/>]/i.test(own) && !/<w:i\s+w:val="(?:0|false)"/i.test(own);
+      if ((bold || italic) && text.trim()) any = true;
+      line += bold || italic ? (bold ? '<b>' : '') + (italic ? '<i>' : '') + text + (italic ? '</i>' : '') + (bold ? '</b>' : '') : text;
+    }
+    if (line) lines.push(line);
+  }
+  if (!any) return undefined;
+  const joined = serializeMarkup(parseMarkup(lines.join('\n').trim()));
+  return stripMarkup(joined).replace(/\s+/g, ' ') === cleanEndNoteText(plain).replace(/\s+/g, ' ') ? joined : undefined;
+}
+
 export interface XmlRun {
   text: string;
   isSup: boolean;
@@ -134,8 +162,10 @@ export async function extractOpenXmlParagraphs(zip: JSZip): Promise<XmlParagraph
         /<w:position\s+w:val="[1-9]\d*"/i.test(rXml);
       const isSub =
         /<w:vertAlign\s+w:val="subscript"/i.test(rXml) || /<w:position\s+w:val="-\d+"/i.test(rXml);
-      const isBold = /<w:b[\s\/>]/i.test(rXml) && !/<w:b\s+w:val="(?:0|false)"/i.test(rXml);
-      const isItalic = /<w:i[\s\/>]/i.test(rXml) && !/<w:i\s+w:val="(?:0|false)"/i.test(rXml);
+      // the formatting the run has now (what a tracked formatting change replaced is in <w:rPrChange>, and is not it)
+      const own = rXml.replace(/<w:rPrChange\b[\s\S]*?<\/w:rPrChange>/gi, '');
+      const isBold = /<w:b[\s\/>]/i.test(own) && !/<w:b\s+w:val="(?:0|false)"/i.test(own);
+      const isItalic = /<w:i[\s\/>]/i.test(own) && !/<w:i\s+w:val="(?:0|false)"/i.test(own);
 
       const tMatch = rXml.match(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g);
       let text = '';
@@ -202,6 +232,8 @@ export function parseOpenXmlTable(tblXml: string): {
   interface MatrixCell {
     text: string;
     rawText: string;
+    /** The cell's text with <b>/<i> where the Word runs are bold or italic (only when something in it is). */
+    markup?: string;
     isContinuation: boolean;
     isVContinue: boolean;
     vMerge: 'restart' | 'continue' | 'none';
@@ -253,6 +285,7 @@ export function parseOpenXmlTable(tblXml: string): {
         .filter((t) => t.length > 0);
       // one line per paragraph: multi-line cells (e.g. 4 value lines) must stay aligned across columns
       const cellText = pTexts.join('\n').trim();
+      const cellMarkup = cellEmphasis(pMatches, cellText);
 
       if (vMerge === 'continue') {
         let parentRow = r - 1;
@@ -283,6 +316,7 @@ export function parseOpenXmlTable(tblXml: string): {
           matrix[r][col + s] = {
             text: cellText,
             rawText: s === 0 ? cellText : '',
+            ...(s === 0 && cellMarkup ? { markup: cellMarkup } : {}),
             isContinuation: s > 0,
             isVContinue: false,
             vMerge: vMerge === 'restart' ? 'restart' : 'none',
@@ -392,7 +426,8 @@ export function parseOpenXmlTable(tblXml: string): {
         }
 
         rowCells.push({
-          text: cell.rawText || cell.text,
+          // body cells keep the bold and italic of the Word file; header cells are bold by the table's style anyway
+          text: (r >= headerRowCount && cell.markup) || cell.rawText || cell.text,
           colSpan: cell.gridSpan > 1 ? cell.gridSpan : undefined,
           rowSpan: rowSpan > 1 ? rowSpan : undefined,
           isHeader: r < headerRowCount,
@@ -838,6 +873,8 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
   }
 
   const listHeadings = extractListHeadings((await zip.file('word/document.xml')?.async('text')) || '', await zip.file('word/styles.xml')?.async('text'));
+  // the bullets and numbers Word draws by itself are not in the text: they are written in front of their paragraphs
+  const listItems = extractListItems((await zip.file('word/document.xml')?.async('text')) || '', await zip.file('word/numbering.xml')?.async('text'), listHeadings);
   const rawTextResult = await mammoth.extractRawText(cleanMammothOpts);
   const rawLines = rawTextResult.value
     .split(/\r?\n/)
@@ -1355,6 +1392,12 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
     if (attachTableFooterLine(sections, line)) continue;
 
     // Paragraph (short "n là số lượng mẫu" lines after "Trong đó:" are kept too)
+    // an item of a list keeps its mark, however short it is
+    const listMark = isFrontMatterDone ? listItems.get(line.trim())?.shift() : undefined;
+    if (listMark) {
+      sections.push({ id: `s_${sections.length + 1}`, type: 'paragraph', content: `${listMark}${line}` });
+      continue;
+    }
     if (line.length > 20 || (isFrontMatterDone && (isWhereDefinitionLine(line, sections[sections.length - 1]) || isNoneMark(line, sections[sections.length - 1])))) {
       if (!isFrontMatterDone) {
         continue;
@@ -1493,8 +1536,8 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
     authors,
     affiliations,
     corresponding,
-    abstract: abstract || 'Chưa phát hiện phần tóm tắt trong tài liệu.',
-    abstractEn,
+    abstract: abstract ? emphasiseText(abstract, openXmlParagraphs) : 'Chưa phát hiện phần tóm tắt trong tài liệu.',
+    abstractEn: abstractEn ? emphasiseText(abstractEn, openXmlParagraphs) : abstractEn,
     keywords: keywords.length > 0 ? keywords : ['Báo cáo khoa học', 'VNUHCM'],
     keywordsEn,
     dates,

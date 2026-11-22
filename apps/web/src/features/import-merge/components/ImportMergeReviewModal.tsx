@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GitMerge, Loader2, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import type { BlockChange } from '@structpaper/doc-diff';
 import { ModalCard } from '@/components/modals';
+import { Markup } from '@/components/ui/Markup';
 import { Badge, BlockBody, KIND_BOX, Marked } from '@/features/history/components/DocumentDiffView';
 import { blockTypeLabel } from '@/features/history/lib/block-settings';
 import type { Analysis } from '@/lib/documents/word-source';
@@ -23,6 +24,22 @@ interface Props {
 const SCOPE_TITLE: Record<string, string> = { field: 'Thông tin bài', authors: 'Thông tin bài', references: 'Thông tin bài', block: 'Nội dung bài' };
 
 function ProposalBody({ p }: { p: MergeProposal }) {
+  // the words are the same and only the bold, italic or underline differs: both are shown as they print
+  if (p.formatOnly) {
+    return (
+      <div className="space-y-2 text-[13px] leading-relaxed text-zinc-800" data-testid="format-only">
+        <p className="text-[11px] font-bold text-sky-700 bg-sky-50 rounded-full px-2.5 py-1 w-fit">Chỉ đổi định dạng (đậm, nghiêng, gạch chân): chữ giữ nguyên</p>
+        <div className="rounded-xl bg-zinc-50 border border-zinc-200/70 px-3 py-2">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-zinc-400 mb-0.5">Bài đang có</span>
+          <Markup text={p.before} />
+        </div>
+        <div className="rounded-xl bg-lime-50 border border-lime-200/70 px-3 py-2">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-lime-700 mb-0.5">File Word</span>
+          <Markup text={p.after} />
+        </div>
+      </div>
+    );
+  }
   if (p.scope !== 'block') {
     return (
       <div className="space-y-1.5 text-[13px] leading-relaxed text-zinc-800 whitespace-pre-wrap">

@@ -144,7 +144,8 @@ describe('Task 4.5: TipTap Paragraph Editor & Schema Bidirectional Mapping', () 
       };
 
       const text = tiptapDocToPlainText(doc);
-      expect(text).toBe('Vi khuẩn *H. pylori*[1] với $\\alpha + \\beta$');
+      // emphasis is stored as tags now (the PDF and Word exports read them); older *asterisk* text is still understood on the way in
+      expect(text).toBe('Vi khuẩn <i>H. pylori</i>[1] với $\\alpha + \\beta$');
     });
   });
 
@@ -277,7 +278,7 @@ describe('Task 4.5: TipTap Paragraph Editor & Schema Bidirectional Mapping', () 
       fireEvent.click(citeBtn);
 
       // Should show reference choices
-      expect(screen.getByText('Chọn tài liệu trích dẫn:')).toBeDefined();
+      expect(screen.getByText('Chọn tài liệu trích dẫn')).toBeDefined();
       expect(screen.getByText(/Nguyen Van A/i)).toBeDefined();
       expect(screen.getByText(/Smith J/i)).toBeDefined();
 
@@ -286,7 +287,7 @@ describe('Task 4.5: TipTap Paragraph Editor & Schema Bidirectional Mapping', () 
       fireEvent.click(ref2Btn);
 
       // Popover should close
-      expect(screen.queryByText('Chọn tài liệu trích dẫn:')).toBeNull();
+      expect(screen.queryByText('Chọn tài liệu trích dẫn')).toBeNull();
     });
 
     it('opens math popover on clicking math button and accepts formula input', () => {
@@ -302,14 +303,14 @@ describe('Task 4.5: TipTap Paragraph Editor & Schema Bidirectional Mapping', () 
       const mathBtn = screen.getByTitle(/Chèn công thức/i);
       fireEvent.click(mathBtn);
 
-      expect(screen.getByText('Chèn công thức LaTeX:')).toBeDefined();
+      expect(screen.getByText('Chèn công thức LaTeX')).toBeDefined();
       const input = screen.getByPlaceholderText(/ví dụ: E = mc\^2/i);
       fireEvent.change(input, { target: { value: '\\sum_{i=1}^n x_i' } });
 
       const submitBtn = screen.getByRole('button', { name: 'Chèn' });
       fireEvent.click(submitBtn);
 
-      expect(screen.queryByText('Chèn công thức LaTeX:')).toBeNull();
+      expect(screen.queryByText('Chèn công thức LaTeX')).toBeNull();
     });
 
     it('triggers debounced onChange after text edits', () => {

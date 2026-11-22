@@ -18,7 +18,10 @@ import {
 } from './tiptap-schema';
 import { cleanWordPasteHtml } from './clean-word-paste';
 import { displayTextToInlines } from './TemporaryParagraphInput';
-import { ReferencePickerPopover, MathInputPopover } from './tiptap-popovers';
+import { ReferencePickerPopover, MathInputPopover, XrefDialog, FootnoteDialog } from './tiptap-popovers';
+import { MarkerChips } from './markers';
+import { useXrefTargets } from '../../xref-context';
+import { markerOf, type RefTarget } from '@/lib/cross-refs';
 import { TipTapFormattingToolbar } from './TipTapFormattingToolbar';
 
 interface PendingEditorPayload {
@@ -36,6 +39,7 @@ export interface TipTapActiveEditorProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   ariaLabel?: string;
   references?: PaperReference[];
+  noteOffset?: number;
 }
 
 export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
@@ -48,11 +52,20 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
   onKeyDown,
   ariaLabel = 'Nội dung đoạn văn',
   references = [],
+  noteOffset = 0,
 }) => {
   const [isRefPickerOpen, setIsRefPickerOpen] = useState(false);
   const [refSearch, setRefSearch] = useState('');
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [mathLatex, setMathLatex] = useState('');
+  const mathEditPos = useRef<number | null>(null);
+  const [isXrefOpen, setIsXrefOpen] = useState(false);
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const xrefCtx = useXrefTargets();
+  const xrefCtxRef = useRef(xrefCtx);
+  xrefCtxRef.current = xrefCtx;
+  const otherDialogRef = useRef(false);
+  otherDialogRef.current = isXrefOpen || isNoteOpen;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,12 +136,14 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
     setIsRefPickerOpen(false);
     setRefSearch('');
     showMathInputRef.current = true;
+    mathEditPos.current = null;
     setMathLatex('');
     setIsMathModalOpen(true);
   }, []);
 
   const closeMathModal = useCallback(() => {
     showMathInputRef.current = false;
+    mathEditPos.current = null;
     setIsMathModalOpen(false);
     setMathLatex('');
     restoreEditorFocus();
@@ -155,6 +170,9 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
 
   const commitExternalBlur = useCallback(
     (blurredTarget: EventTarget | null, relatedTarget: EventTarget | null | undefined) => {
+      // a dialog that puts something into the text has the focus for a while: that is not leaving the paragraph
+      const dialogOpen = showRefPickerRef.current || showMathInputRef.current || otherDialogRef.current;
+      if (dialogOpen && (!(relatedTarget instanceof Element) || relatedTarget.closest('[role="dialog"]'))) return;
       if (isFocusMovingWithinContainer(blurredTarget, relatedTarget)) {
         return;
       }
@@ -186,6 +204,7 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
       CiteNode,
       XrefNode,
       MathNode,
+      MarkerChips.configure({ getContext: () => xrefCtxRef.current }),
     ],
     []
   );
@@ -236,7 +255,7 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
       }, 150);
     },
     onBlur({ event }) {
-      if (showRefPickerRef.current || showMathInputRef.current) return;
+      if (showRefPickerRef.current || showMathInputRef.current || otherDialogRef.current) return;
       commitExternalBlur(event?.target ?? null, event?.relatedTarget);
     },
   });
@@ -289,19 +308,56 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
     setRefSearch('');
   };
 
+  // a click on a formula in the text opens it here to be changed
+  useEffect(() => {
+    if (!editor) return;
+    (editor.storage as unknown as Record<string, unknown>).onEditMath = (pos: number | undefined, latex: string) => {
+      mathEditPos.current = typeof pos === 'number' ? pos : null;
+      setIsRefPickerOpen(false);
+      showRefPickerRef.current = false;
+      showMathInputRef.current = true;
+      setMathLatex(latex);
+      setIsMathModalOpen(true);
+    };
+  }, [editor]);
+
   const handleInsertMath = () => {
     if (!editor || !mathLatex.trim()) return;
-    editor
-      .chain()
-      .focus()
-      .insertContent({
-        type: 'math',
-        attrs: { latex: mathLatex.trim() },
-      })
-      .run();
+    const at = mathEditPos.current;
+    mathEditPos.current = null;
+    if (at !== null) {
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          tr.setNodeMarkup(at, undefined, { latex: mathLatex.trim() });
+          return true;
+        })
+        .run();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'math',
+          attrs: { latex: mathLatex.trim() },
+        })
+        .run();
+    }
     showMathInputRef.current = false;
     setMathLatex('');
     setIsMathModalOpen(false);
+  };
+
+  const handleInsertXref = (t: RefTarget) => {
+    setIsXrefOpen(false);
+    editor?.chain().focus().insertContent(markerOf(t.kind, t.id)).run();
+  };
+
+  const handleInsertNote = (text: string) => {
+    setIsNoteOpen(false);
+    // the note is written between the brackets of its marker; a line break or a bracket in it would end the marker early
+    editor?.chain().focus().insertContent('[[fn: ' + text.replace(/\s*\n\s*/g, ' ').replace(/\]\]/g, ']') + ']]').run();
   };
 
   const handleContainerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -325,6 +381,7 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
   return (
     <div
       ref={containerRef}
+      style={{ counterReset: `ov-fn ${noteOffset} ov-fnn ${noteOffset}` }}
       className={`tiptap-paragraph-editor relative w-full rounded-2xl bg-white border border-blue-300 ring-4 ring-blue-200 shadow-2xs transition-all ${className}`}
       onFocus={() => {
         hasNotifiedBlurRef.current = false;
@@ -339,7 +396,12 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
         editor={editor}
         onToggleRefPicker={() => (isRefPickerOpen ? closeRefPicker() : openRefPicker())}
         onToggleMathModal={() => (isMathModalOpen ? closeMathModal() : openMathModal())}
+        onToggleXref={() => setIsXrefOpen(true)}
+        onToggleNote={() => setIsNoteOpen(true)}
       />
+
+      <XrefDialog open={isXrefOpen} targets={xrefCtx.targets} lang={xrefCtx.lang} onSelect={handleInsertXref} onClose={() => { setIsXrefOpen(false); restoreEditorFocus(); }} />
+      <FootnoteDialog open={isNoteOpen} onSubmit={handleInsertNote} onClose={() => { setIsNoteOpen(false); restoreEditorFocus(); }} />
 
       {/* Reference Suggestions Dropdown */}
       <ReferencePickerPopover

@@ -1,3 +1,4 @@
+import { stripMarkup } from '@/lib/inline-markup';
 import type { PaperMetadata, PaperReference, PaperSection } from '@/types/paper';
 
 /**
@@ -25,7 +26,7 @@ function sectionText(s: PaperSection): string {
     case 'h1':
     case 'h2':
     case 'h3':
-      return s.title || s.content || '';
+      return stripMarkup(s.title || s.content || '');
     case 'figure':
       return `${s.figure?.caption || ''} ${s.figure?.source || ''}`;
     case 'table': {
@@ -34,14 +35,14 @@ function sectionText(s: PaperSection): string {
       const cells = (rows?: { text?: string }[][]) => (rows || []).flat().map((c) => c?.text || '');
       const head = t.headerRows?.length ? cells(t.headerRows as any) : t.headers || [];
       const body = t.bodyRows?.length ? cells(t.bodyRows as any) : (t.rows || []).flat();
-      return [t.caption, ...head, ...body, t.source || ''].join(' ');
+      return stripMarkup([t.caption, ...head, ...body, t.source || ''].join(' '));
     }
     case 'equation':
       return '';
     case 'citation':
       return '';
     default:
-      return s.content || '';
+      return stripMarkup(s.content || '');
   }
 }
 

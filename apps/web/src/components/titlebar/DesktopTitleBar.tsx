@@ -16,6 +16,7 @@ import { TitleBarFileMenu } from './TitleBarFileMenu';
 import { WindowControls } from './WindowControls';
 import { ShareManuscriptButton } from '@/features/sharing';
 import { PdfLanguageSelect } from './PdfLanguageSelect';
+import { EditorViewSwitch } from './EditorViewSwitch';
 import { CompileActivityPill } from './CompileActivityPill';
 import { UndoRedoButtons } from './UndoRedoButtons';
 import { PaperHistoryTitleBarInfo, PaperHistorySaveButton, PaperHistoryDetailToggle } from './PaperHistoryTitleBarInfo';
@@ -127,6 +128,8 @@ export const DesktopTitleBar: React.FC = () => {
             <Cloud className="w-3.5 h-3.5 text-zinc-500" strokeWidth={3.3} aria-hidden="true" />
           </span>
         ) : null}
+
+        {canEditHere && <EditorViewSwitch />}
 
         {(canEditHere || isJournalRoute) && <PdfLanguageSelect />}
 

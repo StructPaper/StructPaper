@@ -264,12 +264,12 @@ describe('Task 1: Lazy TipTap Mounting & CSS-First AutoResizeTextarea', () => {
 
       expect(onBlurSpy).not.toHaveBeenCalled();
       expect(document.querySelectorAll('.ProseMirror')).toHaveLength(1);
-      expect(screen.getByText('Chọn tài liệu trích dẫn:')).toBeDefined();
+      expect(screen.getByText('Chọn tài liệu trích dẫn')).toBeDefined();
 
       // Closing ref picker via Escape keeps active editor mounted and resets search
       fireEvent.change(refInput, { target: { value: 'Nguyen' } });
       fireEvent.keyDown(refInput, { key: 'Escape' });
-      expect(screen.queryByText('Chọn tài liệu trích dẫn:')).toBeNull();
+      expect(screen.queryByText('Chọn tài liệu trích dẫn')).toBeNull();
       expect(onBlurSpy).not.toHaveBeenCalled();
       expect(document.querySelectorAll('.ProseMirror')).toHaveLength(1);
 
@@ -279,7 +279,7 @@ describe('Task 1: Lazy TipTap Mounting & CSS-First AutoResizeTextarea', () => {
       fireEvent.blur(proseMirror, { relatedTarget: mathInput });
 
       expect(onBlurSpy).not.toHaveBeenCalled();
-      expect(screen.getByText('Chèn công thức LaTeX:')).toBeDefined();
+      expect(screen.getByText('Chèn công thức LaTeX')).toBeDefined();
       expect(document.querySelectorAll('.ProseMirror')).toHaveLength(1);
 
       // Blurring from popover input to an outside element closes edit mode cleanly once

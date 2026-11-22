@@ -4,6 +4,7 @@ import React, { useCallback } from 'react';
 import type { Inline } from '@structpaper/doc-model';
 import { PaperSection, PaperReference } from '@/types/paper';
 import { TipTapParagraphEditor } from './TipTapParagraphEditor';
+import { useXrefTargets } from '../../xref-context';
 import { getSectionId } from './useSectionVirtualizer';
 import { ImageIcon, Link2 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ const ParagraphSectionItemBase: React.FC<ParagraphSectionItemProps> = ({
   references,
 }) => {
   const secId = getSectionId(sec, idx);
+  const { noteOffsets } = useXrefTargets();
   const isEditing =
     propIsEditing !== undefined ? propIsEditing : activeEditingParaId === secId;
 
@@ -112,6 +114,7 @@ const ParagraphSectionItemBase: React.FC<ParagraphSectionItemProps> = ({
         onChange={handleChange}
         placeholder="Nội dung đoạn văn bản..."
         references={references}
+        noteOffset={noteOffsets[sec.id] ?? 0}
       />
     </div>
   );

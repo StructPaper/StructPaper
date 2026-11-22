@@ -13,11 +13,13 @@ import {
 } from 'docx';
 import type { PaperReference, PaperSection } from '@/types/paper';
 import { inlineFootnotes } from './footnotes';
+import { listMarkOf } from './list-marks';
 import type { ResolvedTheme } from './theme-config';
 import { latexToDocxMath, splitTextWithMath } from './docx-math';
 import { displayHeading } from './headings';
 import { buildDocxTable } from './docx-table';
 import { stripCaptionLabel } from './docx-table-extras';
+import { parseMarkup } from './inline-markup';
 import type { DocxImage } from './docx-export-assets';
 import { ABSTRACT_FILL, FONT_SANS, FONT_SERIF } from './docx-export-front';
 import { SegmentBuilder, type Block, type Segment } from './docx-export-layout';
@@ -30,22 +32,33 @@ const CITE_RE = /\s*\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g;
 /** Text with inline $…$ math and "[3,4]" citations (printed as coloured superscripts, like the PDF). */
 export function richRuns(text: string, color: string, font = FONT_SERIF, size = BODY_SIZE): Array<TextRun | ReturnType<typeof latexToDocxMath>> {
   const out: Array<TextRun | ReturnType<typeof latexToDocxMath>> = [];
-  let last = 0;
-  const pushText = (t: string) => {
-    for (const c of splitTextWithMath(t)) out.push(c.kind === 'text' ? new TextRun({ text: c.value, font, size }) : c.math);
-  };
-  for (const m of text.matchAll(CITE_RE)) {
-    pushText(text.slice(last, m.index));
-    out.push(new TextRun({ text: m[1].replace(/\s+/g, ''), font, size, superScript: true, color }));
-    last = (m.index ?? 0) + m[0].length;
+  // <b>, <i>, <u>, <color=…> runs keep their emphasis; each run is then split into text, math and citations
+  for (const seg of parseMarkup(text)) {
+    const style = { bold: seg.b || undefined, italics: seg.i || undefined, underline: seg.u ? {} : undefined, ...(seg.color ? { color: seg.color.slice(1) } : {}) };
+    const body = seg.text;
+    let last = 0;
+    const pushText = (t: string) => {
+      for (const c of splitTextWithMath(t)) out.push(c.kind === 'text' ? new TextRun({ text: c.value, font, size, ...style }) : c.math);
+    };
+    for (const m of body.matchAll(CITE_RE)) {
+      pushText(body.slice(last, m.index));
+      out.push(new TextRun({ text: m[1].replace(/\s+/g, ''), font, size, superScript: true, color }));
+      last = (m.index ?? 0) + m[0].length;
+    }
+    pushText(body.slice(last));
   }
-  pushText(text.slice(last));
   return out;
 }
 
 // Word footnotes need their own part of the file: here a note is kept as a parenthesis right after the sentence it belongs to
 const bodyPara = (text: string, color: string) =>
-  new Paragraph({ style: 'BodyText', alignment: AlignmentType.JUSTIFIED, children: richRuns(inlineFootnotes(text), color) });
+  new Paragraph({
+    style: 'BodyText',
+    alignment: AlignmentType.JUSTIFIED,
+    // an item of a list: its mark hangs out to the left of the text
+    ...(listMarkOf(text) ? { indent: { left: 340, hanging: 227 } } : {}),
+    children: richRuns(inlineFootnotes(text), color),
+  });
 
 function headingPara(sec: PaperSection, theme: ResolvedTheme, color: string): Paragraph {
   const title = displayHeading(sec.title || '', theme.keepSectionNumbers);

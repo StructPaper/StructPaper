@@ -74,19 +74,27 @@ export interface PaperFigure {
 }
 
 export interface TableCell {
+  /** The text; may carry <b>, <i>, <u> and <color=#rrggbb> tags (see lib/inline-markup). */
   text: string;
   colSpan?: number;
   rowSpan?: number;
   align?: 'left' | 'center' | 'right';
   isHeader?: boolean;
+  /** Background of this cell as "#RRGGBB" (over the table's own fill). */
+  fill?: string;
 }
+
+/** How the lines of a table are drawn: the journal's (rules above and below), none, between rows, between columns, all, or the outline only. */
+export type TableBorderStyle = 'journal' | 'none' | 'horizontal' | 'vertical' | 'grid' | 'outer';
 
 export interface PaperTable {
   id: string;
   num: number;
   caption: string;
-  /** Source line shown under the table, e.g. "Nguồn: Kết quả của nhóm tác giả". */
+  /** What is printed under the table, one line per line typed ("Nguồn: Kết quả của nhóm tác giả", "Chú thích: …"). */
   source?: string;
+  /** How those lines are set (absent: as the journal prints them: a note in italic, a source upright, to the left). */
+  sourceStyle?: { bold?: boolean; italic?: boolean; align?: 'left' | 'center' | 'right' };
   headers: string[];
   rows: string[][];
   headerRows?: TableCell[][];
@@ -102,6 +110,22 @@ export interface PaperTable {
   placement?: 'auto' | 'top' | 'here' | 'bottom';
   breakAcrossPages?: 'auto' | 'always' | 'never'; // cho phép bảng ngắt qua trang
   bodyFill?: 'plain' | 'zebra' | 'shaded'; // nền thân bảng: trắng (mặc định) / sọc / tô đều
+  /** Lines of the table (default: the journal's). */
+  borderStyle?: TableBorderStyle;
+  /** Colour of the lines, "#RRGGBB" (default black). */
+  borderColor?: string;
+  /** Thickness of the lines in points (default 0.4). */
+  borderWidth?: number;
+  /** Least height in points of each body row (null/absent: as the text needs). */
+  rowHeights?: Array<number | null>;
+  /** Least height in points of the header rows. */
+  headerHeight?: number;
+  /** Relative width of each column (absent: worked out from the text). */
+  colWeights?: number[];
+  /** Colour of the header band, "#RRGGBB" (default: the theme's). */
+  headerFill?: string;
+  /** Colour of the tinted body rows, "#RRGGBB" (default: the theme's). */
+  bodyTint?: string;
 }
 
 /**

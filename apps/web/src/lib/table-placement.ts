@@ -1,3 +1,4 @@
+import { stripMarkup } from './inline-markup';
 import type { PaperTable } from '@/types/paper';
 
 /**
@@ -36,7 +37,7 @@ export interface TablePlacement {
 const CELL_PADDING = 12; // two \tabcolsep
 const AVG_CHAR = 0.47; // average character width in em (Times, with Vietnamese letters)
 
-const textOf = (c: unknown): string => String((c as { text?: string })?.text ?? c ?? '');
+const textOf = (c: unknown): string => stripMarkup(String((c as { text?: string })?.text ?? c ?? ''));
 
 interface Measured {
   /** Narrowest each column can be (its longest word), pt. */
@@ -49,7 +50,7 @@ interface Measured {
 
 export function measureTable(table: Pick<PaperTable, 'headers' | 'rows' | 'bodyRows'>, fontPt: number): Measured {
   const cw = fontPt * AVG_CHAR;
-  const headers = (table.headers && table.headers.length ? table.headers : []).map((h) => String(h ?? '').split(' / ').pop() ?? '');
+  const headers = (table.headers && table.headers.length ? table.headers : []).map((h) => stripMarkup(String(h ?? '')).split(' / ').pop() ?? '');
   const body: string[][] = table.bodyRows && table.bodyRows.length ? table.bodyRows.map((r) => r.map(textOf)) : (table.rows || []).map((r) => r.map(textOf));
   const cols = Math.max(headers.length, ...body.map((r) => r.length), 1);
   const min: number[] = [];

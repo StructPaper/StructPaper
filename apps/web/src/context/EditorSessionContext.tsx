@@ -117,6 +117,8 @@ export interface PaperHistoryBarState {
   onToggleDetailed?: () => void;
 }
 
+export type EditorViewMode = 'form' | 'overview';
+
 export interface EditorSessionContextValue {
   autoSaveEnabled: boolean;
   setAutoSaveEnabled: (enabled: boolean) => void;
@@ -129,6 +131,9 @@ export interface EditorSessionContextValue {
   /** Language the PDF preview is laid out in (its closing page is the other language). */
   pdfLanguage: PageLanguage;
   setPdfLanguage: (language: PageLanguage) => void;
+  /** The editor shows the form tabs, or the whole paper as one page (the overview). */
+  editorView: EditorViewMode;
+  setEditorView: (view: EditorViewMode) => void;
   journalBar: JournalBarState | null;
   setJournalBar: (state: JournalBarState | null) => void;
   paperProfile: PaperProfileInfo | null;
@@ -154,6 +159,8 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   togglePdfFocusMode: () => {},
   pdfLanguage: 'vi',
   setPdfLanguage: () => {},
+  editorView: 'form',
+  setEditorView: () => {},
   journalBar: null,
   setJournalBar: () => {},
   paperProfile: null,
@@ -180,6 +187,7 @@ export function EditorSessionProvider({
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
   const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(false);
   const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
+  const [editorView, setEditorViewState] = useState<EditorViewMode>('form');
   const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
   const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
   const [wordSource, setWordSource] = useState<WordSourceState | null>(null);
@@ -191,8 +199,17 @@ export function EditorSessionProvider({
     try {
       setPdfFocusModeState(localStorage.getItem('structpaper_pdf_interactive_mode') === 'true');
       setPdfLanguageState(localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi');
+      setEditorViewState(localStorage.getItem('structpaper_editor_view') === 'overview' ? 'overview' : 'form');
     } catch {
       // storage unavailable: keep the defaults
+    }
+  }, []);
+  const setEditorView = useCallback((view: EditorViewMode) => {
+    setEditorViewState(view);
+    try {
+      localStorage.setItem('structpaper_editor_view', view);
+    } catch {
+      // ignore
     }
   }, []);
   const setPdfLanguage = useCallback((language: PageLanguage) => {
@@ -257,6 +274,8 @@ export function EditorSessionProvider({
       togglePdfFocusMode,
       pdfLanguage,
       setPdfLanguage,
+      editorView,
+      setEditorView,
       journalBar,
       setJournalBar,
       paperProfile,
@@ -270,7 +289,7 @@ export function EditorSessionProvider({
       trashBar,
       setTrashBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, wordSource, history, paperHistoryBar, trashBar]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, editorView, setEditorView, journalBar, paperProfile, wordSource, history, paperHistoryBar, trashBar]
   );
 
   return (
