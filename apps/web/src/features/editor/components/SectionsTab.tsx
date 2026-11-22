@@ -29,6 +29,8 @@ import {
 } from './dispatchers/sections-dispatchers';
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
 import { lookOfText, setWholeLook } from '@/lib/inline-markup';
+import { SectionScopeContext } from './sections/section-scope';
+import { nextAppendixNumber } from '@/lib/appendix';
 
 
 const useIsomorphicLayoutEffect =
@@ -40,6 +42,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   references,
   commandBus: propCommandBus,
   focusRequest,
+  scope = 'content',
 }) => {
   const contextCommandBus = useEditorCommandBus().commandBus;
   const activeBus = propCommandBus || contextCommandBus;
@@ -57,9 +60,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   const [initialSnapshot, setInitialSnapshot] = useState<SectionsTabViewState>(() =>
     peekInitialSectionsState()
   );
-  const [filterType, setFilterType] = useState<SectionFilterType>(
+  const [filterTypeState, setFilterType] = useState<SectionFilterType>(
     initialSnapshot.filterType
   );
+  const filterType: SectionFilterType = scope === 'appendix' ? 'all' : filterTypeState;
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -434,11 +438,13 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
 
   const handleAddTable = useCallback(
     (insertAfterIndex?: number) => {
-      const tableCount = sectionCountsRef.current.table + 1;
+      const appendix = scope === 'appendix';
+      const tableCount = appendix ? nextAppendixNumber(sectionsRef.current) : sectionCountsRef.current.table + 1;
       const newTable: PaperTable = {
         id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: tableCount,
-        caption: `Bảng ${tableCount}: Tiêu đề bảng số liệu mới`,
+        caption: appendix ? `Phụ lục ${tableCount}: Tiêu đề bảng phụ lục mới` : `Bảng ${tableCount}: Tiêu đề bảng số liệu mới`,
+        ...(appendix ? { appendix: true } : {}),
         headers: [],
         rows: [],
         isFullWidth: true,
@@ -458,11 +464,13 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
 
   const handleAddFigure = useCallback(
     (insertAfterIndex?: number) => {
-      const figCount = sectionCountsRef.current.figure + 1;
+      const appendix = scope === 'appendix';
+      const figCount = appendix ? nextAppendixNumber(sectionsRef.current) : sectionCountsRef.current.figure + 1;
       const newFigure: PaperFigure = {
         id: `fig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: figCount,
-        caption: `Hình ${figCount}: Chú thích hình ảnh minh họa mới`,
+        caption: appendix ? `Phụ lục ${figCount}: Chú thích hình phụ lục mới` : `Hình ${figCount}: Chú thích hình ảnh minh họa mới`,
+        ...(appendix ? { appendix: true } : {}),
         src: '',
         isFullWidth: true,
       };
@@ -584,9 +592,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   }, [inspectors.setZoomTableInfo]);
 
   return (
+    <SectionScopeContext.Provider value={scope}>
     <div className="h-full flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden space-y-4 p-4 sm:p-5 sm:pt-3 sm:pb-1">
       {/* Top Header & Filter Toolbar */}
-      <SectionActionToolbar
+      {scope === 'content' && <SectionActionToolbar
         totalSections={sectionCounts.all}
         filterType={filterType}
         onFilterChange={handleFilterChange}
@@ -596,7 +605,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         onAddFigure={handleAddFigure}
         onAddEquation={() => handleAddEquation()}
         counts={toolbarCounts}
-      />
+      />}
 
       {/* Main Scrollable Sections & Blocks List */}
       <SectionBlockList
@@ -671,5 +680,6 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         />
       )}
     </div>
+    </SectionScopeContext.Provider>
   );
 };

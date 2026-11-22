@@ -411,6 +411,8 @@ const SectionBlockListBase: React.FC<SectionBlockListProps> = ({
         <EmptySectionsState
           onAddHeading={onAddHeading}
           onAddParagraph={onAddParagraph}
+          onAddTable={() => onAddTable()}
+          onAddFigure={() => onAddFigure()}
         />
       )}
     </div>

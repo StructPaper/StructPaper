@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   Sigma,
 } from 'lucide-react';
+import { useSectionScope } from './section-scope';
 
 export interface SectionInsertDividerProps {
   idx: number;
@@ -27,6 +28,7 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
   onAddFigure,
   onAddEquation,
 }) => {
+  const appendixOnly = useSectionScope() === 'appendix';
   return (
     <div data-edit-only className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none group-hover:pointer-events-auto">
       <div className="overflow-hidden">
@@ -35,6 +37,8 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
             Thêm bên dưới:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
+            {!appendixOnly && (
+              <>
             <button
               type="button"
               onClick={() => onAddHeading('h1', idx)}
@@ -53,6 +57,8 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
               <AlignLeft className="w-2.5 h-2.5 text-zinc-500" />
               <span>+ Đoạn văn</span>
             </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => onAddTable(idx)}
@@ -71,7 +77,7 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
               <ImageIcon className="w-2.5 h-2.5 text-amber-500" />
               <span>+ Hình</span>
             </button>
-            {onAddEquation && (
+            {onAddEquation && !appendixOnly && (
               <button
                 type="button"
                 onClick={() => onAddEquation(idx)}

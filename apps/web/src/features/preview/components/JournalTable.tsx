@@ -41,7 +41,7 @@ export const JournalTable: React.FC<JournalTableProps> = ({ table, isFullWidth =
           className="text-[8.5pt] text-gray-900"
           style={{ fontFamily: "'Source Sans 3', Calibri, Arial, sans-serif" }}
         >
-          <strong className="font-bold" style={{ color: theme.titleColor }}>Bảng {table.num}: </strong>
+          <strong className="font-bold" style={{ color: theme.titleColor }}>{table.appendix ? `Phụ lục ${table.num}` : `Bảng ${table.num}`}: </strong>
           <span>{stripCaptionLabel(table.caption)}</span>
         </p>
       </div>

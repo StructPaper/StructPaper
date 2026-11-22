@@ -23,6 +23,13 @@ export function figureCaptionNumber(rawText: string): number | undefined {
   const bare = text.match(BARE_CAPTION_RE);
   return bare && bare[2] !== bare[2].toLowerCase() ? Number(bare[1]) : undefined;
 }
+/** The number of an appendix caption ("Phụ lục 4. …", "Appendix 2: …"), or undefined. Appendix pictures are keyed 1000 + number. */
+export function appendixCaptionNumber(rawText: string): number | undefined {
+  const text = rawText.replace(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
+  const m = text.match(/^\s*(?:phụ\s*lục|appendix)\s*(\d+)\s*[:.\-–]/i);
+  return m ? Number(m[1]) : undefined;
+}
+export const APPENDIX_KEY = 1000;
 const MAX_DISTANCE = 8000; // characters of XML between a caption paragraph and its picture
 
 export function parseImageRelationships(relsXml: string): Map<string, string> {
@@ -58,14 +65,17 @@ export function pairFiguresWithImages(docXml: string, relsXml: string): FigurePa
     if (name) images.push({ pos: m.index ?? 0, name });
   }
 
-  const captions: { pos: number; num: number }[] = [];
+  const captions: { pos: number; end: number; num: number }[] = [];
   for (const p of docXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/gi)) {
     const num = figureCaptionNumber(p[0]);
-    if (num) captions.push({ pos: p.index ?? 0, num });
+    if (num) captions.push({ pos: p.index ?? 0, end: (p.index ?? 0) + p[0].length, num });
+    const app = appendixCaptionNumber(p[0]);
+    // (an appendix caption with a table right after it is a table's, not a picture's)
+    if (app && !/^\s*<w:tbl[\s>]/.test(docXml.slice((p.index ?? 0) + p[0].length, (p.index ?? 0) + p[0].length + 40))) captions.push({ pos: p.index ?? 0, end: (p.index ?? 0) + p[0].length, num: APPENDIX_KEY + app });
   }
 
   const pairs: { d: number; c: number; i: number }[] = [];
-  captions.forEach((c, ci) => images.forEach((img, ii) => pairs.push({ d: Math.abs(img.pos - c.pos), c: ci, i: ii })));
+  captions.forEach((c, ci) => images.forEach((img, ii) => pairs.push({ d: img.pos >= c.pos && img.pos <= c.end ? 0 : Math.abs(img.pos - c.pos), c: ci, i: ii })));
   pairs.sort((a, b) => a.d - b.d);
 
   const usedCaption = new Set<number>();
@@ -99,6 +109,8 @@ export function pairShapeDrawings(docXml: string, taken: Set<number>): Map<numbe
   for (const p of docXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/gi)) {
     const num = figureCaptionNumber(p[0]);
     if (num && !taken.has(num)) captions.push({ pos: p.index ?? 0, num });
+    const app = appendixCaptionNumber(p[0]);
+    if (app && !taken.has(APPENDIX_KEY + app)) captions.push({ pos: p.index ?? 0, num: APPENDIX_KEY + app });
   }
 
   const pairs: { d: number; c: number; i: number }[] = [];

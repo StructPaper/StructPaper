@@ -7,6 +7,7 @@ import { Field } from './settings-ui';
 type Placement = 'auto' | 'top' | 'here' | 'bottom';
 type BreakMode = 'auto' | 'always' | 'never';
 type BodyFill = 'plain' | 'zebra' | 'shaded';
+type SideColumn = 'auto' | 'text' | 'full';
 
 interface Props {
   placement: Placement;
@@ -15,6 +16,8 @@ interface Props {
   onBreakAcrossPages: (b: BreakMode) => void;
   bodyFill: BodyFill;
   onBodyFill: (f: BodyFill) => void;
+  sideColumn?: SideColumn;
+  onSideColumn?: (s: SideColumn) => void;
 }
 
 const PLACEMENTS = [
@@ -29,6 +32,12 @@ const BREAKS = [
   { value: 'never' as const, label: 'Giữ nguyên', title: 'Giữ cả bảng trong một khối' },
 ];
 
+const SIDES = [
+  { value: 'auto' as const, label: 'Tự động', title: 'Bảng lớn chiếm cả trang như bản in chuẩn; bảng nhỏ nằm trong cột chữ' },
+  { value: 'text' as const, label: 'Trong cột chữ', title: 'Luôn giữ bảng trong phần chữ, chừa cột mã QR và thông tin liên hệ bên trái' },
+  { value: 'full' as const, label: 'Cả trang', title: 'Bảng chiếm toàn bộ bề ngang trang, kể cả cột mã QR và thông tin liên hệ' },
+];
+
 const FILLS = [
   { value: 'plain' as const, label: 'Trắng', title: 'Nền trắng' },
   { value: 'zebra' as const, label: 'Sọc xen kẽ', title: 'Tô nhạt các hàng xen kẽ' },
@@ -36,7 +45,7 @@ const FILLS = [
 ];
 
 /** Body colour, float placement and page-break behaviour of a table: three one-line choices, one under the other. */
-export const TablePlacementAndBreak: React.FC<Props> = ({ placement, onPlacement, breakAcrossPages, onBreakAcrossPages, bodyFill, onBodyFill }) => (
+export const TablePlacementAndBreak: React.FC<Props> = ({ placement, onPlacement, breakAcrossPages, onBreakAcrossPages, bodyFill, onBodyFill, sideColumn, onSideColumn }) => (
   <>
     <Field label="Nền thân bảng" title="Màu nền các hàng dữ liệu" testId="table-fill-option">
       <SegmentedOptions ariaLabel="Nền thân bảng" value={bodyFill} onChange={onBodyFill} options={FILLS} />
@@ -51,5 +60,14 @@ export const TablePlacementAndBreak: React.FC<Props> = ({ placement, onPlacement
     >
       <SegmentedOptions ariaLabel="Ngắt qua trang" value={breakAcrossPages} onChange={onBreakAcrossPages} options={BREAKS} />
     </Field>
+    {onSideColumn && (
+      <Field
+        label="Bảng lớn chiếm cột bên"
+        hint="Bảng lớn nằm riêng một trang có thể chiếm cả bề ngang trang, kể cả chỗ cột mã QR và liên hệ (như phụ lục trong mẫu chuẩn)."
+        testId="table-side-option"
+      >
+        <SegmentedOptions ariaLabel="Bảng lớn chiếm cột bên" value={sideColumn ?? 'auto'} onChange={onSideColumn} options={SIDES} />
+      </Field>
+    )}
   </>
 );

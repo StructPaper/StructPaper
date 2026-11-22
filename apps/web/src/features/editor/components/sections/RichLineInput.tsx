@@ -134,10 +134,8 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
         setFocused(false);
       }}
     >
-      {!value && placeholder && <span className="absolute left-0 top-0 pointer-events-none text-zinc-400 font-normal select-none truncate max-w-full">{placeholder}</span>}
-      <EditorContent editor={editor} />
       {tools && (focused || dialog) && (
-        <div data-field-tools className="mt-2 pt-1.5 border-t border-zinc-200/70 flex flex-wrap items-center gap-0.5 font-normal not-italic text-xs">
+        <div data-field-tools className="mb-2 pb-1.5 border-b border-zinc-200/70 flex flex-wrap items-center gap-0.5 font-normal not-italic text-xs">
           <button type="button" tabIndex={-1} title="Đậm (Ctrl+B)" aria-label="Đậm" onMouseDown={noDown} onClick={() => editor?.chain().focus().toggleBold().run()} className={tool}>
             <Bold className="w-3.5 h-3.5" />
           </button>
@@ -172,6 +170,11 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
           </button>
         </div>
       )}
+      {/* the placeholder sits inside the text area, so it keeps the same padding as the text */}
+      <div className="relative">
+      {!value && placeholder && <span className="absolute left-0 top-0 pointer-events-none text-zinc-400 font-normal select-none truncate max-w-full">{placeholder}</span>}
+        <EditorContent editor={editor} />
+      </div>
       <ReferencePickerPopover isOpen={dialog === 'cite'} search={refSearch} onSearchChange={setRefSearch} references={references} onSelectReference={(id) => put({ type: 'cite', attrs: { id: `ref-${id}`, targetId: String(id), label: `[${id}]` } })} onClose={closeDialog} />
       <MathInputPopover isOpen={dialog === 'math'} latex={latex} onLatexChange={setLatex} onSubmit={() => {
         if (!latex.trim()) return;

@@ -31,6 +31,8 @@ export interface PaperMetadata {
   titleEn?: string;
   /** Language the first page is written in ('vi' | 'en'): found when the Word file is imported, changed with the title-bar language picker. */
   primaryLanguage?: 'vi' | 'en';
+  /** How the appendices are set (see lib/appendix): where they go, turned or not, numbered 1,2,3 or A,B,C. */
+  appendix?: { placement?: 'afterReferences' | 'beforeReferences' | 'inContent' | 'original'; landscape?: boolean; numbering?: 'number' | 'letter' };
   /** Code of the article type in the paper's journal ("research"): the author's choice; the server applies that type's rules. */
   articleTypeCode?: string;
   articleType: string; // 'Bài tổng quan' | 'Bài báo nghiên cứu' | 'Báo cáo ca lâm sàng' | 'Research Article' | 'Review Article'
@@ -64,6 +66,10 @@ export interface PaperFigure {
   caption: string;
   src: string;
   source?: string;
+  /** An appendix figure ("Phụ lục 4"): numbered on its own, apart from the figures of the text. */
+  appendix?: boolean;
+  /** 'full': the figure takes a page of its own across the whole width, over the side column (QR code, contact). */
+  sideColumn?: 'auto' | 'text' | 'full';
   isFullWidth?: boolean;
   columnSpan?: '1-column' | '2-column';
   scalePercent?: number; // 50 to 100
@@ -109,6 +115,10 @@ export interface PaperTable {
   hasZebraStripes?: boolean; // Sọc màu hàng xen kẽ
   placement?: 'auto' | 'top' | 'here' | 'bottom';
   breakAcrossPages?: 'auto' | 'always' | 'never'; // cho phép bảng ngắt qua trang
+  /** A table that takes pages of its own: set within the text ('text'), or across the whole page, over the side column ('full'). 'auto' (default): as the printed journal does, a large table takes the whole page. */
+  sideColumn?: 'auto' | 'text' | 'full';
+  /** An appendix table ("Phụ lục 2"): numbered on its own, apart from the tables of the text, and set at the end of the paper. */
+  appendix?: boolean;
   bodyFill?: 'plain' | 'zebra' | 'shaded'; // nền thân bảng: trắng (mặc định) / sọc / tô đều
   /** Lines of the table (default: the journal's). */
   borderStyle?: TableBorderStyle;
@@ -423,6 +433,8 @@ export interface PaperSection {
   figure?: PaperFigure;
   table?: PaperTable;
   pageBreakAfter?: boolean;
+  /** Where an appendix stood in the Word file: after this block, or after the references. */
+  appendixOrigin?: { after?: string; afterReferences: boolean };
   pageLayout?: SectionPageLayout; // new page here with these columns/orientation, until the next marker
 }
 

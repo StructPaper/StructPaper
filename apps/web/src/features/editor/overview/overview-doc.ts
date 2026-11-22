@@ -8,6 +8,7 @@ import { displayHeading } from '@/lib/headings';
 import { tablePlacement } from './overview-layout';
 import { markerOf } from '@/lib/cross-refs';
 import { stripCaptionLabel } from '@/lib/docx-table-extras';
+import { arrangeForOutput } from '@/lib/appendix';
 
 /**
  * The paper as one TipTap document (the "overview" page) and back.
@@ -364,6 +365,7 @@ function sectionNodes(sec: PaperSection, keepNumbers: boolean, isOneColumn: bool
 
 export function paperToDoc(paper: CompletePaper, { lang, keepNumbers = false, isOneColumn = false }: OverviewOptions): JSONContent {
   const m = paper.metadata;
+  const arranged = arrangeForOutput(paper, lang);
   const title = lang === 'en' ? m.titleEn || m.title : m.title;
   const abstract = lang === 'en' ? m.abstractEn || '' : m.abstract || '';
   const keywords = (lang === 'en' ? m.keywordsEn : m.keywords) ?? [];
@@ -373,12 +375,14 @@ export function paperToDoc(paper: CompletePaper, { lang, keepNumbers = false, is
     { type: 'frontAbstract', attrs: { lang }, content: textToContent(abstract) },
     { type: 'frontKeywords', attrs: { lang }, content: keywords.length ? [{ type: 'text', text: keywords.join(', ') }] : [] },
     // (the "how to cite" line is printed in the foot of the first sheet, where the journal has it)
-    ...paper.sections.flatMap((s) => sectionNodes(s, keepNumbers, isOneColumn)),
+    // the order the paper is printed in: the appendices where the paper's setting puts them (see lib/appendix)
+    ...arranged.body.flatMap((s) => sectionNodes(s, keepNumbers, isOneColumn)),
   ];
   if (paper.references.length > 0) {
     content.push({ type: 'refsTitle' });
     for (const r of paper.references) content.push({ type: 'refItem', attrs: { rid: r.id }, content: textToContent(r.raw) });
   }
+  content.push(...arranged.afterReferences.flatMap((s) => sectionNodes(s, keepNumbers, isOneColumn)));
   return { type: 'doc', content };
 }
 
@@ -438,6 +442,8 @@ export function docToPaper(doc: JSONContent, prev: CompletePaper, { lang, keepNu
         break;
       }
       case 'heading': {
+        // the heading "Phụ lục" the paper puts over its appendices is made for the page, not a block of the paper
+        if (sid === 'appendix-heading') break;
         const at = i;
         const old = sid ? prevSections.get(sid) : undefined;
         const level = Math.min(3, Math.max(1, Number(node.attrs?.level) || 1));

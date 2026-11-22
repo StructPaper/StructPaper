@@ -96,7 +96,7 @@ function figureBlock(sec: PaperSection, image: DocxImage | undefined, boxW: numb
   const caption = new Paragraph({
     style: 'FigureCaption',
     children: [
-      new TextRun({ text: `${lang === 'en' ? 'Figure' : 'Hình'} ${fig.num}: `, font: FONT_SANS, size: 17, bold: true, color }),
+      new TextRun({ text: `${fig.appendix ? (lang === 'en' ? 'Appendix' : 'Phụ lục') : lang === 'en' ? 'Figure' : 'Hình'} ${fig.num}: `, font: FONT_SANS, size: 17, bold: true, color }),
       new TextRun({ text: stripCaptionLabel(fig.caption || ''), font: FONT_SANS, size: 17 }),
       ...(fig.source ? [new TextRun({ text: ` ${fig.source}`, font: FONT_SANS, size: 17 })] : []),
     ],
@@ -152,12 +152,15 @@ export function buildBody(
     oneColumn?: boolean;
     /** Document default: the whole body on landscape pages (layoutSettings.orientation). */
     landscape?: boolean;
+    /** The appendices that are printed after the references (arrangeForOutput), and whether their pages are turned. */
+    appendices?: PaperSection[];
+    appendixLandscape?: boolean;
   }
 ): Segment[] {
   const layout = new SegmentBuilder(!!ctx.oneColumn, !!ctx.landscape);
   const push = (full: boolean, ...blocks: Block[]) => layout.push(full, ...blocks);
   const { theme, color } = ctx;
-  for (const sec of sections) {
+  const emit = (sec: PaperSection) => {
     layout.enter(sec.pageLayout);
     if ((sec.type === 'h1' || sec.type === 'h2' || sec.type === 'h3') && sec.title) {
       push(false, headingPara(sec, theme, color));
@@ -178,7 +181,8 @@ export function buildBody(
       if (t.isRotated && !layout.isLandscape) layout.rotated((w) => buildDocxTable(t, theme, w));
       else push(full, ...buildDocxTable(t, theme, layout.width(full)));
     }
-  }
+  };
+  sections.forEach(emit);
   if (references.length > 0) {
     push(false, new Paragraph({ style: 'SectionReferences', keepNext: true, children: [new TextRun({ text: ctx.refTitle, font: FONT_SANS, size: 24, bold: true, color })] }));
     for (const ref of references) {
@@ -193,6 +197,11 @@ export function buildBody(
         })
       );
     }
+  }
+  // the appendices after the references (see lib/appendix), on pages turned on their side when the paper asks
+  if (ctx.appendices && ctx.appendices.length > 0) {
+    layout.enter({ columns: '1-column', orientation: ctx.appendixLandscape === false ? 'portrait' : 'landscape' });
+    ctx.appendices.forEach((sec) => emit(sec.type === 'table' && sec.table ? { ...sec, table: { ...sec.table, isRotated: false } } : sec));
   }
   return layout.done();
 }

@@ -74,9 +74,10 @@ describe('real file: EES ID850 imported from Word', () => {
     expect(t1.headerRows?.[0].map((c) => [c.text, c.colSpan ?? 1])).toEqual([['', 2], ['Quan trắc', 3]]);
     // LaTeX keeps the merged cells and the row-merged 'Dự báo' (no shifted second row)
     const tex = tableToLatex(t1, { isOneColumn: false, theme: resolveTheme(undefined) });
-    expect(tex).toContain(String.raw`\multicolumn{3}{c}{\textbf{Quan trắc}}`);
-    expect(tex).toContain(' & Không & C & D & C \\\\');
-    expect(tex).toContain(String.raw`\multirow{-2}{*}{Dự báo}`);
+    expect(tex).toMatch(/\\multicolumn\{3\}\{>\{\\centering\\arraybackslash\}p\{[^}]*\}\}\{\\textbf\{Quan trắc\}\}/);
+    // (the header cells in single columns are centred, as the header band is)
+    expect(tex.replace(/\\centering\\arraybackslash /g, '')).toContain(' & Không & C & D & C \\\\');
+    expect(tex).toMatch(/\\multirow\{-2\}\{[^}]*\}\{\\centering\\arraybackslash Dự báo\}/);
   });
 
   it('lists the abbreviation table under its heading', () => {

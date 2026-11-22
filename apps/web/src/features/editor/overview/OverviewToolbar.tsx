@@ -315,6 +315,8 @@ const TableStylePanel: React.FC<{ table: PaperTable; sid: string; actions: Overv
         onBreakAcrossPages={(breakAcrossPages) => actions.updateTable(sid, { breakAcrossPages })}
         bodyFill={resolveBodyFill(table)}
         onBodyFill={(bodyFill) => actions.updateTable(sid, { bodyFill, hasZebraStripes: bodyFill === 'zebra' })}
+        sideColumn={table.sideColumn || 'auto'}
+        onSideColumn={(sideColumn) => actions.updateTable(sid, { sideColumn })}
       />
       {/* the way back from columns or rows dragged to sizes nobody wanted */}
       <button

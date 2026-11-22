@@ -30,6 +30,8 @@ export function crossRefTargets(paper: Pick<CompletePaper, 'sections'>): RefTarg
   let tables = 0;
   let figures = 0;
   for (const s of paper.sections) {
+    if (s.type === 'table' && s.table?.appendix) continue;
+    if (s.type === 'figure' && s.figure?.appendix) continue;
     if (s.type === 'table' && s.table) out.push({ kind: 'table', id: s.table.id, order: ++tables, caption: s.table.caption });
     else if (s.type === 'figure' && s.figure) out.push({ kind: 'figure', id: s.figure.id, order: ++figures, caption: s.figure.caption });
   }

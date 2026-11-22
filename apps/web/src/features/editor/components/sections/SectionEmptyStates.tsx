@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { FileText } from 'lucide-react';
+import { useSectionScope } from './section-scope';
 import { EndOfListIndicator as BaseEndOfListIndicator } from '../EndOfListIndicator';
 
 export const EndOfListIndicator = React.memo(BaseEndOfListIndicator);
@@ -38,12 +39,30 @@ FilteredSectionsEmptyState.displayName = 'FilteredSectionsEmptyState';
 export interface EmptySectionsStateProps {
   onAddHeading: (level?: 'h1' | 'h2' | 'h3') => void;
   onAddParagraph: () => void;
+  onAddTable?: () => void;
+  onAddFigure?: () => void;
 }
 
 const EmptySectionsStateBase: React.FC<EmptySectionsStateProps> = ({
   onAddHeading,
   onAddParagraph,
+  onAddTable,
+  onAddFigure,
 }) => {
+  const appendixOnly = useSectionScope() === 'appendix';
+  if (appendixOnly) {
+    return (
+      <div className="p-8 text-center rounded-3xl bg-gray-200/50 space-y-3" data-testid="appendix-empty">
+        <FileText className="w-8 h-8 text-zinc-400 mx-auto" />
+        <p className="text-sm font-semibold text-zinc-600">Bài chưa có phụ lục nào.</p>
+        <p className="text-xs text-zinc-500">Thêm bảng hoặc hình vào phụ lục, hoặc chuyển một bảng, hình thành phụ lục trong cài đặt của nó.</p>
+        <div className="flex items-center justify-center gap-2">
+          <button data-edit-only type="button" onClick={() => onAddTable?.()} className="btn-pill-lime text-xs">+ Bảng phụ lục</button>
+          <button data-edit-only type="button" onClick={() => onAddFigure?.()} className="btn-pill-subtle text-xs">+ Hình phụ lục</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="p-8 text-center rounded-3xl bg-gray-200/50 space-y-3">
       <FileText className="w-8 h-8 text-zinc-400 mx-auto" />

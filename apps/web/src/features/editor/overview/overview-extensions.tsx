@@ -445,7 +445,7 @@ const FigureView: React.FC<NodeViewProps> = ({ node }) => {
   const spans = fig ? figureSpansBoth(fig, isOneColumn) : false;
   const width = Math.min(100, fig?.scalePercent ?? 100);
   return (
-    <NodeViewWrapper data-sid={node.attrs.sid} className={`ov-figure ${spans ? 'ov-span-all' : ''}`} data-align={fig?.alignment ?? 'center'} style={{ ['--ov-fig-label' as string]: lang === 'en' ? "'Figure '" : "'Hình '" }}>
+    <NodeViewWrapper data-sid={node.attrs.sid} data-appendix={fig?.appendix ? 'true' : undefined} className={`ov-figure ${spans ? 'ov-span-all' : ''}`} data-align={fig?.alignment ?? 'center'} style={{ ['--ov-app-label' as string]: lang === 'en' ? "'Appendix '" : "'Phụ lục '", ['--ov-fig-label' as string]: lang === 'en' ? "'Figure '" : "'Hình '" }}>
       <div ref={frameRef} className="ov-figure-frame" contentEditable={false}>
         {fig?.src || pendingSrc ? <img src={(fig?.src ?? pendingSrc) as string} alt="" style={{ width: `${width}%` }} draggable={false} /> : <div className="ov-figure-missing">Chưa có ảnh</div>}
         {fig && typeof node.attrs.sid === 'string' && <FigureHandle frame={frameRef} sid={node.attrs.sid} />}
@@ -483,13 +483,14 @@ const TableBlockView: React.FC<NodeViewProps> = ({ node }) => {
     <NodeViewWrapper
       data-sid={node.attrs.sid}
       className={`ov-table-block ${place.spansBoth ? 'ov-span-all' : ''}`}
+      data-appendix={table?.appendix ? 'true' : undefined}
       data-border={look?.border ?? 'journal'}
       data-fill={look?.fill ?? 'plain'}
       // how the lines under the table are set, when the author chose (otherwise the lines decide: a note is italic, a source upright)
       data-src-bold={table?.sourceStyle?.bold ? 'true' : undefined}
       data-src-italic={table?.sourceStyle?.italic === undefined ? undefined : String(table.sourceStyle.italic)}
       data-src-align={table?.sourceStyle?.align && table.sourceStyle.align !== 'left' ? table.sourceStyle.align : undefined}
-      style={{ ...(look?.vars ?? {}), ['--ov-tab-label' as string]: lang === 'en' ? "'Table '" : "'Bảng '", ['--ov-tab-cont' as string]: lang === 'en' ? "' continued'" : "' (tiếp theo)'" }}
+      style={{ ...(look?.vars ?? {}), ['--ov-app-label' as string]: lang === 'en' ? "'Appendix '" : "'Phụ lục '", ['--ov-tab-label' as string]: lang === 'en' ? "'Table '" : "'Bảng '", ['--ov-tab-cont' as string]: lang === 'en' ? "' continued'" : "' (tiếp theo)'" }}
     >
       {place.rotated && (
         <span className="ov-table-flag" contentEditable={false}>

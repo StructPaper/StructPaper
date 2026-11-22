@@ -1,3 +1,4 @@
+import { arrangeForOutput, appendixSettingsOf } from './appendix';
 import { Document, Packer, Paragraph, SectionType, type ISectionOptions } from 'docx';
 import type { CompletePaper, PaperMetadata } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
@@ -142,7 +143,10 @@ export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOp
   const page = pageFor(false);
   const ls = resolvePaperLayout(paper);
 
-  const segments = buildBody(paper.sections || [], paper.references || [], {
+  const arranged = arrangeForOutput(paper, 'vi');
+  const segments = buildBody(arranged.body, paper.references || [], {
+    appendices: arranged.afterReferences,
+    appendixLandscape: appendixSettingsOf(paper).landscape,
     theme,
     color,
     figures: assets.figures,

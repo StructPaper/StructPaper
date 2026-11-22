@@ -1,6 +1,8 @@
 'use client';
 
 import { repairDates } from '@/lib/editorial-dates';
+import { appendixSettingsOf, mergeScopedSections, scopedSections, type AppendixSettings, type SectionScope } from '@/lib/appendix';
+import { AppendixTab } from './AppendixTab';
 import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -470,6 +472,18 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(sections) }));
     setIsDirty(true);
   }, []);
+  // the text list and the appendix list each show part of the blocks: a change in one is merged into the whole
+  const appendixSettings = useMemo(() => appendixSettingsOf(formData), [formData.metadata?.appendix]);
+  const scopedChange = useCallback((scope: SectionScope) => (next: PaperSection[]) => {
+    setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(mergeScopedSections(prev.sections, next, scope, appendixSettingsOf(prev).placement)) }));
+    setIsDirty(true);
+  }, []);
+  const contentSections = useMemo(() => scopedSections(formData.sections, 'content', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
+  const appendixSections = useMemo(() => scopedSections(formData.sections, 'appendix', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
+  const handleAppendixSettings = useCallback((patch: Partial<AppendixSettings>) => {
+    setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, appendix: { ...(prev.metadata.appendix ?? {}), ...patch } } }));
+    setIsDirty(true);
+  }, []);
 
   const handleApplyLayoutSettings = (newSettings: LayoutSettings, newJournalId?: string) => {
     const journalIdToUse = newJournalId || formData.metadata.journalId || currentJournal;
@@ -530,7 +544,8 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
           activeTab={activeSubTab}
           onTabChange={setActiveSubTab}
           authorsCount={formData.metadata.authors.length}
-          sectionsCount={formData.sections.filter((s) => s.type !== 'citation').length}
+          sectionsCount={contentSections.filter((s) => s.type !== 'citation').length}
+          appendixCount={appendixSections.length}
           referencesCount={formData.references.length}
           preflight={preflight}
         />
@@ -550,10 +565,21 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         {activeSubTab === 'abstract' && <AbstractTab metadata={formData.metadata} onChange={(m) => { setFormData((p) => ({ ...p, metadata: m })); setIsDirty(true); }} />}
         {activeSubTab === 'sections' && (
           <SectionsTab
-            sections={formData.sections}
-            onChange={handleSectionsChange}
+            sections={contentSections}
+            onChange={scopedChange('content')}
             metadata={formData.metadata}
             references={formData.references} focusRequest={historyFocus ?? focusRequest}
+          />
+        )}
+        {activeSubTab === 'appendix' && (
+          <AppendixTab
+            sections={appendixSections}
+            onChange={scopedChange('appendix')}
+            metadata={formData.metadata}
+            references={formData.references}
+            settings={appendixSettings}
+            onSettings={handleAppendixSettings}
+            focusRequest={historyFocus ?? focusRequest}
           />
         )}
         {activeSubTab === 'refs' && <ReferencesTab references={formData.references} onChange={(r) => { setFormData((p) => ({ ...p, references: r })); setIsDirty(true); }} />}

@@ -42,7 +42,7 @@ export function buildDocxTable(table: PaperTable, theme: ResolvedTheme, widthTwi
       style: 'TableCaption',
       keepNext: true,
       children: [
-        new TextRun({ text: `Bảng ${table.num}: `, font: FONT_SANS, size: 17, bold: true, color: COLOR_TITLE }),
+        new TextRun({ text: `${table.appendix ? 'Phụ lục' : 'Bảng'} ${table.num}: `, font: FONT_SANS, size: 17, bold: true, color: COLOR_TITLE }),
         new TextRun({ text: stripCaptionLabel(table.caption), font: FONT_SANS, size: 17, bold: true }),
       ],
       spacing: { before: 200, after: 100 },

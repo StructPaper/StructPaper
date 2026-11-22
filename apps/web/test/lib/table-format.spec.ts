@@ -68,7 +68,8 @@ describe('table lines, fills and heights', () => {
   it('draws a full grid with vertical lines, and merged cells carry them', () => {
     const out = tex(base({ borderStyle: 'grid', headerRows: [[{ text: 'A', colSpan: 2 }, { text: 'B' }], [{ text: 'a' }, { text: 'b' }, { text: 'c' }]] }));
     expect(out).toMatch(/\\begin\{tabular\}\{\|>\{[^}]*\}p\{[^}]*\}\|>/);
-    expect(out).toContain('\\multicolumn{2}{|c|}');
+    // (a merged cell is a centred paragraph column as wide as its columns, with the lines around it)
+    expect(out).toMatch(/\\multicolumn\{2\}\{\|>\{\\centering\\arraybackslash\}p\{[^}]*\}\|\}/);
   });
   it('draws no lines at all, or only the outline', () => {
     expect(tex(base({ borderStyle: 'none' }))).not.toContain('\\hline \\rowcolor');
@@ -220,5 +221,57 @@ describe('alignment of a cell, as the Word file has it', () => {
     expect(out).toContain('\\centering\\arraybackslash M1');
     expect(out).toContain('\\raggedleft\\arraybackslash 7,2');
     expect(out).toMatch(/ & 30 \\\\/);
+  });
+});
+
+describe('a large table on pages of its own', () => {
+  const big = (extra: Partial<PaperTable> = {}) => base({ columnSpan: '2-column', isFullWidth: true, breakAcrossPages: 'always', ...extra });
+  it('takes the whole width of the page, over the side column, by default, and the text area comes back after it', () => {
+    const out = tex(big());
+    expect(out).toContain('\\spwidegeometry');
+    expect(out).toContain('\\sptextgeometry');
+    expect(out.indexOf('\\spwidegeometry')).toBeLessThan(out.indexOf('\\begin{longtable}'));
+    expect(out.indexOf('\\sptextgeometry')).toBeGreaterThan(out.indexOf('\\end{longtable}'));
+  });
+  it('stays in the text when the author says so, and is wide when the author asks for it', () => {
+    expect(tex(big({ sideColumn: 'text' }))).not.toContain('\\spwidegeometry');
+    expect(tex(big({ sideColumn: 'full' }))).toContain('\\spwidegeometry');
+  });
+  it('a table with few rows but a lot of text is cut across pages instead of running off the page', () => {
+    const long = 'Báo cáo theo hàng đợi kết quả thay đổi FEV1 so với ban đầu dao động từ 1,5% đến 6,0%. '.repeat(30);
+    const cells = (t: string) => ({ text: t });
+    const t = base({
+      columnSpan: '2-column',
+      isFullWidth: true,
+      headers: ['A', 'B', 'C'],
+      bodyRows: [[cells(long), cells(long), cells('x')], [cells(long), cells('y'), cells(long)]],
+    } as Partial<PaperTable>);
+    const out = tex(t);
+    expect(out).toContain('\\begin{longtable}');
+    expect(out).not.toContain('\\begin{table*}');
+  });
+  it('a short table with little text stays a float', () => {
+    expect(tex(base({ columnSpan: '2-column', isFullWidth: true }))).toContain('\\begin{table*}');
+  });
+  it('merged header cells are boxes as wide as their columns, so long titles wrap instead of running into each other', () => {
+    const t = base({
+      headers: ['Tác giả', 'Quốc gia', 'Kết quả'],
+      headerRows: [
+        [{ text: 'Tác giả (năm) thiết kế nghiên cứu', rowSpan: 2 }, { text: 'Kết quả', colSpan: 2 }],
+        [{ text: 'Quốc gia' }, { text: 'FEV1' }],
+      ],
+      bodyRows: [[{ text: 'a' }, { text: 'b' }, { text: 'c' }]],
+    } as Partial<PaperTable>);
+    const out = tex(t);
+    expect(out).toMatch(/\\multirow\{-2\}\{\\dimexpr[^}]*\\relax\}\{\\centering\\arraybackslash \\textbf\{Tác giả/);
+    expect(out).toMatch(/\\multicolumn\{2\}\{>\{\\centering\\arraybackslash\}p\{\\dimexpr/);
+  });
+  it('a table turned on its own page keeps clear of the running head', () => {
+    const out = tex(base({ isRotated: true, columnSpan: '2-column', breakAcrossPages: 'always' }));
+    expect(out).toContain('\\begin{landscape}');
+    expect(out).toContain('\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}');
+  });
+  it('a table in one column is not touched', () => {
+    expect(tex(base({ breakAcrossPages: 'always' }))).not.toContain('\\spwidegeometry');
   });
 });

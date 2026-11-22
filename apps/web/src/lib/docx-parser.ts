@@ -10,7 +10,7 @@ import { findArticleTypePreset } from './article-types';
 import { emphasiseText, enrichScriptRuns } from './docx-richtext';
 import { parseMarkup, serializeMarkup, stripMarkup } from './inline-markup';
 import { loadFigureImages } from './docx-figure-images';
-import { figureCaptionNumber } from './docx-figures';
+import { figureCaptionNumber, APPENDIX_KEY } from './docx-figures';
 import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } from './docx-figure-tables';
 import { extractListHeadings, extractListItems, isNoneMark } from './docx-headings';
 import { articleIdFromFileName } from './publication';
@@ -1165,7 +1165,8 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
         /^(abstract|tóm tắt|keywords|từ khóa|từ khoá|danh mục từ viết tắt|phụ lục|appendix|lời cảm ơn|acknowledgements)$/i.test(
           line
         ) ||
-        /^(abstract|keywords|từ khóa):/i.test(line)
+        /^(abstract|keywords|từ khóa):/i.test(line) ||
+        /^(?:phụ\s*lục|appendix)\s*\d+\s*[:.\-–]/i.test(line)
       ) {
         isReadingReferences = false;
         i--;
@@ -1330,6 +1331,11 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
       !/\b(p\s*[<=]|β\s*=|t\s*=|VIF|H\d+[:)])/i.test(line) &&
       /^(?:b\s*ảng|bảng|table|b\.)\s*(\d*)\s*[:.-]/i.test(line);
 
+    // where an appendix stands in the Word file: after the references, or after the last block of the text before it
+    const appendixOrigin = () => ({
+      after: [...sections].reverse().find((s) => !(s.table?.appendix || s.figure?.appendix))?.id,
+      afterReferences: references.length > 0,
+    });
     const isAppendixCaption =
       line.length <= 250 &&
       /^(?:p\s*hụ\s*lục|phụ\s*lục|appendix)\s*(\d*)\s*[:.-]/i.test(line);
@@ -1379,7 +1385,8 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
       let targetApp = appNum
         ? openXmlTables.find((t) => !t.placed && t.type === 'appendix' && t.num === appNum)
         : null;
-      if (!targetApp) {
+      // (a numbered appendix with no table of its number is not given another one's table: it may be a picture)
+      if (!targetApp && !appNum) {
         targetApp = openXmlTables.find((t) => !t.placed && t.type === 'appendix');
       }
 
@@ -1389,6 +1396,7 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
           id: `s_${sections.length + 1}`,
           type: 'table',
           content: targetApp.caption,
+          appendixOrigin: appendixOrigin(),
           table: {
             id: targetApp.id,
             num: targetApp.num,
@@ -1398,6 +1406,26 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
             headerRows: targetApp.headerRows,
             bodyRows: targetApp.bodyRows,
             isFullWidth: true,
+            appendix: true,
+          },
+        });
+        continue;
+      }
+      // no table of that number: the appendix is a picture ("Phụ lục 4. Đánh giá nguy cơ sai lệch …")
+      if (appNum) {
+        const caption = line.trim();
+        sections.push({
+          id: `s_${sections.length + 1}`,
+          type: 'figure',
+          content: caption,
+          appendixOrigin: appendixOrigin(),
+          figure: {
+            id: `app_fig_${appNum}`,
+            num: appNum,
+            caption,
+            src: figureImageMap.get(APPENDIX_KEY + appNum) || '',
+            isFullWidth: true,
+            appendix: true,
           },
         });
         continue;
@@ -1429,7 +1457,16 @@ export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: stri
   // Any remaining real tables that were not matched by text captions
   // (e.g. caption was embedded in table banner or had non-standard formatting)
   for (const t of openXmlTables) {
-    if (!t.placed && (t.type === 'table' || t.type === 'appendix')) {
+    if (!t.placed && t.type === 'appendix') {
+      t.placed = true;
+      sections.push({
+        id: `s_tab_${t.id}`,
+        type: 'table',
+        content: t.caption,
+        appendixOrigin: { after: undefined, afterReferences: true },
+        table: { id: t.id, num: t.num, caption: t.caption, headers: t.headers, rows: t.rows, headerRows: t.headerRows, bodyRows: t.bodyRows, isFullWidth: true, appendix: true },
+      });
+    } else if (!t.placed && t.type === 'table') {
       t.placed = true;
       placeLeftoverTable(sections, {
         id: `s_tab_${t.id}`,

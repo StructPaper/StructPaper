@@ -37,7 +37,7 @@ export interface PaperLike {
 
 /** Settings of a block, kept from the paper whatever the file says. */
 export const BLOCK_SETTING_KEYS = ['pageLayout', 'pageBreakAfter'] as const;
-export const TABLE_SETTING_KEYS = ['isFullWidth', 'columnSpan', 'isRotated', 'fontSize', 'rowStretch', 'hasZebraStripes', 'placement', 'breakAcrossPages', 'bodyFill'] as const;
+export const TABLE_SETTING_KEYS = ['isFullWidth', 'columnSpan', 'isRotated', 'fontSize', 'rowStretch', 'hasZebraStripes', 'placement', 'breakAcrossPages', 'bodyFill', 'sideColumn'] as const;
 export const FIGURE_SETTING_KEYS = ['isFullWidth', 'columnSpan', 'scalePercent', 'alignment', 'placement', 'hasBorder'] as const;
 
 const NOTE_EDITED = 'Bạn đã sửa tay · file không đổi';

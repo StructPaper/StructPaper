@@ -33,7 +33,7 @@ export const sameContent = (a: PaperContent, b: PaperContent): boolean => {
 
 // ---------------------------------------------------------------------------------------------- what changed, cheaply
 
-export type EditorTab = 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation' | 'preflight';
+export type EditorTab = 'metadata' | 'authors' | 'abstract' | 'sections' | 'appendix' | 'refs' | 'citation' | 'preflight';
 
 export interface ChangeLocation {
   /** The tab the change is in. */

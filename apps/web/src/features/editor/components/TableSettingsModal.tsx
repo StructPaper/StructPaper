@@ -12,7 +12,7 @@ import { SegmentedOptions } from './sections/SegmentedOptions';
 import { DEFAULT_THEME } from '@/lib/theme-config';
 import { POPUP_EDGE, POPUP_TOP } from '@/lib/popup-bounds';
 import { TableLookControls, applyLook, lookOf, type TableLookValue } from './TableLookControls';
-import { ChoiceCard, Field, MiniLines, MiniPage, SettingsCard, SettingsFooter, SettingsHeader, ValueBadge, sectionListClass } from './settings-ui';
+import { ChoiceCard, Field, MiniLines, MiniPage, SettingsCard, SettingsFooter, SettingsHeader, ToggleRow, ValueBadge, sectionListClass } from './settings-ui';
 
 interface TableSettingsModalProps {
   layoutId?: string;
@@ -50,6 +50,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   const [bodyFill, setBodyFill] = useState<'plain' | 'zebra' | 'shaded'>(resolveBodyFill(table));
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(table.placement || 'auto');
   const [breakAcrossPages, setBreakAcrossPages] = useState<'auto' | 'always' | 'never'>(table.breakAcrossPages || 'auto');
+  const [appendix, setAppendix] = useState<boolean>(!!table.appendix);
+  const [sideColumn, setSideColumn] = useState<'auto' | 'text' | 'full'>(table.sideColumn || 'auto');
   const [look, setLook] = useState<TableLookValue>(() => lookOf(table));
   const [rowHeightTouched, setRowHeightTouched] = useState(false);
   const changeLook = (patch: Partial<TableLookValue>) => {
@@ -79,6 +81,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       setBodyFill(resolveBodyFill(table));
       setPlacement(table.placement || 'auto');
       setBreakAcrossPages(table.breakAcrossPages || 'auto');
+      setSideColumn(table.sideColumn || 'auto');
+      setAppendix(!!table.appendix);
       setLook(lookOf(table));
       setRowHeightTouched(false);
     }
@@ -93,6 +97,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     setRowStretch(1.2);
     setBodyFill('plain');
     setPlacement('auto');
+    setSideColumn('auto');
     setLook({ borderStyle: 'journal', rowHeight: 0, headerHeight: 0 });
     setRowHeightTouched(true);
   };
@@ -111,6 +116,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       hasZebraStripes: bodyFill === 'zebra',
       placement,
       breakAcrossPages,
+      sideColumn,
+      appendix: appendix || undefined,
     };
     onSave(updated);
     onClose();
@@ -157,6 +164,11 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
         />
 
         <div className={`flex-1 overflow-y-auto px-5 py-3 custom-scrollbar ${sectionListClass}`}>
+          {/* 0. Appendix */}
+          <SettingsCard title="Phụ lục" hint="Bảng phụ lục có số riêng (Phụ lục 1, 2, 3) và được in thành nhóm riêng, không tính vào các bảng của bài.">
+            <ToggleRow checked={appendix} onChange={setAppendix} label="Đây là phụ lục" hint="Chuyển bảng này sang thẻ Phụ lục." testId="table-appendix-toggle" />
+          </SettingsCard>
+
           {/* 1. Where the table sits */}
           <SettingsCard title="Vị trí trên trang" hint="Bảng nằm trong một cột hay trải qua cả hai cột, thẳng hay xoay ngang." icon={<Columns />}>
             <div role="radiogroup" aria-label="Bố cục số cột bảng" className="grid grid-cols-2 gap-2.5">
@@ -238,6 +250,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
               onBreakAcrossPages={setBreakAcrossPages}
               bodyFill={bodyFill}
               onBodyFill={setBodyFill}
+              sideColumn={sideColumn}
+              onSideColumn={setSideColumn}
             />
           </SettingsCard>
         </div>

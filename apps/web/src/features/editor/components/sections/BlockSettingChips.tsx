@@ -29,6 +29,8 @@ export function tableSettingChips(table: PaperTable): SettingChip[] {
   ];
   if (table.placement && PLACEMENT[table.placement]) chips.push({ key: 'placement', label: PLACEMENT[table.placement], accent: true });
   if (table.breakAcrossPages && BREAK[table.breakAcrossPages]) chips.push({ key: 'break', label: BREAK[table.breakAcrossPages], accent: true });
+  if (table.sideColumn === 'full') chips.push({ key: 'side', label: 'Cả trang (chiếm cột bên)', accent: true });
+  else if (table.sideColumn === 'text') chips.push({ key: 'side', label: 'Trong cột chữ', accent: true });
   return chips;
 }
 

@@ -3,7 +3,7 @@ import type { ResolvedTheme } from './theme-config';
 import { escapeLatex } from './latex-escape';
 
 import { stripCaptionLabel } from './docx-table-extras';
-import { choosePlacement } from './table-placement';
+import { choosePlacement, estimateHeight, JOURNAL_GEOMETRY, measureTable } from './table-placement';
 import { resolveBodyFill, rowIsTinted } from './table-fill';
 import { DEFAULT_BORDER_WIDTH, rgbCsv, rowHeightOf, tableRulesOf } from './table-style';
 import { stripMarkup } from './inline-markup';
@@ -22,7 +22,7 @@ import { sourceLinesOf, sourceLook } from './table-source';
  */
 export function tableToLatex(
   table: PaperTable,
-  { isOneColumn, theme }: { isOneColumn: boolean; theme: ResolvedTheme }
+  { isOneColumn, theme, inline = false }: { isOneColumn: boolean; theme: ResolvedTheme; /** Set in the flow of a page that is already turned and as wide as it can be (an appendix page): no float, no page of its own. */ inline?: boolean }
 ): string {
   const rawHeaders = table.headers && table.headers.length > 0 ? table.headers : ['Cột 1'];
   const rawRows = table.rows || [];
@@ -60,7 +60,13 @@ export function tableToLatex(
     const rgb = rgbCsv(c?.fill);
     return rgb ? `\\cellcolor[RGB]{${rgb}}` : '';
   };
-  const bodySpans = spanRenderer(maxCols, (c: any) => cellFill(c) + cellBody(c), 'l', rules);
+  // width of columns col .. col+span-1 together, from the column weights (set below, before any row is drawn)
+  const spanWidth = (col: number, span: number): string => {
+    let w = 0;
+    for (let k = col; k < Math.min(col + span, maxCols); k++) w += weights[k] ?? 0;
+    return `\\dimexpr(\\linewidth-${2 * maxCols}\\tabcolsep)*${w}/${totalWeight}+${2 * (span - 1)}\\tabcolsep\\relax`;
+  };
+  const bodySpans = spanRenderer(maxCols, (c: any) => cellFill(c) + cellBody(c), 'l', rules, spanWidth);
   const tintRgb = rgbCsv(table.bodyTint);
   const tintCmd = tintRgb ? `\\rowcolor[RGB]{${tintRgb}}` : '\\rowcolor{tablezebracolor}';
   // a row can be given a least height: a strut as tall as asked starts its first cell
@@ -91,15 +97,17 @@ export function tableToLatex(
     : '';
 
   // the caption is as wide as the table and starts at its left edge (not centred in a narrower box), as in the printed journals
-  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}}`;
-  const label = `\\label{tab:${table.num || 1}}`;
+  // an appendix table is numbered on its own ("Phụ lục 2."), apart from the table counter of the text: its caption has no label of the counter
+  const capText = table.appendix ? `Phụ lục ${table.num}. ${stripCaptionLabel(table.caption)}` : stripCaptionLabel(table.caption);
+  const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false}\\caption${table.appendix ? '*' : ''}{{\\textbf{${escapeLatex(capText)}}}}`;
+  const label = table.appendix ? '' : `\\label{tab:${table.num || 1}}`;
   // Multi-row headers keep their merged cells ("Quan trắc" over 3 columns, "Dự báo" over 2 rows)
-  const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + `\\textbf{${escapeLatex(c?.text ?? '')}}`, 'c', rules);
+  const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + `\\textbf{${escapeLatex(c?.text ?? '')}}`, 'c', rules, spanWidth);
   const headRgb = rgbCsv(table.headerFill);
   const headCmd = headRgb ? `\\rowcolor[RGB]{${headRgb}}` : '\\rowcolor{tableheadrcolor}';
   const headStrut = strut(table.headerHeight && table.headerHeight > 0 ? table.headerHeight : undefined);
   const headRule = rules.hInner ? ' \\hline' : '';
-  const headRow =
+  const buildHeadRow = (): string =>
     table.headerRows && table.headerRows.length > 1
       ? table.headerRows.map((r) => `${headCmd}\n${headStrut}${headSpans(r)} \\\\${headRule}`).join('\n')
       : // as printed: the header band is grey with bold centred titles, and no rule between it and the body (the rules are above and below the table)
@@ -120,6 +128,7 @@ export function tableToLatex(
     return Math.max(Math.round(Math.sqrt(L) * 10), L <= 28 ? Math.round(L * 3.2) : 0);
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const headRow = buildHeadRow(); // (built once the column widths are known)
   // vertical lines: the first column owns the left edge, every column the line on its right
   const colSpec = weights
     .map((w, c) => {
@@ -137,14 +146,21 @@ export function tableToLatex(
 
   const breakMode = table.breakAcrossPages ?? 'auto';
   // with "turn the page" on, a table set sideways always gets its own landscape page(s), however short
-  const isLong = breakMode === 'always' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
+  // A float cannot be cut: a table taller than the room it has (a column, the page, or the page turned on its side) would run off the
+  // page. Such a table is set so that it flows over as many pages as it needs, with its header repeated. Estimated from what it holds.
+  const fontPt = parseFloat(fontSize) || 8;
+  const room = isRotated
+    ? { width: JOURNAL_GEOMETRY.sidewaysWidth, height: JOURNAL_GEOMETRY.sidewaysHeight }
+    : { width: spansOneColumn ? JOURNAL_GEOMETRY.column : JOURNAL_GEOMETRY.page, height: JOURNAL_GEOMETRY.pageHeight * 0.85 };
+  const tooTall = breakMode !== 'never' && estimateHeight(measureTable({ headers, rows: paddedRows, bodyRows: table.bodyRows }, fontPt), room.width, fontPt) > room.height;
+  const isLong = breakMode === 'always' || tooTall || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
 
   // ---- long table, flowing inside one column ----
-  if (isLong && spansOneColumn && !isRotated) {
+  if (isLong && spansOneColumn && !isRotated && !inline) {
     const contLine = `\\multicolumn{${maxCols}}{c}{\\textit{${continuedTitle}}}\\\\`;
     const repeat = theme.repeatTableHeader ? `\\tablehead{\\hline ${contLine}\n${headRow}}\n` : `\\tablehead{${contLine}}\n`;
     return `\n${sizeOpen}
-\\topcaption{{\\textbf{${escapeLatex(stripCaptionLabel(table.caption))}}}${label}}
+${table.appendix ? `\\captionof*{table}{{\\textbf{${escapeLatex(capText)}}}}` : `\\topcaption{{\\textbf{${escapeLatex(capText)}}}${label}}`}
 \\tablefirsthead{${topRule}${headRow}}
 ${repeat}\\tabletail{\\hline \\multicolumn{${maxCols}}{r}{\\textit{${continuedFoot}}}\\\\}
 \\tablelasttail{${bottomRule}}
@@ -155,17 +171,21 @@ ${bodyRows.map(renderRow).join('\n')}
   }
 
   // ---- long table over 2 columns and/or rotated: own page(s), full width ----
-  if (isLong) {
-    const leave = isOneColumn ? '' : '\\onecolumn\n';
-    const back = isOneColumn ? '' : '\\twocolumn\n';
-    const open = isRotated ? '\\begin{landscape}\n' : '';
-    const close = isRotated ? '\\end{landscape}\n' : '';
+  if (isLong || inline) {
+    // on pages of its own a large table takes the whole width of the page, over the side column (as the printed journal's appendix tables
+    // do), unless the author keeps it in the text; a table turned on its side keeps the text area
+    const wide = !inline && !isRotated && (table.sideColumn === 'full' || (table.sideColumn !== 'text' && !spansOneColumn));
+    const leave = inline ? "" : (wide ? '\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n' : '') + (isOneColumn ? '' : '\\onecolumn\n');
+    // (the text area is put back first, so the two columns are measured from it)
+    const back = inline ? "" : (wide ? '\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n' : '') + (isOneColumn ? '' : '\\twocolumn\n');
+    const open = isRotated && !inline ? '\\begin{landscape}\n' : '';
+    const close = isRotated && !inline ? '\\end{landscape}\n' : '';
     const contLine = `\\multicolumn{${maxCols}}{c}{\\textit{${continuedTitle}}}\\\\`;
     const endHead = theme.repeatTableHeader
       ? `\\hline ${contLine}\n${headRow}\n\\endhead`
       : `\\hline ${contLine}\n\\endhead`;
-    return `\n\\clearpage
-${leave}${open}${sizeOpen}
+    const page = inline ? '' : '\\clearpage\n';
+    return `\n${page}${leave}${open}${sizeOpen}${isRotated && !inline ? '\n% on the turned page the table keeps clear of the running head and the foot\n\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}' : ''}
 \\begin{longtable}{${colSpec}}
 ${caption}${label}\\\\
 ${topRule}${headRow}
@@ -177,8 +197,7 @@ ${bottomRule}
 \\endlastfoot
 ${bodyRows.map(renderRow).join('\n')}
 \\end{longtable}${sourceLine}}
-${close}\\clearpage
-${back}`;
+${close}${page}${back}`;
   }
 
   // ---- short table: floating, kept together ----
@@ -209,10 +228,19 @@ ${bottomRule}
  * down from a row above gets an empty slot; the text of a row-spanning cell is drawn in its last row
  * with a negative \multirow, so a later \rowcolor does not paint over it.
  */
-function spanRenderer(maxCols: number, fmt: (cell: any) => string, groupAlign: 'l' | 'c' = 'l', rules: { vInner: boolean; vOuter: boolean } = { vInner: false, vOuter: false }) {
+function spanRenderer(
+  maxCols: number,
+  fmt: (cell: any) => string,
+  groupAlign: 'l' | 'c' = 'l',
+  rules: { vInner: boolean; vOuter: boolean } = { vInner: false, vOuter: false },
+  /** The width of the columns col .. col+span-1 together: a merged cell is a paragraph of that width, so its text wraps instead of running over its neighbours. */
+  widthOf?: (col: number, span: number) => string
+) {
+  const core = (col: number, span: number, align: string) =>
+    widthOf ? `>{${align === 'c' ? '\\centering' : align === 'r' ? '\\raggedleft' : '\\raggedright'}\\arraybackslash}p{${widthOf(col, span)}}` : align;
   // a merged cell takes the place of its columns' specs, so it carries their vertical lines itself
   const spec = (col: number, span: number, align: string) =>
-    `${col === 0 && rules.vOuter ? '|' : ''}${align}${col + span >= maxCols ? (rules.vOuter ? '|' : '') : rules.vInner ? '|' : ''}`;
+    `${col === 0 && rules.vOuter ? '|' : ''}${core(col, span, align)}${col + span >= maxCols ? (rules.vOuter ? '|' : '') : rules.vInner ? '|' : ''}`;
   const cover: ({ left: number; span: number; text: string; rs: number } | undefined)[] = [];
   return (row: any[]): string => {
     const out: string[] = [];
@@ -222,7 +250,8 @@ function spanRenderer(maxCols: number, fmt: (cell: any) => string, groupAlign: '
       const cv = cover[col];
       if (cv && cv.left > 0) {
         cv.left--;
-        const body = cv.left === 0 ? `\\multirow{-${cv.rs}}{*}{${cv.text}}` : '';
+        // (a cell merged down is set in a box as wide as its columns, so a long title wraps)
+        const body = cv.left === 0 ? (widthOf ? `\\multirow{-${cv.rs}}{${widthOf(col, cv.span)}}{\\centering\\arraybackslash ${cv.text}}` : `\\multirow{-${cv.rs}}{*}{${cv.text}}`) : '';
         out.push(cv.span > 1 ? `\\multicolumn{${cv.span}}{${spec(col, cv.span, 'c')}}{${body}}` : body);
         col += cv.span;
         continue;

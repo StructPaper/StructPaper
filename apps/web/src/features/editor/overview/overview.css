@@ -646,6 +646,17 @@
   counter-increment: ov-tab;
   color: var(--ov-title);
 }
+.ov-figure[data-appendix] .ov-fig-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) '. ';
+  counter-increment: ov-app;
+}
+.ov-table-block[data-appendix] .ov-tab-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) '. ';
+  counter-increment: ov-app;
+}
+.ov-table-block[data-appendix] td.ov-continued::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) var(--ov-tab-cont, ' (tiếp theo)');
+}
 .ov-fig-source,
 .ov-tab-source {
   font-family: var(--ov-sans);
@@ -737,7 +748,7 @@
   white-space: nowrap;
 }
 .ov-root {
-  counter-reset: ov-fig ov-tab ov-eq ov-fn ov-fnn;
+  counter-reset: ov-fig ov-tab ov-app ov-eq ov-fn ov-fnn;
 }
 /* an item of a list: its mark hangs out to the left of the text, as it is set in the PDF */
 .ov-page p.ov-li {
