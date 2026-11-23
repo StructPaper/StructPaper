@@ -77,14 +77,23 @@ export function tableToLatex(
   const strut = (h: number | undefined) => (h ? `\\rule[-${Math.max(0, h / 2 - parseFloat(fontSize) * 0.35).toFixed(1)}pt]{0pt}{${h}pt}` : '');
   // the lines between rows: the table's style, unless a cell has said something about the line (see lib/table-cell-lines)
   const totalRows = rowsOf(table).rows.length;
-  const ruleText = (lines: boolean[]): string => {
-    if (lines.every(Boolean)) return '\\hline';
+  // (a line the author gave a colour is drawn in it, and the colour of the table's lines is put back after it)
+  const baseRuleColor = (): string => {
+    const base = rgbCsv(table.borderColor);
+    return base ? `\\arrayrulecolor[RGB]{${base}}` : `\\arrayrulecolor{black}`;
+  };
+  const coloured = (hex: string | undefined, rule: string): string => {
+    const rgb = rgbCsv(hex);
+    return rgb ? `\\arrayrulecolor[RGB]{${rgb}}${rule}${baseRuleColor()}` : rule;
+  };
+  const ruleText = (lines: boolean[], colors: (string | undefined)[] = []): string => {
+    if (lines.every(Boolean) && colors.every((c) => c === colors[0])) return coloured(colors[0], '\\hline');
     const runs: string[] = [];
     for (let c = 0; c < lines.length; ) {
       if (!lines[c]) { c++; continue; }
       let e = c;
-      while (e + 1 < lines.length && lines[e + 1]) e++;
-      runs.push(`\\cline{${c + 1}-${e + 1}}`);
+      while (e + 1 < lines.length && lines[e + 1] && colors[e + 1] === colors[c]) e++;
+      runs.push(coloured(colors[c], `\\cline{${c + 1}-${e + 1}}`));
       c = e + 1;
     }
     return runs.join('');
@@ -92,13 +101,13 @@ export function tableToLatex(
   const afterRow = (b: number): string => {
     const h = horizontalLine(table, rules, b, maxCols);
     if (!h.explicit) return rules.hInner ? ' \\hline' : '';
-    const t = ruleText(h.lines);
+    const t = ruleText(h.lines, h.colors);
     return t ? ` ${t}` : '';
   };
   const topLine = horizontalLine(table, rules, 0, maxCols);
   const bottomLine = horizontalLine(table, rules, totalRows, maxCols);
   // the table's top and bottom lines (with lines between rows, the last row's own line is the bottom one)
-  const topRule = topLine.explicit ? (ruleText(topLine.lines) ? `${ruleText(topLine.lines)} ` : '') : rules.top ? '\\hline ' : '';
+  const topRule = topLine.explicit ? (ruleText(topLine.lines, topLine.colors) ? `${ruleText(topLine.lines, topLine.colors)} ` : '') : rules.top ? '\\hline ' : '';
   const bottomRule = !bottomLine.explicit && rules.bottom && !rules.hInner ? '\\hline' : '';
   const renderRow = (row: any[], rI: number) =>
     `${rowIsTinted(fill, rI) ? tintCmd + '\n' : ''}${strut(rowHeightOf(table, rI))}${bodySpans(row, headCount + rI)} \\\\${afterRow(headCount + rI + 1)}`;
@@ -250,7 +259,7 @@ function spanRenderer(
   /** The width of the columns col .. col+span-1 together: a merged cell is a paragraph of that width, so its text wraps instead of running over its neighbours. */
   widthOf?: (col: number, span: number) => string,
   /** The vertical lines of a row (boundary k is left of column k), and whether any cell has said something about them. */
-  vl?: (rowIndex: number) => { lines: boolean[]; explicit: boolean }
+  vl?: (rowIndex: number) => { lines: boolean[]; explicit: boolean; colors?: (string | undefined)[] }
 ) {
   const core = (col: number, span: number, align: string, kind: 'p' | 'm' | 'b' = 'p') =>
     widthOf ? `>{${align === 'c' ? '\\centering' : align === 'r' ? '\\raggedleft' : '\\raggedright'}\\arraybackslash}${kind}{${widthOf(col, span)}}` : align;
@@ -263,9 +272,14 @@ function spanRenderer(
     const own = !!lines && (lines.explicit || aligned);
     // a merged cell takes the place of its columns' specs, so it carries their vertical lines itself
     const spec = (col: number, span: number, align: string, kind: 'p' | 'm' | 'b' = 'p') => {
+      const bar = (k: number): string => {
+        const hex = lines?.colors?.[k];
+        const rgb = hex ? rgbCsv(hex) : null;
+        return rgb ? `!{\\color[RGB]{${rgb}}\\vrule width \\arrayrulewidth}` : '|';
+      };
       const left = own ? col === 0 && lines!.lines[0] : col === 0 && rules.vOuter;
       const right = own ? lines!.lines[col + span] : col + span >= maxCols ? rules.vOuter : rules.vInner;
-      return `${left ? '|' : ''}${core(col, span, align, kind)}${right ? '|' : ''}`;
+      return `${left ? bar(col) : ''}${core(col, span, align, kind)}${right ? bar(col + span) : ''}`;
     };
     const out: string[] = [];
     let col = 0;

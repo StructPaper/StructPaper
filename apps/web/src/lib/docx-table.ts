@@ -20,7 +20,7 @@ function cellParagraphs(text: string, font: string, size: number, bold = false, 
         new Paragraph({
           alignment: center ? AlignmentType.CENTER : undefined,
           children: parseMarkup(line).map(
-            (s) => new TextRun({ text: s.text, font, size, bold: bold || s.b || undefined, italics: s.i || undefined, underline: s.u ? {} : undefined, ...(s.color ? { color: s.color.slice(1) } : {}) })
+            (s) => new TextRun({ text: s.text, font, size, bold: bold || s.b || undefined, italics: s.i || undefined, underline: s.u ? {} : undefined, superScript: s.sup || undefined, subScript: s.sub || undefined, ...(s.color ? { color: s.color.slice(1) } : {}) })
           ),
         })
     );

@@ -94,7 +94,11 @@ export interface TableCell {
   valign?: 'top' | 'middle' | 'bottom';
   /** The lines of this cell's four sides: 'line' draws one, 'none' leaves it out, whatever the table's own style says (absent: the table's style decides). */
   borders?: CellBorders;
+  /** The colour of the lines of this cell's sides, "#RRGGBB" (absent: the colour of the table's lines). */
+  borderColors?: CellBorderColors;
 }
+
+export type CellBorderColors = Partial<Record<'top' | 'bottom' | 'left' | 'right', string>>;
 
 export type CellBorderMode = 'line' | 'none';
 export interface CellBorders {

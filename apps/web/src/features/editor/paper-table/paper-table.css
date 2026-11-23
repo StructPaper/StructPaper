@@ -268,3 +268,11 @@
   color: #a1a1aa;
   letter-spacing: 0.03em;
 }
+
+.tp-cell sup,
+.tp-cell sub,
+.tp-table sup,
+.tp-table sub {
+  font-size: 0.7em;
+  line-height: 0;
+}

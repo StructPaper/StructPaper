@@ -44,6 +44,8 @@ export function htmlToMarkup(root: ParentNode): string {
     const css = el.style;
     if (tag === 'B' || tag === 'STRONG' || css?.fontWeight === 'bold' || (css?.fontWeight && Number(css.fontWeight) >= 600)) next = { ...next, b: true };
     if (tag === 'I' || tag === 'EM' || css?.fontStyle === 'italic') next = { ...next, i: true };
+    if (tag === 'SUP' || css?.verticalAlign === 'super') next = { ...next, sup: true, sub: undefined };
+    if (tag === 'SUB' || css?.verticalAlign === 'sub') next = { ...next, sub: true, sup: undefined };
     if (tag === 'U' || css?.textDecorationLine?.includes('underline') || css?.textDecoration?.includes('underline')) next = { ...next, u: true };
     const colour = toHexColor(tag === 'FONT' ? el.getAttribute('color') : css?.color);
     if (colour) next = { ...next, color: colour };

@@ -1,4 +1,4 @@
-import type { CellBorderMode, CellBorders, PaperTable, TableCell } from '@/types/paper';
+import type { CellBorderColors, CellBorderMode, CellBorders, PaperTable, TableCell } from '@/types/paper';
 import { occupancy, rowsOf } from './table-cell-lines';
 
 /**
@@ -14,6 +14,7 @@ export interface GridCell {
   valign?: TableCell['valign'];
   fill?: string;
   borders?: CellBorders;
+  borderColors?: CellBorderColors;
   /** Set on the places a merged cell covers beyond its own: where that cell is. */
   covered?: { r: number; c: number };
 }
@@ -52,6 +53,7 @@ export function toGrid(table: PaperTable): TableGrid {
           ...(cell.valign ? { valign: cell.valign } : {}),
           ...(cell.fill ? { fill: cell.fill } : {}),
           ...(cell.borders ? { borders: { ...cell.borders } } : {}),
+          ...(cell.borderColors ? { borderColors: { ...cell.borderColors } } : {}),
         };
       }
       return { text: '', colSpan: 1, rowSpan: 1, covered: { r: p.row, c: p.col } };
@@ -68,6 +70,7 @@ const cellOut = (c: GridCell, isHeader: boolean): TableCell => ({
   ...(c.valign ? { valign: c.valign } : {}),
   ...(c.fill ? { fill: c.fill } : {}),
   ...(c.borders && Object.keys(c.borders).length > 0 ? { borders: c.borders } : {}),
+  ...(c.borderColors && Object.keys(c.borderColors).length > 0 ? { borderColors: c.borderColors } : {}),
   ...(isHeader ? { isHeader: true } : {}),
 });
 
@@ -108,7 +111,7 @@ export function fromGrid(grid: TableGrid, table: PaperTable): PaperTable {
 
 const clone = (g: TableGrid): TableGrid => ({
   head: g.head,
-  cells: g.cells.map((r) => r.map((c) => ({ ...c, ...(c.borders ? { borders: { ...c.borders } } : {}), ...(c.covered ? { covered: { ...c.covered } } : {}) }))),
+  cells: g.cells.map((r) => r.map((c) => ({ ...c, ...(c.borders ? { borders: { ...c.borders } } : {}), ...(c.borderColors ? { borderColors: { ...c.borderColors } } : {}), ...(c.covered ? { covered: { ...c.covered } } : {}) }))),
 });
 
 export const normalizeRange = (a: { r: number; c: number }, b: { r: number; c: number }): Range => ({
@@ -345,7 +348,7 @@ export function setHeadRows(grid: TableGrid, head: number): TableGrid {
 export type BorderMode = 'all' | 'outer' | 'inner' | 'inner-h' | 'inner-v' | 'top' | 'bottom' | 'left' | 'right' | 'none' | 'reset';
 
 /** Draws (or takes away) lines round the cells of the range only. */
-export function applyBorders(grid: TableGrid, range: Range, mode: BorderMode, value: CellBorderMode = 'line'): TableGrid {
+export function applyBorders(grid: TableGrid, range: Range, mode: BorderMode, value: CellBorderMode = 'line', color?: string): TableGrid {
   const g = clone(grid);
   const r = expandRange(g, range);
   const set = (y: number, x: number, side: keyof CellBorders, v: CellBorderMode | undefined) => {
@@ -361,6 +364,12 @@ export function applyBorders(grid: TableGrid, range: Range, mode: BorderMode, va
     else b[side] = v;
     if (Object.keys(b).length > 0) cell.borders = b;
     else delete cell.borders;
+    // the colour goes with a line that is drawn; a line taken away (or given back to the table) takes its colour with it
+    const bc = { ...(cell.borderColors ?? {}) };
+    if (v === 'line' && color) bc[side] = color;
+    else if (v !== 'line') delete bc[side];
+    if (Object.keys(bc).length > 0) cell.borderColors = bc;
+    else delete cell.borderColors;
   };
   const v: CellBorderMode | undefined = mode === 'reset' ? undefined : mode === 'none' ? 'none' : value;
   for (let y = r.r0; y <= r.r1; y++) {
@@ -396,10 +405,15 @@ export function applyBorders(grid: TableGrid, range: Range, mode: BorderMode, va
   const mirror = (y: number, x: number, side: keyof CellBorders, ny: number, nx: number, nside: keyof CellBorders) => {
     const o = originAt(g, y, x);
     const val = g.cells[o.r]?.[o.c]?.borders?.[side];
+    const colour = g.cells[o.r]?.[o.c]?.borderColors?.[side];
     if (ny < 0 || nx < 0 || ny >= g.cells.length || nx >= colsOfGrid(g)) return;
     const no = originAt(g, ny, nx);
     if (no.r === o.r && no.c === o.c) return;
+    // (the same colour too: a line is one line)
+    const saved = color;
+    color = colour;
     set(ny, nx, nside, val);
+    color = saved;
   };
   for (let x = r.c0; x <= r.c1; x++) {
     mirror(r.r0, x, 'top', r.r0 - 1, x, 'bottom');

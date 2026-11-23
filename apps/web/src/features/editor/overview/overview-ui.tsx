@@ -216,9 +216,12 @@ export const ColorPanel: React.FC<{
   journalId?: string;
   /** Colours of the paper's own settings (the title colour, the table header colour…). */
   paper?: BrandColor[];
+  /** Colours that stand first, over all the others (the ones this place uses most). */
+  lead?: BrandColor[];
+  leadLabel?: string;
   clearLabel?: string;
   onPick: (hex: string | null) => void;
-}> = ({ title, value, journalId, paper = [], clearLabel, onPick }) => {
+}> = ({ title, value, journalId, paper = [], lead = [], leadLabel, clearLabel, onPick }) => {
   const [recent, setRecent] = useState<string[]>([]);
   useEffect(() => setRecent(readRecent()), []);
   const pick = (hex: string) => {
@@ -232,6 +235,16 @@ export const ColorPanel: React.FC<{
   return (
     <div data-testid="color-panel">
       <h4 className="text-sm font-extrabold text-slate-900 mb-2.5">{title}</h4>
+      {lead.length > 0 && (
+        <div data-testid="color-lead" className="mb-3">
+          {leadLabel && <p className="text-[11px] font-bold text-slate-500 mb-1.5">{leadLabel}</p>}
+          <div className="flex flex-wrap gap-2">
+            {lead.map((c) => (
+              <Swatch key={c.hex + c.label} color={c} selected={sel(c.hex)} onPick={pick} />
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label title="Chọn màu bất kỳ" className="relative w-8 h-8 rounded-full cursor-pointer flex items-center justify-center" style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }}>
           <span className="w-[22px] h-[22px] rounded-full bg-white flex items-center justify-center">

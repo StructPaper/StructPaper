@@ -298,17 +298,23 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
               onClick={() => setPaperOpen(true)}
               title="Xem và chỉnh bảng trên trang giấy thật"
               aria-label="Xem bảng trên trang giấy"
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-white/80 transition-colors cursor-pointer"
+              className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                paperOpen ? 'bg-[#D9F99D] text-[#14532D] ring-1 ring-[#84CC16] shadow-2xs' : 'bg-[#ECFCCB] text-[#14532D] ring-1 ring-[#B4E50D]/70 shadow-2xs hover:bg-[#D9F99D]'
+              }`}
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText className="w-3.5 h-3.5 text-[#4D7C0F]" />
+              <span className="text-[10px]">Trang giấy</span>
             </button>
-            {paperOpen && (
-              <TablePaperEditor
-                table={sec.table}
-                onChange={(t) => onUpdateSection(idx, { ...sec, table: t })}
-                onClose={() => setPaperOpen(false)}
-              />
-            )}
+            <AnimatePresence>
+              {paperOpen && (
+                <TablePaperEditor
+                  key="table-paper"
+                  table={sec.table}
+                  onChange={(t) => onUpdateSection(idx, { ...sec, table: t })}
+                  onClose={() => setPaperOpen(false)}
+                />
+              )}
+            </AnimatePresence>
           </>
         )}
 

@@ -97,6 +97,8 @@ export function inlineToJats(text: string): string {
     return parseMarkup(text)
       .map((s) => {
         let t = inlineToJats(s.text);
+        if (s.sub) t = `<sub>${t}</sub>`;
+        if (s.sup) t = `<sup>${t}</sup>`;
         if (s.u) t = `<underline>${t}</underline>`;
         if (s.i) t = `<italic>${t}</italic>`;
         if (s.b) t = `<bold>${t}</bold>`;

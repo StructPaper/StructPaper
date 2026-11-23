@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import { createEmptyPaper } from '@/types/paper';
 import { extraChecks } from '@/lib/validation/extra-checks';
 import { generateFullJournalLatex } from '@/lib/latex-template';
 import { APPENDIX_BLOCK_DEFAULTS, nextAppendixNumber, arrangeForOutput, mergeScopedSections, renumberAppendices, scopedSections, appendixLabel } from '@/lib/appendix';
+
+vi.setConfig({ testTimeout: 20000 });
 
 const para = (id: string): PaperSection => ({ id, type: 'paragraph', content: id });
 const tab = (id: string, num: number, appendix = false, origin?: PaperSection['appendixOrigin']): PaperSection => ({

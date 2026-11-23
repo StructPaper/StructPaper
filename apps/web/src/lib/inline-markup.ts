@@ -2,13 +2,16 @@
  * Emphasis inside a piece of text (a table cell, a paragraph, a caption): `<b>bold</b>`, `<i>italic</i>`, `<u>underline</u>` and
  * `<color=#RRGGBB>coloured</color>`. The tags live in the same string the model already stores, so every place that reads text keeps
  * working (it prints the tags away with `stripMarkup`) and the exporters turn them into real formatting.
- * Sub/superscripts stay what they were: `$_{2}$` / `$^{2}$`.
+ * `<sup>…</sup>` and `<sub>…</sub>` raise and lower (a cell of a table: m², H₂O); the paragraphs write them as the `$^{2}$` / `$_{2}$` the
+ * importer already uses.
  */
 
 export interface MarkupStyle {
   b?: boolean;
   i?: boolean;
   u?: boolean;
+  sup?: boolean;
+  sub?: boolean;
   color?: string; // "#RRGGBB"
 }
 
@@ -16,8 +19,8 @@ export interface MarkupSegment extends MarkupStyle {
   text: string;
 }
 
-const TAG_RE = /<(\/?)(b|i|u)>|<color=(#[0-9a-fA-F]{6})>|<\/color>/g;
-export const MARKUP_PROBE = /<\/?(?:b|i|u)>|<color=#[0-9a-fA-F]{6}>|<\/color>/;
+const TAG_RE = /<(\/?)(b|i|u|sup|sub)>|<color=(#[0-9a-fA-F]{6})>|<\/color>/g;
+export const MARKUP_PROBE = /<\/?(?:b|i|u|sup|sub)>|<color=#[0-9a-fA-F]{6}>|<\/color>/;
 
 export const hasMarkup = (text: string | undefined | null): boolean => !!text && MARKUP_PROBE.test(text);
 
@@ -28,11 +31,13 @@ export function parseMarkup(text: string): MarkupSegment[] {
   let b = 0;
   let i = 0;
   let u = 0;
+  let sup = 0;
+  let sub = 0;
   const colors: string[] = [];
   let last = 0;
   const push = (chunk: string) => {
     if (!chunk) return;
-    out.push({ text: chunk, ...(b > 0 ? { b: true } : {}), ...(i > 0 ? { i: true } : {}), ...(u > 0 ? { u: true } : {}), ...(colors.length ? { color: colors[colors.length - 1] } : {}) });
+    out.push({ text: chunk, ...(b > 0 ? { b: true } : {}), ...(i > 0 ? { i: true } : {}), ...(u > 0 ? { u: true } : {}), ...(sup > 0 ? { sup: true } : {}), ...(sub > 0 ? { sub: true } : {}), ...(colors.length ? { color: colors[colors.length - 1] } : {}) });
   };
   for (const m of src.matchAll(TAG_RE)) {
     push(src.slice(last, m.index));
@@ -43,6 +48,8 @@ export function parseMarkup(text: string): MarkupSegment[] {
       const d = m[1] ? -1 : 1;
       if (m[2] === 'b') b = Math.max(0, b + d);
       else if (m[2] === 'i') i = Math.max(0, i + d);
+      else if (m[2] === 'sup') sup = Math.max(0, sup + d);
+      else if (m[2] === 'sub') sub = Math.max(0, sub + d);
       else u = Math.max(0, u + d);
     }
   }
@@ -56,7 +63,7 @@ export function stripMarkup(text: string | undefined | null): string {
   return MARKUP_PROBE.test(s) ? s.replace(TAG_RE, '') : s;
 }
 
-const sameStyle = (a: MarkupStyle, b: MarkupStyle) => !!a.b === !!b.b && !!a.i === !!b.i && !!a.u === !!b.u && (a.color ?? '') === (b.color ?? '');
+const sameStyle = (a: MarkupStyle, b: MarkupStyle) => !!a.b === !!b.b && !!a.i === !!b.i && !!a.u === !!b.u && !!a.sup === !!b.sup && !!a.sub === !!b.sub && (a.color ?? '') === (b.color ?? '');
 
 /** Runs back to a string, with the fewest tags (neighbours of one style are joined). */
 export function serializeMarkup(segments: MarkupSegment[]): string {
@@ -70,6 +77,8 @@ export function serializeMarkup(segments: MarkupSegment[]): string {
   return joined
     .map((s) => {
       let t = s.text;
+      if (s.sub) t = `<sub>${t}</sub>`;
+      if (s.sup) t = `<sup>${t}</sup>`;
       if (s.u) t = `<u>${t}</u>`;
       if (s.i) t = `<i>${t}</i>`;
       if (s.b) t = `<b>${t}</b>`;
@@ -90,6 +99,8 @@ export function markupToLatex(text: string, escapePlain: (plain: string) => stri
     .map((s) => {
       let t = escapePlain(s.text);
       if (!t.trim()) return t;
+      if (s.sub) t = `\\textsubscript{${t}}`;
+      if (s.sup) t = `\\textsuperscript{${t}}`;
       if (s.u) t = `\\underline{${t}}`;
       if (s.i) t = `\\textit{${t}}`;
       if (s.b) t = `\\textbf{${t}}`;
@@ -106,6 +117,8 @@ export function markupToHtml(text: string): string {
   return parseMarkup(text)
     .map((s) => {
       let t = escapeHtml(s.text).replace(/\r?\n/g, '<br>');
+      if (s.sub) t = `<sub>${t}</sub>`;
+      if (s.sup) t = `<sup>${t}</sup>`;
       if (s.u) t = `<u>${t}</u>`;
       if (s.i) t = `<em>${t}</em>`;
       if (s.b) t = `<strong>${t}</strong>`;
@@ -116,7 +129,7 @@ export function markupToHtml(text: string): string {
 }
 
 /** Is every character of [start, end) of the plain text already in this style? */
-function rangeHas(segments: MarkupSegment[], start: number, end: number, key: 'b' | 'i' | 'u'): boolean {
+function rangeHas(segments: MarkupSegment[], start: number, end: number, key: 'b' | 'i' | 'u' | 'sup' | 'sub'): boolean {
   let pos = 0;
   let any = false;
   for (const s of segments) {
@@ -134,7 +147,7 @@ function rangeHas(segments: MarkupSegment[], start: number, end: number, key: 'b
  * Applies a style to the characters [start, end) of the PLAIN text (the text with tags removed), returning the new tagged string.
  * `on: undefined` toggles: if the whole range already has the style it is taken off, otherwise put on.
  */
-export function applyMarkup(text: string, start: number, end: number, change: { key: 'b' | 'i' | 'u'; on?: boolean } | { key: 'color'; color: string | null }): string {
+export function applyMarkup(text: string, start: number, end: number, change: { key: 'b' | 'i' | 'u' | 'sup' | 'sub'; on?: boolean } | { key: 'color'; color: string | null }): string {
   const segs = parseMarkup(text);
   const total = segs.reduce((n, s) => n + s.text.length, 0);
   const from = Math.max(0, Math.min(start, end, total));
@@ -154,8 +167,12 @@ export function applyMarkup(text: string, start: number, end: number, change: { 
         if (change.key === 'color') {
           if (change.color) seg.color = change.color.toUpperCase();
           else delete seg.color;
-        } else if (on) seg[change.key] = true;
-        else delete seg[change.key];
+        } else if (on) {
+          seg[change.key] = true;
+          // raised and lowered exclude each other
+          if (change.key === 'sup') delete seg.sub;
+          if (change.key === 'sub') delete seg.sup;
+        } else delete seg[change.key];
       }
       out.push(seg);
     };
@@ -171,11 +188,11 @@ export function applyMarkup(text: string, start: number, end: number, change: { 
 }
 
 /** The style at the start of a range (for showing which toolbar buttons are on). */
-export function styleAt(text: string, start: number, end: number): { b: boolean; i: boolean; u: boolean; color?: string } {
+export function styleAt(text: string, start: number, end: number): { b: boolean; i: boolean; u: boolean; sup: boolean; sub: boolean; color?: string } {
   const segs = parseMarkup(text);
   const s = Math.min(start, end);
   const e = Math.max(start, end, s + 1);
-  return { b: rangeHas(segs, s, e, 'b'), i: rangeHas(segs, s, e, 'i'), u: rangeHas(segs, s, e, 'u'), color: segs.find((x) => x.color)?.color };
+  return { b: rangeHas(segs, s, e, 'b'), i: rangeHas(segs, s, e, 'i'), u: rangeHas(segs, s, e, 'u'), sup: rangeHas(segs, s, e, 'sup'), sub: rangeHas(segs, s, e, 'sub'), color: segs.find((x) => x.color)?.color };
 }
 
 /** Whole-text toggle (a cell, a caption): the style on every character. */

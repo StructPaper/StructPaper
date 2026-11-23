@@ -13,7 +13,6 @@ import {
   Bold,
   ChevronDown,
   Columns3,
-  Grid3x3,
   Italic,
   Merge,
   PaintBucket,
@@ -27,18 +26,38 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import type { BorderMode } from '@/lib/table-grid';
+import { ColorPanel, Popover, type BrandColor } from '../overview/overview-ui';
+
+/** What the cells chosen are set as now (what a toolbar of a word processor shows as pressed). */
+export interface PaperTableFormat {
+  b: boolean;
+  i: boolean;
+  u: boolean;
+  sup: boolean;
+  sub: boolean;
+  align?: 'left' | 'center' | 'right';
+  valign?: 'top' | 'middle' | 'bottom';
+  fill?: string;
+  color?: string;
+}
 
 export interface PaperTableOps {
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  mark: (key: 'b' | 'i' | 'u') => void;
+  fmt: PaperTableFormat;
+  mark: (key: 'b' | 'i' | 'u' | 'sup' | 'sub') => void;
   textColor: (hex: string | null) => void;
   fill: (hex: string | null) => void;
+  /** The colours this table's fills start from: the header band and the tinted rows. */
+  fillLead: BrandColor[];
+  journalId?: string;
   align: (a: 'left' | 'center' | 'right') => void;
   valign: (v: 'top' | 'middle' | 'bottom') => void;
   borders: (mode: BorderMode) => void;
+  lineColor: string;
+  setLineColor: (hex: string | null) => void;
   merge: () => void;
   unmerge: () => void;
   canMerge: boolean;
@@ -67,6 +86,10 @@ export interface PaperTableOps {
 
 const noDown = (e: React.MouseEvent) => e.preventDefault();
 
+const BTN = 'h-8 rounded-lg flex items-center justify-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed';
+const idle = 'text-zinc-300 hover:bg-white/10 hover:text-white';
+const on = 'bg-white/20 text-white';
+
 const Btn: React.FC<{ title: string; onClick?: () => void; active?: boolean; disabled?: boolean; testId?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
   onClick,
@@ -85,9 +108,7 @@ const Btn: React.FC<{ title: string; onClick?: () => void; active?: boolean; dis
     data-testid={testId}
     onMouseDown={noDown}
     onClick={onClick}
-    className={`h-8 ${wide ? 'px-2' : 'w-8'} rounded-lg flex items-center justify-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed ${
-      active ? 'bg-white/25 text-white' : 'text-zinc-200 hover:bg-white/12'
-    }`}
+    className={`${BTN} ${wide ? 'px-2' : 'w-8'} ${active ? on : idle}`}
   >
     {children}
   </button>
@@ -95,8 +116,8 @@ const Btn: React.FC<{ title: string; onClick?: () => void; active?: boolean; dis
 
 const Sep = () => <span className="w-px h-5 bg-white/15 mx-1 flex-shrink-0" aria-hidden />;
 
-/** A button that opens a small panel under it (closed by a click outside or Esc). */
-const Menu: React.FC<{ title: string; label: React.ReactNode; testId?: string; children: (close: () => void) => React.ReactNode; width?: number }> = ({ title, label, testId, children, width = 232 }) => {
+/** A button that opens a small panel under it (closed by a click outside or Esc). The panel is drawn on the page: the toolbar scrolls sideways and would cut it. */
+const Menu: React.FC<{ title: string; label: React.ReactNode; testId?: string; children: (close: () => void) => React.ReactNode; width?: number; active?: boolean }> = ({ title, label, testId, children, width = 232, active }) => {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const box = useRef<HTMLDivElement>(null);
@@ -134,7 +155,7 @@ const Menu: React.FC<{ title: string; label: React.ReactNode; testId?: string; c
           setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: r.bottom + 6 });
           setOpen((v) => !v);
         }}
-        className={`h-8 px-1.5 rounded-lg flex items-center gap-0.5 text-[11px] font-semibold cursor-pointer transition-colors ${open ? 'bg-white/25 text-white' : 'text-zinc-200 hover:bg-white/12'}`}
+        className={`${BTN} px-1.5 gap-0.5 ${open || active ? on : idle}`}
       >
         {label}
         <ChevronDown className="w-3 h-3 opacity-70" />
@@ -166,7 +187,7 @@ const MenuItem: React.FC<{ onClick: () => void; children: React.ReactNode; dange
     disabled={disabled}
     data-testid={testId}
     onClick={onClick}
-    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed ${
+    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2.5 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed ${
       danger ? 'text-red-600 hover:bg-red-50' : 'hover:bg-zinc-100'
     }`}
   >
@@ -174,38 +195,87 @@ const MenuItem: React.FC<{ onClick: () => void; children: React.ReactNode; dange
   </button>
 );
 
-const SWATCHES = [
-  '#000000', '#434343', '#666666', '#999999', '#CCCCCC', '#FFFFFF', '#E5E5E5', '#E7ECF7',
-  '#FF0000', '#FF9900', '#FFE08A', '#00B050', '#2B74B7', '#9900FF', '#FFC7CE', '#CFE8FF',
-  '#FCE5CD', '#FFF2CC', '#D9EAD3', '#D0E0E3', '#CFE2F3', '#D9D2E9', '#EAD1DC', '#F4CCCC',
-];
-
-const ColorPanel: React.FC<{ onPick: (hex: string | null) => void; clearLabel: string }> = ({ onPick, clearLabel }) => (
-  <div>
-    <div className="grid grid-cols-8 gap-1.5">
-      {SWATCHES.map((c) => (
-        <button
-          key={c}
-          type="button"
-          title={c}
-          aria-label={c}
-          onClick={() => onPick(c)}
-          className="w-5 h-5 rounded-md border border-zinc-300 cursor-pointer hover:scale-110 transition-transform"
-          style={{ background: c }}
-        />
-      ))}
-    </div>
-    <div className="flex items-center justify-between gap-2 mt-2">
-      <label className="flex items-center gap-1.5 text-[11px] text-zinc-600 cursor-pointer">
-        Màu khác
-        <input type="color" className="w-6 h-6 p-0 border-0 bg-transparent cursor-pointer" onChange={(e) => onPick(e.target.value.toUpperCase())} />
-      </label>
-      <button type="button" onClick={() => onPick(null)} className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 cursor-pointer">
-        {clearLabel}
+/** A colour button with the colour in use under its icon; it opens the app's own panel of colours. */
+const ColorMenu: React.FC<{
+  title: string;
+  panelTitle: string;
+  icon: React.ReactNode;
+  swatch: string;
+  value?: string;
+  lead?: BrandColor[];
+  leadLabel?: string;
+  clearLabel: string;
+  journalId?: string;
+  testId: string;
+  onPick: (hex: string | null) => void;
+}> = ({ title, panelTitle, icon, swatch, value, lead, leadLabel, clearLabel, journalId, testId, onPick }) => (
+  <Popover
+    label={null}
+    title={title}
+    width={300}
+    chevron={false}
+    testId={testId}
+    trigger={(open, toggle) => (
+      <button
+        type="button"
+        title={title}
+        aria-label={title}
+        aria-expanded={open}
+        data-testid={testId}
+        onMouseDown={noDown}
+        onClick={toggle}
+        className={`${BTN} w-8 relative ${open ? on : idle}`}
+      >
+        {icon}
+        <span aria-hidden className="absolute left-1.5 right-1.5 bottom-[3px] h-[3px] rounded-full" style={{ background: swatch, boxShadow: '0 0 0 0.5px rgba(255,255,255,.35)' }} />
       </button>
-    </div>
-  </div>
+    )}
+  >
+    {(close) => (
+      <ColorPanel
+        title={panelTitle}
+        value={value ?? null}
+        journalId={journalId}
+        lead={lead}
+        leadLabel={leadLabel}
+        clearLabel={clearLabel}
+        onPick={(hex) => {
+          onPick(hex);
+          close();
+        }}
+      />
+    )}
+  </Popover>
 );
+
+/** The lines a border choice draws, as a little picture of a 3 × 3 grid: the dotted ones are the lines the choice leaves out. */
+export const BorderIcon: React.FC<{ mode: BorderMode }> = ({ mode }) => {
+  const on = '#18181b';
+  const off = '#d4d4d8';
+  const inner = mode === 'inner' || mode === 'all';
+  const innerH = inner || mode === 'inner-h';
+  const innerV = inner || mode === 'inner-v';
+  const outer = mode === 'all' || mode === 'outer';
+  const edge = (side: 'top' | 'bottom' | 'left' | 'right') => outer || mode === side;
+  const stroke = (lit: boolean) => ({ stroke: lit ? on : off, strokeWidth: lit ? 1.6 : 1, strokeDasharray: lit ? undefined : '1.5 1.5' });
+  const none = mode === 'none';
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="flex-shrink-0">
+      <g fill="none" strokeLinecap="square">
+        <line x1="6" y1="3" x2="6" y2="15" {...stroke(innerV)} />
+        <line x1="12" y1="3" x2="12" y2="15" {...stroke(innerV)} />
+        <line x1="3" y1="6" x2="15" y2="6" {...stroke(innerH)} />
+        <line x1="3" y1="12" x2="15" y2="12" {...stroke(innerH)} />
+        <line x1="3" y1="3" x2="15" y2="3" {...stroke(edge('top'))} />
+        <line x1="3" y1="15" x2="15" y2="15" {...stroke(edge('bottom'))} />
+        <line x1="3" y1="3" x2="3" y2="15" {...stroke(edge('left'))} />
+        <line x1="15" y1="3" x2="15" y2="15" {...stroke(edge('right'))} />
+        {none && <line x1="3" y1="15" x2="15" y2="3" stroke="#ef4444" strokeWidth="1.4" />}
+        {mode === 'reset' && <path d="M5 9a4 4 0 1 1 1.2 2.8M5 12V9h3" stroke="#16a34a" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />}
+      </g>
+    </svg>
+  );
+};
 
 const BORDER_ITEMS: Array<{ mode: BorderMode; label: string }> = [
   { mode: 'all', label: 'Tất cả viền' },
@@ -223,10 +293,15 @@ const BORDER_ITEMS: Array<{ mode: BorderMode; label: string }> = [
 
 export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => {
   const [rowH, setRowH] = useState('14');
+  const f = ops.fmt;
   return (
-    <div data-testid="table-paper-toolbar" className="flex items-center gap-0.5 overflow-x-auto no-scrollbar px-1 min-w-0" onMouseDown={(e) => {
-      if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
-    }}>
+    <div
+      data-testid="table-paper-toolbar"
+      className="flex items-center gap-0.5 overflow-x-auto no-scrollbar px-1 min-w-0"
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+    >
       <Btn title="Hoàn tác (Ctrl+Z)" onClick={ops.undo} disabled={!ops.canUndo} testId="tp-undo">
         <Undo2 className="w-4 h-4" />
       </Btn>
@@ -234,56 +309,110 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
         <Redo2 className="w-4 h-4" />
       </Btn>
       <Sep />
-      <Btn title="In đậm (Ctrl+B)" onClick={() => ops.mark('b')} testId="tp-bold">
+      <Btn title="In đậm (Ctrl+B)" onClick={() => ops.mark('b')} active={f.b} testId="tp-bold">
         <Bold className="w-4 h-4" />
       </Btn>
-      <Btn title="In nghiêng (Ctrl+I)" onClick={() => ops.mark('i')} testId="tp-italic">
+      <Btn title="In nghiêng (Ctrl+I)" onClick={() => ops.mark('i')} active={f.i} testId="tp-italic">
         <Italic className="w-4 h-4" />
       </Btn>
-      <Btn title="Gạch chân (Ctrl+U)" onClick={() => ops.mark('u')} testId="tp-underline">
+      <Btn title="Gạch chân (Ctrl+U)" onClick={() => ops.mark('u')} active={f.u} testId="tp-underline">
         <Underline className="w-4 h-4" />
       </Btn>
-      <Menu title="Màu chữ" label={<Baseline className="w-4 h-4" />} testId="tp-text-color" width={216}>
-        {(close) => <ColorPanel clearLabel="Về màu đen" onPick={(c) => { ops.textColor(c); close(); }} />}
-      </Menu>
-      <Menu title="Màu nền ô" label={<PaintBucket className="w-4 h-4" />} testId="tp-fill" width={216}>
-        {(close) => <ColorPanel clearLabel="Bỏ màu nền" onPick={(c) => { ops.fill(c); close(); }} />}
-      </Menu>
+      <Btn title="Chỉ số trên (m², 10⁶)" onClick={() => ops.mark('sup')} active={f.sup} testId="tp-sup">
+        <span className="text-[13px] font-bold leading-none">
+          x<sup className="text-[8px] -mt-1">2</sup>
+        </span>
+      </Btn>
+      <Btn title="Chỉ số dưới (H₂O, FEV₁)" onClick={() => ops.mark('sub')} active={f.sub} testId="tp-sub">
+        <span className="text-[13px] font-bold leading-none">
+          x<sub className="text-[8px]">2</sub>
+        </span>
+      </Btn>
+      <ColorMenu
+        title="Màu chữ"
+        panelTitle="Màu chữ"
+        icon={<Baseline className="w-4 h-4" />}
+        swatch={f.color ?? '#FFFFFF'}
+        value={f.color}
+        clearLabel="Về màu đen"
+        journalId={ops.journalId}
+        testId="tp-text-color"
+        onPick={ops.textColor}
+      />
+      <ColorMenu
+        title="Màu nền ô"
+        panelTitle="Màu nền ô"
+        icon={<PaintBucket className="w-4 h-4" />}
+        swatch={f.fill ?? 'transparent'}
+        value={f.fill}
+        lead={ops.fillLead}
+        leadLabel="Màu hay dùng cho bảng"
+        clearLabel="Bỏ màu nền"
+        journalId={ops.journalId}
+        testId="tp-fill"
+        onPick={ops.fill}
+      />
       <Sep />
-      <Btn title="Căn trái" onClick={() => ops.align('left')} testId="tp-align-left">
+      <Btn title="Căn trái" onClick={() => ops.align('left')} active={f.align === 'left'} testId="tp-align-left">
         <AlignLeft className="w-4 h-4" />
       </Btn>
-      <Btn title="Căn giữa" onClick={() => ops.align('center')} testId="tp-align-center">
+      <Btn title="Căn giữa" onClick={() => ops.align('center')} active={f.align === 'center'} testId="tp-align-center">
         <AlignCenter className="w-4 h-4" />
       </Btn>
-      <Btn title="Căn phải" onClick={() => ops.align('right')} testId="tp-align-right">
+      <Btn title="Căn phải" onClick={() => ops.align('right')} active={f.align === 'right'} testId="tp-align-right">
         <AlignRight className="w-4 h-4" />
       </Btn>
-      <Menu title="Căn theo chiều dọc của ô (áp cho cả hàng)" label={<AlignVerticalJustifyCenter className="w-4 h-4" />} testId="tp-valign" width={248}>
+      <Menu
+        title="Căn theo chiều dọc của ô (áp cho cả hàng)"
+        label={f.valign === 'bottom' ? <AlignVerticalJustifyEnd className="w-4 h-4" /> : f.valign === 'top' ? <AlignVerticalJustifyStart className="w-4 h-4" /> : <AlignVerticalJustifyCenter className="w-4 h-4" />}
+        testId="tp-valign"
+        width={248}
+        active={f.valign === 'middle' || f.valign === 'bottom'}
+      >
         {(close) => (
           <>
             <MenuItem onClick={() => { ops.valign('top'); close(); }} testId="tp-valign-top">
-              <AlignVerticalJustifyStart className="w-3.5 h-3.5" /> Sát trên
+              <AlignVerticalJustifyStart className="w-3.5 h-3.5" /> Sát trên {f.valign === 'top' && <b className="ml-auto text-[#14532D]">✓</b>}
             </MenuItem>
             <MenuItem onClick={() => { ops.valign('middle'); close(); }} testId="tp-valign-middle">
-              <AlignVerticalJustifyCenter className="w-3.5 h-3.5" /> Ở giữa
+              <AlignVerticalJustifyCenter className="w-3.5 h-3.5" /> Ở giữa {f.valign === 'middle' && <b className="ml-auto text-[#14532D]">✓</b>}
             </MenuItem>
             <MenuItem onClick={() => { ops.valign('bottom'); close(); }} testId="tp-valign-bottom">
-              <AlignVerticalJustifyEnd className="w-3.5 h-3.5" /> Sát dưới
+              <AlignVerticalJustifyEnd className="w-3.5 h-3.5" /> Sát dưới {f.valign === 'bottom' && <b className="ml-auto text-[#14532D]">✓</b>}
             </MenuItem>
             <p className="px-2.5 pt-1.5 text-[10px] leading-snug text-zinc-500">Trong PDF các ô của một hàng được căn dọc cùng nhau, nên lựa chọn này áp cho cả hàng của ô chọn.</p>
           </>
         )}
       </Menu>
-      <Menu title="Đường viền cho các ô đã chọn" label={<Grid3x3 className="w-4 h-4" />} testId="tp-borders" width={232}>
-        {(close) =>
-          BORDER_ITEMS.map((it) => (
-            <MenuItem key={it.mode} testId={`tp-border-${it.mode}`} onClick={() => { ops.borders(it.mode); close(); }}>
-              {it.label}
-            </MenuItem>
-          ))
-        }
+      <Menu title="Đường viền cho các ô đã chọn" label={<BorderIcon mode="all" />} testId="tp-borders" width={252}>
+        {(close) => (
+          <>
+            {BORDER_ITEMS.map((it) => (
+              <MenuItem key={it.mode} testId={`tp-border-${it.mode}`} onClick={() => { ops.borders(it.mode); close(); }}>
+                <BorderIcon mode={it.mode} />
+                {it.label}
+              </MenuItem>
+            ))}
+            <p className="px-2.5 pt-1.5 text-[10px] leading-snug text-zinc-500">Đường kẻ mới vẽ bằng màu đang chọn ở nút bên cạnh.</p>
+          </>
+        )}
       </Menu>
+      <ColorMenu
+        title="Màu đường kẻ (cho các đường kẻ vẽ sau đó)"
+        panelTitle="Màu đường kẻ"
+        icon={
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+            <path d="M2 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M3.5 10.5 10.8 3.2a1.4 1.4 0 0 1 2 0l0 0a1.4 1.4 0 0 1 0 2L5.5 12.5 2.8 13z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+          </svg>
+        }
+        swatch={ops.lineColor}
+        value={ops.lineColor}
+        clearLabel="Về màu đường kẻ của bảng"
+        journalId={ops.journalId}
+        testId="tp-line-color"
+        onPick={ops.setLineColor}
+      />
       <Sep />
       <Btn title="Gộp các ô đã chọn" onClick={ops.merge} disabled={!ops.canMerge} testId="tp-merge">
         <Merge className="w-4 h-4" />
@@ -383,7 +512,7 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
       <Btn title="Thu nhỏ" onClick={() => ops.setZoom(Math.max(0.3, Math.round((ops.zoom - 0.1) * 10) / 10))} testId="tp-zoom-out">
         <ZoomOut className="w-4 h-4" />
       </Btn>
-      <button type="button" onMouseDown={noDown} onClick={ops.fit} title="Vừa khít chiều rộng" data-testid="tp-zoom-fit" className="h-8 px-1.5 rounded-lg text-[11px] font-bold text-zinc-200 hover:bg-white/12 cursor-pointer tabular-nums w-12">
+      <button type="button" onMouseDown={noDown} onClick={ops.fit} title="Vừa khít chiều rộng" data-testid="tp-zoom-fit" className={`${BTN} px-1.5 tabular-nums w-12 font-bold ${idle}`}>
         {Math.round(ops.zoom * 100)}%
       </button>
       <Btn title="Phóng to" onClick={() => ops.setZoom(Math.min(2.5, Math.round((ops.zoom + 0.1) * 10) / 10))} testId="tp-zoom-in">

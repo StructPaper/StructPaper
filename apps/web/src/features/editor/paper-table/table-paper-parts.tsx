@@ -124,8 +124,10 @@ export const PieceTable: React.FC<PieceProps> = ({
   const R = grid.cells.length;
   const rules = tableRulesOf(table);
   const fill = resolveBodyFill(table);
-  const hLines = Array.from({ length: R + 1 }, (_, b) => horizontalLine(table, rules, b, cols).lines);
-  const vLines = Array.from({ length: R }, (_, r) => verticalLines(table, rules, r, cols).lines);
+  const hAll = Array.from({ length: R + 1 }, (_, b) => horizontalLine(table, rules, b, cols));
+  const vAll = Array.from({ length: R }, (_, r) => verticalLines(table, rules, r, cols));
+  const hLines = hAll.map((h) => h.lines);
+  const vLines = vAll.map((v) => v.lines);
   const widths = columnWidthsPt(weights, widthPt);
   const repeatHead = theme.repeatTableHeader;
   const showHead = piece.first || repeatHead || !!measure;
@@ -173,7 +175,16 @@ export const PieceTable: React.FC<PieceProps> = ({
     const selected = !!selection && !clone && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
     const isActive = !!active && !clone && active.r === r && active.c === c;
     const minH = inHead ? table.headerHeight : rowHeightOf(table, bodyIdx);
+    // the colour the author gave to a line of this cell (a line of the table's own colour has none to say)
+    const edgeTop = first ? (piece.first ? hAll[0].colors[c] : undefined) : hAll[r].colors[c];
+    const edgeBottom = lastOfPiece ? (piece.last ? hAll[R].colors[c] : undefined) : hAll[lastRow + 1].colors[c];
+    const edgeLeft = vAll[r].colors[c];
+    const edgeRight = vAll[r].colors[Math.min(cols, c + cell.colSpan)];
     const style: React.CSSProperties = {
+      ...(edgeTop ? { borderTopColor: edgeTop } : {}),
+      ...(edgeBottom ? { borderBottomColor: edgeBottom } : {}),
+      ...(edgeLeft ? { borderLeftColor: edgeLeft } : {}),
+      ...(edgeRight ? { borderRightColor: edgeRight } : {}),
       textAlign: align,
       ...(cell.fill ? ({ ['--tp-cell-fill' as string]: cell.fill } as React.CSSProperties) : {}),
       ...(minH && rs === 1 ? { height: px(minH) } : {}),

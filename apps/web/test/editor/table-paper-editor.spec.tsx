@@ -124,3 +124,104 @@ describe('the icon on the table block', () => {
     expect(screen.queryByTestId('table-paper-open')).toBeNull();
   });
 });
+
+describe('the toolbar of the paper view', () => {
+  const td = (r: number, c: number) => document.querySelector<HTMLElement>(`.tp-sheet td[data-r="${r}"][data-c="${c}"]`)!;
+  const select = (r: number, c: number) => {
+    fireEvent.pointerDown(td(r, c), { button: 0 });
+    fireEvent.pointerUp(window);
+  };
+
+  it('shows what the chosen cell is set as: bold, centred, with a fill', () => {
+    const t = table();
+    t.bodyRows![0][0] = { text: '<b>1</b>', align: 'center', fill: '#FFE08A' };
+    render(wrap(<TablePaperEditor table={t} onChange={vi.fn()} onClose={vi.fn()} />));
+    select(1, 0);
+    expect(screen.getByTestId('tp-bold').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('tp-italic').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('tp-align-center').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('tp-align-left').getAttribute('aria-pressed')).toBe('false');
+    // another cell, another state
+    select(1, 1);
+    expect(screen.getByTestId('tp-bold').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('tp-align-left').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('raised and lowered text are buttons, and show when they are on', () => {
+    const t = table();
+    t.bodyRows![0][0] = { text: 'H<sub>2</sub>' };
+    t.bodyRows![0][1] = { text: '<sup>2</sup>' };
+    render(wrap(<TablePaperEditor table={t} onChange={vi.fn()} onClose={vi.fn()} />));
+    select(1, 1);
+    expect(screen.getByTestId('tp-sup').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('tp-sub').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('a whole cell is set raised with the button when the cells, not the text, are chosen', () => {
+    const onChange = vi.fn();
+    render(wrap(<TablePaperEditor table={table()} onChange={onChange} onClose={vi.fn()} />));
+    fireEvent.pointerDown(td(1, 0), { button: 0 });
+    fireEvent.pointerEnter(td(1, 1));
+    fireEvent.pointerUp(window);
+    fireEvent.click(screen.getByTestId('tp-sup'));
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PaperTable;
+    expect(last.bodyRows![0][0].text).toBe('<sup>1</sup>');
+  });
+
+  it('the fill panel offers the header band and the tinted row colours first', () => {
+    render(wrap(<TablePaperEditor table={table()} onChange={vi.fn()} onClose={vi.fn()} />));
+    select(1, 0);
+    fireEvent.click(screen.getByTestId('tp-fill'));
+    const lead = screen.getByTestId('color-lead');
+    expect(lead.querySelectorAll('button')).toHaveLength(2);
+    expect(lead.textContent).toBe('Màu hay dùng cho bảng');
+    // the panel of the app's other places: it has the basic colours after them
+    expect(screen.getByTestId('color-panel').textContent).toContain('Màu hay dùng cho bảng');
+  });
+
+  it('the lines of the cells chosen take the colour chosen', () => {
+    const onChange = vi.fn();
+    render(wrap(<TablePaperEditor table={table()} onChange={onChange} onClose={vi.fn()} />));
+    fireEvent.click(screen.getByTestId('tp-line-color'));
+    fireEvent.click(screen.getByTestId('color-ff0000') ?? screen.getAllByRole('button')[0]);
+    select(1, 0);
+    fireEvent.click(screen.getByTestId('tp-borders'));
+    fireEvent.click(screen.getByTestId('tp-border-bottom'));
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PaperTable;
+    expect(last.bodyRows![0][0].borders).toEqual({ bottom: 'line' });
+    expect(last.bodyRows![0][0].borderColors).toEqual({ bottom: '#FF0000' });
+  });
+});
+
+describe('history while the paper view is open', () => {
+  it('stands as a dialog the paper\'s own history leaves alone, and Ctrl+Z undoes this table only', () => {
+    const onChange = vi.fn();
+    render(wrap(<TablePaperEditor table={table()} onChange={onChange} onClose={vi.fn()} />));
+    // the mark the paper's history looks for before it answers Ctrl+Z
+    expect(document.querySelector('[data-testid="modal-portal-root"]')).toBeTruthy();
+    const cell = document.querySelector<HTMLElement>('.tp-sheet td[data-r="1"][data-c="0"] .tp-cell')!;
+    cell.textContent = 'đổi';
+    fireEvent.input(cell);
+    let last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PaperTable;
+    expect(last.bodyRows![0][0].text).toBe('đổi');
+    const outside = vi.fn();
+    window.addEventListener('keydown', outside);
+    const ev = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(ev);
+    window.removeEventListener('keydown', outside);
+    last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PaperTable;
+    expect(last.bodyRows![0][0].text).toBe('1');
+    expect(ev.defaultPrevented).toBe(true);
+  });
+});
+
+describe('the edge being dragged', () => {
+  it('has a blue guide over the table while it is held, and none after', () => {
+    render(wrap(<TablePaperEditor table={table()} onChange={vi.fn()} onClose={vi.fn()} />));
+    const handle = document.querySelector<HTMLElement>('.tp-sheet td[data-r="1"][data-c="0"] .tp-colh')!;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 100 });
+    expect(screen.getByTestId('tp-guide')).toBeTruthy();
+    fireEvent.pointerUp(window);
+    expect(screen.queryByTestId('tp-guide')).toBeNull();
+  });
+});

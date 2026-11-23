@@ -35,7 +35,7 @@ export function richRuns(text: string, color: string, font = FONT_SERIF, size = 
   const out: Array<TextRun | ReturnType<typeof latexToDocxMath>> = [];
   // <b>, <i>, <u>, <color=…> runs keep their emphasis; each run is then split into text, math and citations
   for (const seg of parseMarkup(text)) {
-    const style = { bold: seg.b || undefined, italics: seg.i || undefined, underline: seg.u ? {} : undefined, ...(seg.color ? { color: seg.color.slice(1) } : {}) };
+    const style = { bold: seg.b || undefined, italics: seg.i || undefined, underline: seg.u ? {} : undefined, superScript: seg.sup || undefined, subScript: seg.sub || undefined, ...(seg.color ? { color: seg.color.slice(1) } : {}) };
     const body = seg.text;
     let last = 0;
     const pushText = (t: string) => {

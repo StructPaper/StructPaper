@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import type { PaperTable } from '@/types/paper';
 import { resolveTheme } from '@/lib/theme-config';
 import { getJournalTemplate } from '@/lib/templates';
@@ -35,7 +36,8 @@ import {
 import { TableSettingsModal } from '../components/TableSettingsModal';
 import { runningHeader } from '../overview/PageChrome';
 import { TablePaperPages, type TablePaperLayoutInfo } from './TablePaperPages';
-import { TablePaperToolbar, type PaperTableOps } from './TablePaperToolbar';
+import { TablePaperToolbar, type PaperTableFormat, type PaperTableOps } from './TablePaperToolbar';
+import type { BrandColor } from '../overview/overview-ui';
 import type { PieceHandlers } from './table-paper-parts';
 import { usePaperTableContext } from './paper-table-context';
 
@@ -310,6 +312,8 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
   // ---- dragging the edges of columns and rows ----
   const resizing = useRef<null | { kind: 'col' | 'row'; index: number; startX: number; startY: number; base: PaperTable; widths: number[]; startH: number; shares: number[] }>(null);
   const [resizeKind, setResizeKind] = useState<'col' | 'row' | null>(null);
+  // the blue line over the table that follows the edge being dragged (vertical for a column, horizontal for a row)
+  const [guide, setGuide] = useState<{ kind: 'col' | 'row'; at: number; from: number; to: number } | null>(null);
   function startResize(kind: 'col' | 'row', index: number, e: React.PointerEvent) {
     e.preventDefault();
     const L = layoutRef.current;
@@ -327,9 +331,14 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
       shares: L.weights.map((w) => w / (L.weights.reduce((a, b) => a + b, 0) || 1)),
     };
     setResizeKind(kind);
+    const tbl = (e.currentTarget as HTMLElement).closest('table')?.getBoundingClientRect();
+    const handle = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const startAt = kind === 'col' ? handle.left + handle.width / 2 : handle.top + handle.height / 2;
+    if (tbl) setGuide({ kind, at: startAt, from: kind === 'col' ? tbl.top : tbl.left, to: kind === 'col' ? tbl.bottom : tbl.right });
     const move = (ev: PointerEvent) => {
       const s = resizing.current;
       if (!s) return;
+      setGuide((g) => (g ? { ...g, at: startAt + (g.kind === 'col' ? ev.clientX - s.startX : ev.clientY - s.startY) } : g));
       const k = zoomRef.current * PX_PER_PT;
       const dx = (ev.clientX - s.startX) / k;
       const dy = (ev.clientY - s.startY) / k;
@@ -365,6 +374,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     const up = () => {
       resizing.current = null;
       setResizeKind(null);
+      setGuide(null);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
@@ -380,11 +390,45 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     return !!a && a.classList.contains('tp-cell') && a.getAttribute('contenteditable') === 'true';
   };
 
-  const mark = (key: 'b' | 'i' | 'u') => {
-    if (inCell() && isSingle) {
-      document.execCommand(key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline');
-      return;
+  // the text chosen in a cell is remembered, so that a tool that takes the focus (a panel of colours) can still work on it
+  const savedSelection = useRef<{ cell: HTMLElement; range: globalThis.Range } | null>(null);
+  const [, bumpSel] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const onSel = () => {
+      const sel = window.getSelection();
+      const a = document.activeElement as HTMLElement | null;
+      if (sel && sel.rangeCount && a && a.classList?.contains('tp-cell') && a.contains(sel.anchorNode)) savedSelection.current = { cell: a, range: sel.getRangeAt(0).cloneRange() };
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => bumpSel((n) => n + 1));
+    };
+    document.addEventListener('selectionchange', onSel);
+    return () => {
+      document.removeEventListener('selectionchange', onSel);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  /** Runs `fn` with the caret back in the cell it was in (when a tool took the focus away). */
+  const inSavedCell = (fn: () => void): boolean => {
+    if (inCell()) {
+      fn();
+      return true;
     }
+    const saved = savedSelection.current;
+    if (saved && saved.cell.isConnected && !saved.range.collapsed) {
+      saved.cell.focus();
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(saved.range);
+      fn();
+      return true;
+    }
+    return false;
+  };
+
+  const COMMANDS = { b: 'bold', i: 'italic', u: 'underline', sup: 'superscript', sub: 'subscript' } as const;
+  const mark = (key: 'b' | 'i' | 'u' | 'sup' | 'sub') => {
+    if (isSingle && inSavedCell(() => document.execCommand(COMMANDS[key]))) return;
     const r = rangeCells();
     const g = gridRef.current;
     // on if every cell with text already has it on, else all turned on
@@ -401,10 +445,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     applyGrid(mapText(g, r, (t) => (stripMarkup(t) ? applyMarkup(t, 0, stripMarkup(t).length, { key, on: !all }) : t)));
   };
   const textColor = (hex: string | null) => {
-    if (inCell() && isSingle) {
-      document.execCommand('foreColor', false, hex ?? '#000000');
-      return;
-    }
+    if (isSingle && inSavedCell(() => document.execCommand('foreColor', false, hex ?? '#000000'))) return;
     const r = rangeCells();
     applyGrid(mapText(gridRef.current, r, (t) => (stripMarkup(t) ? applyMarkup(t, 0, stripMarkup(t).length, { key: 'color', color: hex }) : t)));
   };
@@ -415,7 +456,9 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     // in the PDF the cells of a row are aligned together, so the whole row takes it
     applyGrid(patchRange(gridRef.current, { r0: r.r0, r1: r.r1, c0: 0, c1: colsOfGrid(gridRef.current) - 1 }, { valign: v === 'top' ? undefined : v }));
   };
-  const borders = (mode: BorderMode) => applyGrid(applyBorders(gridRef.current, rangeCells(), mode));
+  const [lineColorChoice, setLineColorChoice] = useState<string | null>(null);
+  const baseLine = table.borderColor || '#000000';
+  const borders = (mode: BorderMode) => applyGrid(applyBorders(gridRef.current, rangeCells(), mode, 'line', lineColorChoice ?? undefined));
   const merge = () => applyGrid(mergeRange(gridRef.current, rangeCells()));
   const unmerge = () => applyGrid(unmergeAt(gridRef.current, rangeCells()));
   const insertRow = (where: 'above' | 'below') => {
@@ -483,6 +526,57 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     commit({ ...t, rowHeights: heights.some((h) => h) ? heights : undefined, ...(touchesHead ? { headerHeight: pt ?? undefined } : {}) });
   };
 
+  const fmt: PaperTableFormat = (() => {
+    const base: PaperTableFormat = { b: false, i: false, u: false, sup: false, sub: false };
+    if (!range) return base;
+    const g = grid;
+    const cells: Array<{ text: string; align?: string; fill?: string; row: number }> = [];
+    for (let y = range.r0; y <= range.r1; y++) {
+      for (let x = range.c0; x <= range.c1; x++) {
+        const c = g.cells[y]?.[x];
+        if (c && !c.covered) cells.push({ text: c.text, align: c.align ?? (y < g.head ? 'center' : 'left'), fill: c.fill, row: y });
+      }
+    }
+    const same = <T,>(xs: T[]): T | undefined => (xs.length > 0 && xs.every((v) => v === xs[0]) ? xs[0] : undefined);
+    const out: PaperTableFormat = { ...base };
+    out.align = same(cells.map((c) => c.align)) as PaperTableFormat['align'];
+    out.fill = same(cells.map((c) => c.fill));
+    // the vertical alignment is the row's (see rowValign): the rows of the range agree or the button shows none
+    const rowKinds = Array.from({ length: range.r1 - range.r0 + 1 }, (_, k) => range.r0 + k).map((y) => {
+      const cs = g.cells[y]?.filter((c) => !c.covered) ?? [];
+      return cs.some((c) => c.valign === 'middle') ? 'middle' : cs.some((c) => c.valign === 'bottom') ? 'bottom' : 'top';
+    });
+    out.valign = same(rowKinds) as PaperTableFormat['valign'];
+    if (inCell() && isSingle) {
+      // typing in a cell: what the caret is in
+      const q = (c: string) => {
+        try {
+          return document.queryCommandState(c);
+        } catch {
+          return false;
+        }
+      };
+      out.b = q('bold');
+      out.i = q('italic');
+      out.u = q('underline');
+      out.sup = q('superscript');
+      out.sub = q('subscript');
+    } else {
+      const withText = cells.filter((c) => stripMarkup(c.text));
+      const all = (k: 'b' | 'i' | 'u' | 'sup' | 'sub') => withText.length > 0 && withText.every((c) => styleAt(c.text, 0, stripMarkup(c.text).length)[k]);
+      out.b = all('b');
+      out.i = all('i');
+      out.u = all('u');
+      out.sup = all('sup');
+      out.sub = all('sub');
+      out.color = same(withText.map((c) => styleAt(c.text, 0, stripMarkup(c.text).length).color));
+    }
+    return out;
+  })();
+  const fillLead: BrandColor[] = [
+    { label: 'Màu dải tiêu đề', hex: (table.headerFill || theme.tableHeaderColor).toUpperCase() },
+    { label: 'Màu nền ô mặc định (hàng xen kẽ)', hex: (table.bodyTint || theme.tableZebraColor).toUpperCase() },
+  ];
   const selectionLabel = !range
     ? 'Chọn một ô để bắt đầu'
     : isSingle
@@ -498,6 +592,11 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     redo,
     canUndo: past.current.length > 0,
     canRedo: future.current.length > 0,
+    fmt,
+    fillLead,
+    journalId: paper?.metadata.journalId,
+    lineColor: lineColorChoice ?? baseLine,
+    setLineColor: (hex) => setLineColorChoice(hex),
     mark,
     textColor,
     fill,
@@ -534,20 +633,27 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // a menu or a panel of colours that is open takes the Esc first (and a cell, below)
+        if (document.querySelector('[role="menu"], [data-testid="color-panel"]')) return;
         // inside a cell Esc first leaves the cell
         if (document.activeElement && (document.activeElement as HTMLElement).classList?.contains('tp-cell')) return;
         onClose();
         return;
       }
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && !inCell()) {
+      if (mod) {
         const k = e.key.toLowerCase();
+        // (the history of this view, in a cell too: the browser's own would undo the typing but not the table)
         if (k === 'z' && !e.shiftKey) {
           e.preventDefault();
+          e.stopPropagation();
           undo();
         } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
           e.preventDefault();
+          e.stopPropagation();
           redo();
+        } else if (inCell()) {
+          return;
         } else if (k === 'a') {
           e.preventDefault();
           selectAll();
@@ -561,8 +667,8 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
         applyGrid(mapText(gridRef.current, range, () => ''));
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, undo, redo, multi, range]);
 
@@ -596,7 +702,14 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[9998] flex flex-col text-zinc-100" style={{ background: 'rgba(9, 9, 11, 0.94)', paddingTop: 'var(--titlebar-height, 38px)' }} role="dialog" aria-label="Bảng trên trang giấy" data-testid="table-paper-editor">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="fixed inset-0 z-[9998] flex flex-col text-zinc-100"
+      style={{ background: 'rgba(24, 24, 27, 0.94)', paddingTop: 'var(--titlebar-height, 38px)' }}
+      role="dialog" aria-label="Bảng trên trang giấy" data-testid="table-paper-editor">
       <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0 border-b border-white/10">
         <div className="min-w-0 flex items-baseline gap-2">
           <h2 className="text-sm font-extrabold tracking-tight whitespace-nowrap">Bảng trên trang giấy</h2>
@@ -665,7 +778,17 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
           />
         </aside>
       </div>
-    </div>,
+      {guide && (
+        <i
+          aria-hidden
+          data-testid="tp-guide"
+          className="fixed z-[10001] pointer-events-none"
+          style={guide.kind === 'col' ? { left: guide.at - 1, top: guide.from, height: guide.to - guide.from, width: 2, background: '#3b82f6' } : { top: guide.at - 1, left: guide.from, width: guide.to - guide.from, height: 2, background: '#3b82f6' }}
+        />
+      )}
+      {/* the paper's own history (Ctrl+Z / Ctrl+Y) sleeps while a view like this is open: what is undone here is this table */}
+      <span data-testid="modal-portal-root" hidden />
+    </motion.div>,
     document.body
   );
 };

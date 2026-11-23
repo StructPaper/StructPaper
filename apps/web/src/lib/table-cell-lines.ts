@@ -58,12 +58,13 @@ export const hasCellBorders = (table: PaperTable): boolean => {
  * The horizontal line under row `b - 1` (boundary b: 0 is above the first row, rows.length under the last), column by column, and whether
  * any cell has a say in it (when none has, the table's style is left to draw it as it always did).
  */
-export function horizontalLine(table: PaperTable, rules: TableRules, b: number, cols: number): { lines: boolean[]; explicit: boolean } {
+export function horizontalLine(table: PaperTable, rules: TableRules, b: number, cols: number): { lines: boolean[]; explicit: boolean; colors: (string | undefined)[] } {
   const { rows } = rowsOf(table);
   const R = rows.length;
   const grid = occupancy(rows, cols);
   const base = b === 0 ? rules.top : b === R ? rules.hInner || rules.bottom : rules.hInner;
   const lines = Array(cols).fill(base);
+  const colors: (string | undefined)[] = Array(cols).fill(undefined);
   let explicit = false;
   for (let c = 0; c < cols; c++) {
     const above = b > 0 ? grid[b - 1]?.[c] : undefined;
@@ -76,25 +77,44 @@ export function horizontalLine(table: PaperTable, rules: TableRules, b: number, 
       lines[c] = false;
       continue;
     }
-    if (a === undefined && d === undefined) continue;
+    // (a colour alone says nothing about the line: it colours the line the table's style or another cell draws)
+    const colour = below && below.row === b ? below.cell.borderColors?.top : undefined;
+    const colourAbove = above && above.row + above.rowSpan - 1 === b - 1 ? above.cell.borderColors?.bottom : undefined;
+    if (a === undefined && d === undefined) {
+      if (colour || colourAbove) {
+        explicit = true;
+        colors[c] = colour ?? colourAbove;
+      }
+      continue;
+    }
     explicit = true;
     lines[c] = a === 'line' || d === 'line' ? true : false;
+    colors[c] = colour ?? colourAbove;
   }
-  return { lines, explicit };
+  return { lines, explicit, colors };
 }
 
 /** The vertical lines of row r: boundary k stands left of column k (0 and `cols` are the edges). */
-export function verticalLines(table: PaperTable, rules: TableRules, r: number, cols: number): { lines: boolean[]; explicit: boolean } {
+export function verticalLines(table: PaperTable, rules: TableRules, r: number, cols: number): { lines: boolean[]; explicit: boolean; colors: (string | undefined)[] } {
   const { rows } = rowsOf(table);
   const grid = occupancy(rows, cols);
   const lines = Array.from({ length: cols + 1 }, (_, k) => (k === 0 || k === cols ? rules.vOuter : rules.vInner));
   const said: ('line' | 'none' | undefined)[] = Array(cols + 1).fill(undefined);
+  const colors: (string | undefined)[] = Array(cols + 1).fill(undefined);
   let explicit = false;
   for (let c = 0; c < cols; c++) {
     const p = grid[r]?.[c];
     if (!p || p.col !== c) continue;
     const left = p.cell.borders?.left;
     const right = p.cell.borders?.right;
+    if (p.cell.borderColors?.left) {
+      explicit = true;
+      colors[c] = p.cell.borderColors.left;
+    }
+    if (p.cell.borderColors?.right) {
+      explicit = true;
+      colors[c + p.colSpan] = p.cell.borderColors.right;
+    }
     if (left) {
       explicit = true;
       said[c] = said[c] === 'line' || left === 'line' ? 'line' : 'none';
@@ -107,7 +127,7 @@ export function verticalLines(table: PaperTable, rules: TableRules, r: number, c
   said.forEach((v, k) => {
     if (v) lines[k] = v === 'line';
   });
-  return { lines, explicit };
+  return { lines, explicit, colors };
 }
 
 /**
