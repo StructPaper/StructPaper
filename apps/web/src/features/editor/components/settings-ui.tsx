@@ -125,17 +125,21 @@ export const ChoiceCard: React.FC<{
   tag?: React.ReactNode;
   tooltip?: string;
   testId?: string;
+  /** Not a choice now (greyed, and why in the tooltip): something else already settles it. */
+  disabled?: boolean;
   children?: React.ReactNode;
-}> = ({ selected, onClick, title, sub, tag, tooltip, testId, children }) => (
+}> = ({ selected, onClick, title, sub, tag, tooltip, testId, disabled, children }) => (
   <button
     type="button"
     role="radio"
     aria-checked={selected}
     title={tooltip}
     data-testid={testId}
-    onClick={onClick}
-    className={`relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
-      selected ? 'bg-[#F7FEE7] border-[#78C841] ring-2 ring-[#78C841]/25' : 'bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+    aria-disabled={disabled || undefined}
+    onClick={disabled ? undefined : onClick}
+    className={`relative p-3 rounded-2xl border text-left transition-all flex flex-col gap-1.5 ${
+      disabled ? 'opacity-45 grayscale cursor-not-allowed bg-zinc-50 border-zinc-200' : 'cursor-pointer'} ${
+      disabled ? '' : selected ? 'bg-[#F7FEE7] border-[#78C841] ring-2 ring-[#78C841]/25' : 'bg-white hover:bg-zinc-50 border-zinc-200 hover:border-zinc-300'
     }`}
   >
     {selected && (

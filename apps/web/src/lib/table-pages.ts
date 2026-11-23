@@ -212,9 +212,10 @@ export interface TablePaperLook {
   stretch: number;
 }
 
-export function lookOf(table: Pick<PaperTable, 'fontSize' | 'rowStretch'>, fontSize: string): TablePaperLook {
+export function lookOf(table: Pick<PaperTable, 'fontSize' | 'rowStretch'>, fontSize: string, spread = 1.13): TablePaperLook {
   const fontPt = parseFloat(table.fontSize ?? fontSize) || 8;
-  const linePt = Math.round((fontPt + 2) * 2) / 2;
+  // (the lines of a table share the line spacing of the paper: the reference journals set 8 pt type on 11.3 pt lines, 10 pt x 1.13)
+  const linePt = Math.round((Math.round((fontPt + 2) * 2) / 2) * spread * 100) / 100;
   return { fontPt, linePt, stretch: table.rowStretch || 1.2 };
 }
 

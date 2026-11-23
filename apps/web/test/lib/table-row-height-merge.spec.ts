@@ -44,6 +44,9 @@ describe('a row with a least height whose first cell is merged', () => {
     const t = base();
     delete t.rowHeights;
     delete t.headerHeight;
+    // (no cell merged down: those hold the rows they span at the height they were worked out to)
+    t.bodyRows![2] = [{ text: 'x' }, { text: 'y' }, { text: 'z' }];
+    t.bodyRows![3] = [{ text: 'q' }, { text: 'r' }, { text: 's' }];
     expect(latex(t)).not.toContain('\\rule[');
   });
 });

@@ -36,6 +36,11 @@ export function htmlToMarkup(root: ParentNode): string {
     if (node.nodeType !== 1) return;
     const el = node as HTMLElement;
     const tag = el.tagName;
+    // a citation as the PDF sets it, a raised number: it is the text "[18]" (the number may be edited, the brackets stay)
+    if (tag === 'SUP' && el.hasAttribute('data-cite')) {
+      push(`[${el.textContent ?? ''}]`, style);
+      return;
+    }
     if (tag === 'BR') {
       push('\n', style);
       return;

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlignCenter,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   AlignVerticalJustifyCenter,
@@ -35,7 +36,7 @@ export interface PaperTableFormat {
   u: boolean;
   sup: boolean;
   sub: boolean;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   valign?: 'top' | 'middle' | 'bottom';
   fill?: string;
   color?: string;
@@ -56,7 +57,7 @@ export interface PaperTableOps {
   /** The colours this table's fills start from: the header band and the tinted rows. */
   fillLead: BrandColor[];
   journalId?: string;
-  align: (a: 'left' | 'center' | 'right') => void;
+  align: (a: 'left' | 'center' | 'right' | 'justify') => void;
   valign: (v: 'top' | 'middle' | 'bottom') => void;
   borders: (mode: BorderMode) => void;
   lineColor: string;
@@ -419,6 +420,9 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
       <Btn title="Căn phải" onClick={() => ops.align('right')} active={f.align === 'right'} testId="tp-align-right">
         <AlignRight className="w-4 h-4" />
       </Btn>
+      <Btn title="Căn đều hai bên" onClick={() => ops.align('justify')} active={f.align === 'justify'} testId="tp-align-justify">
+        <AlignJustify className="w-4 h-4" />
+      </Btn>
       <Menu
         title="Căn theo chiều dọc của ô (áp cho cả hàng)"
         label={f.valign === 'bottom' ? <AlignVerticalJustifyEnd className="w-4 h-4" /> : f.valign === 'top' ? <AlignVerticalJustifyStart className="w-4 h-4" /> : <AlignVerticalJustifyCenter className="w-4 h-4" />}
@@ -442,7 +446,7 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
         )}
       </Menu>
       <Menu title="Đường viền và màu đường kẻ" label={<BorderIcon mode="all" />} testId="tp-borders" width={292}>
-        {(close) => (
+        {() => (
           <div>
             <div className="flex gap-2">
               <div className="grid grid-cols-5 gap-1">
@@ -453,10 +457,7 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
                     title={it.label}
                     aria-label={it.label}
                     data-testid={`tp-border-${it.mode}`}
-                    onClick={() => {
-                      ops.borders(it.mode);
-                      close();
-                    }}
+                    onClick={() => ops.borders(it.mode)}
                     className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-100 transition-colors"
                   >
                     <BorderIcon mode={it.mode} />
@@ -506,17 +507,14 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
                   title="Theo kiểu kẻ của bảng (bỏ đường kẻ riêng của các ô chọn)"
                   aria-label="Theo kiểu kẻ của bảng"
                   data-testid="tp-border-reset"
-                  onClick={() => {
-                    ops.borders('reset');
-                    close();
-                  }}
+                  onClick={() => ops.borders('reset')}
                   className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-100 transition-colors"
                 >
                   <BorderIcon mode="reset" />
                 </button>
               </div>
             </div>
-            <p className="px-1 pt-2 text-[10px] leading-snug text-zinc-500">Chọn màu rồi chọn kiểu viền: đường kẻ vẽ ra mang màu đang chọn (gạch dưới biểu tượng bút).</p>
+            <p className="px-1 pt-2 text-[10px] leading-snug text-zinc-500">Chọn kiểu viền và màu theo thứ tự nào cũng được, bao nhiêu lần cũng được: bảng này mở cho đến khi bạn bấm ra ngoài. Đường kẻ vẽ ra mang màu đang chọn (gạch dưới biểu tượng bút).</p>
           </div>
         )}
       </Menu>

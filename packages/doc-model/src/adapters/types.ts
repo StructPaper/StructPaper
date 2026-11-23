@@ -69,7 +69,7 @@ export interface V1TableCell {
   text: string;
   colSpan?: number;
   rowSpan?: number;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   isHeader?: boolean;
   fill?: string;
   valign?: 'top' | 'middle' | 'bottom';

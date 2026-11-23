@@ -504,6 +504,8 @@ function withCellStyles(extras: Record<string, unknown> | undefined, tbl: any): 
     (row ?? []).forEach((cell: any, c: number) => {
       const s: Record<string, unknown> = {};
       for (const k of CELL_STYLE_KEYS) if (cell?.[k] !== undefined) s[k] = cell[k];
+      // (the v2 cell knows left, centre and right: justified text is kept here)
+      if (cell?.align === 'justify') s.align = 'justify';
       if (Object.keys(s).length > 0) styles[`${r}:${c}`] = s;
     })
   );

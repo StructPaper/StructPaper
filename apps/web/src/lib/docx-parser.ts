@@ -237,7 +237,7 @@ export function parseOpenXmlTable(tblXml: string): {
     /** The cell's text with <b>/<i> where the Word runs are bold or italic (only when something in it is). */
     markup?: string;
     /** Where Word centres or right-aligns the cell's text (left is what every cell is without a choice). */
-    align?: 'center' | 'right';
+    align?: 'center' | 'right' | 'justify';
     isContinuation: boolean;
     isVContinue: boolean;
     vMerge: 'restart' | 'continue' | 'none';
@@ -461,18 +461,20 @@ export function parseOpenXmlTable(tblXml: string): {
 }
 
 /** The alignment Word gives the text of a cell (<w:jc> of the paragraphs that hold text): centre or right when most of them have it. */
-function cellAlignment(paragraphs: string[]): 'center' | 'right' | undefined {
-  const votes = { center: 0, right: 0, other: 0 };
+function cellAlignment(paragraphs: string[]): 'center' | 'right' | 'justify' | undefined {
+  const votes = { center: 0, right: 0, justify: 0, other: 0 };
   for (const p of paragraphs) {
     if (!/<w:t\b[^>]*>[^<]+<\/w:t>/i.test(p)) continue;
     const pPr = p.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/i)?.[1] ?? '';
     const v = pPr.match(/<w:jc\b[^>]*w:val="(\w+)"/i)?.[1];
     if (v === 'center') votes.center++;
     else if (v === 'right' || v === 'end') votes.right++;
+    else if (v === 'both' || v === 'distribute') votes.justify++;
     else votes.other++;
   }
   if (votes.center > votes.right && votes.center >= votes.other) return 'center';
   if (votes.right > votes.center && votes.right >= votes.other) return 'right';
+  if (votes.justify > votes.center && votes.justify > votes.right && votes.justify >= votes.other) return 'justify';
   return undefined;
 }
 

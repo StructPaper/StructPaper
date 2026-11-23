@@ -23,6 +23,10 @@ describe('the text of an edited cell, read back as the tagged string', () => {
     expect(read('<span style="color: rgb(0, 128, 0)">g</span>')).toBe('<color=#008000>g</color>');
   });
 
+  it('a raised citation number is read back as the citation with its brackets', () => {
+    expect(read('FEV1<sup data-cite="1">18</sup> và <sup data-cite="1">3,4</sup>')).toBe('FEV1[18] và [3,4]');
+  });
+
   it('a line break and the blocks of Enter are newlines, without a trailing one', () => {
     expect(read('một<br>hai')).toBe('một\nhai');
     expect(read('một<div>hai</div><div>ba</div>')).toBe('một\nhai\nba');

@@ -30,6 +30,8 @@ export interface TablePaperPagesProps {
   grid: TableGrid;
   theme: ResolvedTheme;
   paperSize: string;
+  /** The line spacing of the paper: the lines of the table share it. */
+  lineSpread?: number;
   isOneColumn: boolean;
   lang: 'vi' | 'en';
   /** The line printed at the top of every sheet. */
@@ -80,6 +82,7 @@ export const TablePaperPages: React.FC<TablePaperPagesProps> = ({
   grid,
   theme,
   paperSize,
+  lineSpread,
   isOneColumn,
   lang,
   header,
@@ -91,7 +94,7 @@ export const TablePaperPages: React.FC<TablePaperPagesProps> = ({
   handlers,
   onLayout,
 }) => {
-  const layout = useMemo(() => deriveTableLayout(table, theme, { isOneColumn, paperSize }), [table, theme, isOneColumn, paperSize]);
+  const layout = useMemo(() => deriveTableLayout(table, theme, { isOneColumn, paperSize, lineSpread }), [table, theme, isOneColumn, paperSize, lineSpread]);
   const { plan, sheet, frame, look, cols, weights, widthPt } = layout;
   const margins = useMemo(() => marginsOf(theme), [theme]);
   const nBody = Math.max(0, grid.cells.length - grid.head);

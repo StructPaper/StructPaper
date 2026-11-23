@@ -138,6 +138,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
   }, [paper, layoutSettings]);
   const isOneColumn = layoutSettings?.columnLayout === '1-column';
   const paperSize = layoutSettings?.paperSize ?? 'custom';
+  const lineSpread = Number(layoutSettings?.lineSpacing) || 1.13;
   const pageNum = layoutSettings?.pageNumbering;
   const header = useMemo(() => (paper ? runningHeader(paper) : ''), [paper]);
   const firstPage = useMemo(() => {
@@ -146,7 +147,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     return (Number.isFinite(n) && n > 0 ? n : 1) + 1;
   }, [paper]);
 
-  const layout = useMemo(() => deriveTableLayout(table, theme, { isOneColumn, paperSize }), [table, theme, isOneColumn, paperSize]);
+  const layout = useMemo(() => deriveTableLayout(table, theme, { isOneColumn, paperSize, lineSpread }), [table, theme, isOneColumn, paperSize, lineSpread]);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
 
@@ -457,7 +458,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     applyGrid(mapText(gridRef.current, r, (t) => (stripMarkup(t) ? applyMarkup(t, 0, stripMarkup(t).length, { key: 'color', color: hex }) : t)));
   };
   const fill = (hex: string | null) => applyGrid(patchRange(gridRef.current, rangeCells(), { fill: hex ?? undefined }));
-  const align = (a: 'left' | 'center' | 'right') => applyGrid(patchRange(gridRef.current, rangeCells(), { align: a }));
+  const align = (a: 'left' | 'center' | 'right' | 'justify') => applyGrid(patchRange(gridRef.current, rangeCells(), { align: a }));
   const valign = (v: 'top' | 'middle' | 'bottom') => {
     const r = rangeCells();
     // in the PDF the cells of a row are aligned together, so the whole row takes it
@@ -790,6 +791,7 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
               grid={grid}
               theme={theme}
               paperSize={paperSize}
+              lineSpread={lineSpread}
               isOneColumn={isOneColumn}
               lang={lang}
               header={header}

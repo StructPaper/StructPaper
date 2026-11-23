@@ -370,7 +370,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     .replace('TITLE_COLOR_R', String(rgb.r))
     .replace('TITLE_COLOR_G', String(rgb.g))
     .replace('TITLE_COLOR_B', String(rgb.b))
-    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.turnSheets ? 'pdflscape' : 'lscape'}}`)
+    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,ragged2e,${theme.turnSheets ? 'pdflscape' : 'lscape'}}`)
     .replace('\\definecolor{tableheadrcolor}{RGB}{229, 229, 229}', `\\definecolor{tableheadrcolor}{RGB}{${headRgb.r}, ${headRgb.g}, ${headRgb.b}}\n\\definecolor{tablezebracolor}{RGB}{${zebraRgb.r}, ${zebraRgb.g}, ${zebraRgb.b}}`)
     .replace('left=1.7cm,headsep=.2cm,right=1.3cm,top=1.8cm]', `left=${theme.margins.left}cm,headsep=.2cm,right=${theme.margins.right}cm,top=${theme.margins.top}cm,bottom=${theme.margins.bottom}cm]`)
     // xeCJK treats curly quotes (U+2018-201F) as CJK punctuation and sets them in a full-width CJK font
@@ -678,7 +678,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
     } else if (sec.type === 'table' && sec.table) {
       // a rotated table inside a landscape page is already sideways
       // (on an appendix page the table is already across the turned page: it flows there, a float would be sent off the page)
-      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix, appendix: appendixWords, paperSize: settings.paperSize });
+      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix, appendix: appendixWords, paperSize: settings.paperSize, lineSpread: Number(settings.lineSpacing) || 1.13 });
     }
 
     if (sec.pageBreakAfter) {

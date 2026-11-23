@@ -117,8 +117,10 @@
   vertical-align: top;
   text-align: left;
   font-weight: 400;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  /* a word is never broken in two (the PDF does not): the columns are made wide enough for their longest word */
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
   border-style: solid;
   border-width: 0;
   border-color: var(--tp-color);
@@ -276,4 +278,20 @@
 .tp-table sub {
   font-size: 0.7em;
   line-height: 0;
+}
+
+/* a citation is a raised number that stands close to the word before it (the PDF takes the space away) */
+.tp-cell sup[data-cite] {
+  margin-left: -0.28em;
+  font-size: 0.7em;
+  line-height: 0;
+  color: #003e88;
+}
+
+/* a word may be split at the end of a line only when the table says so (the PDF does the same) */
+.tp-table[data-hyphen='true'] td,
+.tp-table[data-hyphen='true'] th {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
 }

@@ -141,11 +141,24 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
     }
   };
 
+  // a figure turned 90° or set across the whole page (over the side column) is wider than a column: it can only be over both columns
+  const forcedWide = isRotated || sideColumn === 'full';
+  const spanNow: '1-column' | '2-column' = forcedWide ? '2-column' : columnSpan;
+  const chooseRotated = (on: boolean) => {
+    // (what was shown as two columns because of it stays two columns when it is turned off: that is what the person saw)
+    setIsRotated(on);
+    if (on || forcedWide) setColumnSpan('2-column');
+  };
+  const chooseSide = (v: 'auto' | 'text' | 'full') => {
+    setSideColumn(v);
+    if (v === 'full' || forcedWide) setColumnSpan('2-column');
+  };
+
   const handleSave = () => {
     const updated: PaperFigure = {
       ...figure,
-      columnSpan,
-      isFullWidth: columnSpan === '2-column',
+      columnSpan: spanNow,
+      isFullWidth: spanNow === '2-column',
       scalePercent,
       alignment,
       hasBorder,
@@ -206,11 +219,12 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
           <SettingsCard title="Kích thước" hint="Hình vừa một cột hay trải cả trang, và chiếm bao nhiêu chiều rộng." icon={<Columns />}>
             <div role="radiogroup" aria-label="Bố cục số cột" className="grid grid-cols-2 gap-2.5">
               <ChoiceCard
-                selected={columnSpan === '1-column'}
+                selected={spanNow === '1-column'}
+                disabled={forcedWide}
                 onClick={() => setColumnSpan('1-column')}
                 title="1 cột"
                 sub="Vừa trong một cột văn bản"
-                tooltip="1 Cột: Hình nằm trọn trong 1 cột văn bản (phù hợp ảnh dọc, biểu đồ đơn lẻ)"
+                tooltip={forcedWide ? 'Hình xoay 90° hoặc chiếm cả trang (cột QR) luôn rộng hơn một cột nên chỉ có thể là 2 cột' : '1 Cột: Hình nằm trọn trong 1 cột văn bản (phù hợp ảnh dọc, biểu đồ đơn lẻ)'}
               >
                 <MiniPage>
                   <span className="flex-1 rounded-md bg-[#D9F99D]/80 border border-[#B4E50D]/60 flex items-center justify-center">
@@ -220,7 +234,7 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
                 </MiniPage>
               </ChoiceCard>
               <ChoiceCard
-                selected={columnSpan === '2-column'}
+                selected={spanNow === '2-column'}
                 onClick={() => setColumnSpan('2-column')}
                 title="2 cột"
                 sub="Trải rộng cả trang"
@@ -298,11 +312,11 @@ export const FigureSettingsModal: React.FC<FigureSettingsModalProps> = ({
               hint="Chuyển hình này sang thẻ Phụ lục; mặc định xoay ngang và chiếm cả trang."
               testId="figure-appendix-toggle"
             />
-            <ToggleRow checked={isRotated} onChange={setIsRotated} label="Xoay ngang 90°" hint="Chỉ có tác dụng khi hình nằm riêng một trang (Cả trang)." testId="figure-rotate-toggle" />
+            <ToggleRow checked={isRotated} onChange={chooseRotated} label="Xoay ngang 90°" hint="Chỉ có tác dụng khi hình nằm riêng một trang (Cả trang)." testId="figure-rotate-toggle" />
             <SegmentedOptions
               ariaLabel="Hình chiếm cột bên"
               value={sideColumn}
-              onChange={setSideColumn}
+              onChange={chooseSide}
               options={[
                 { value: 'auto', label: 'Tự động', title: 'Hình nằm trong cột chữ, hoặc theo trang phụ lục' },
                 { value: 'text', label: 'Trong cột chữ', title: 'Luôn giữ hình trong phần chữ, chừa cột mã QR bên trái' },

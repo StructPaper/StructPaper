@@ -7,7 +7,7 @@ export interface SheetCell {
   colSpan?: number;
   rowSpan?: number;
   mergedInto?: { r: number; c: number };
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   /** Header marker: header cells are bold and decide where the header rows end (not an emphasis the author chose). */
   bold?: boolean;
   italic?: boolean;

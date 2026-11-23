@@ -155,6 +155,27 @@ describe('the toolbar of the paper view', () => {
     expect(screen.getByTestId('tp-align-left').getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('has a button for text with both edges straight, and the cell is then justified', async () => {
+    const onChange = vi.fn();
+    await openEditor(<TablePaperEditor table={table()} onChange={onChange} onClose={vi.fn()} />);
+    select(1, 1);
+    expect(screen.getByTestId('tp-align-justify').getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByTestId('tp-align-justify'));
+    expect(screen.getByTestId('tp-align-justify').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('tp-align-left').getAttribute('aria-pressed')).toBe('false');
+    expect(td(1, 1).style.textAlign).toBe('justify');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(last.bodyRows[0][1].align).toBe('justify');
+  });
+
+  it('splits words only when the table allows it (the sheet does as the PDF does)', async () => {
+    await openEditor(<TablePaperEditor table={table()} onChange={vi.fn()} onClose={vi.fn()} />);
+    expect(document.querySelector('.tp-sheet .tp-table')!.getAttribute('data-hyphen')).toBeNull();
+    cleanup();
+    await openEditor(<TablePaperEditor table={{ ...table(), hyphenate: true }} onChange={vi.fn()} onClose={vi.fn()} />);
+    expect(document.querySelector('.tp-sheet .tp-table')!.getAttribute('data-hyphen')).toBe('true');
+  });
+
   it('raised and lowered text are buttons, and show when they are on', async () => {
     const t = table();
     t.bodyRows![0][0] = { text: 'H<sub>2</sub>' };

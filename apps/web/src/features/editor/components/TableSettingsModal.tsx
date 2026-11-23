@@ -56,6 +56,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   const [placement, setPlacement] = useState<'auto' | 'top' | 'here' | 'bottom'>(table.placement || 'auto');
   const [breakAcrossPages, setBreakAcrossPages] = useState<'auto' | 'always' | 'never'>(table.breakAcrossPages || 'auto');
   const [appendix, setAppendix] = useState<boolean>(!!table.appendix);
+  const [hyphenate, setHyphenate] = useState<boolean>(!!table.hyphenate);
   const [sideColumn, setSideColumn] = useState<'auto' | 'text' | 'full'>(table.sideColumn || 'auto');
   const [look, setLook] = useState<TableLookValue>(() => lookOf(table));
   const [rowHeightTouched, setRowHeightTouched] = useState(false);
@@ -78,11 +79,20 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const syncedFor = useRef<string | null>(null);
+  // Docked beside the paper view, the table is also changed from there (the size of the text, the height of the head, the colours of the
+  // lines): the choices here follow it, or the next choice made here would put back what was set over there. The table that comes back
+  // as the one this panel handed over is its own change and needs no following.
+  const lastEmitted = useRef<PaperTable | null>(null);
+  const suppressLive = useRef(false);
+  const stateKeyRef = useRef('');
   useEffect(() => {
-    // docked, the choices follow the table only when another table is shown (the table itself changes under them as it is edited)
-    if (docked && syncedFor.current === table.id) return;
-    syncedFor.current = table.id;
+    if (docked && table === lastEmitted.current) return;
+    if (docked) {
+      const span = table.columnSpan || (table.isFullWidth === false ? '1-column' : '2-column');
+      const key = JSON.stringify([span, !!table.isRotated, table.fontSize || '8pt', table.rowStretch || 1.2, resolveBodyFill(table), table.placement || 'auto', table.breakAcrossPages || 'auto', !!table.appendix, table.sideColumn || 'auto', lookOf(table), !!table.hyphenate]);
+      // (a change of the choices that comes from the table is not a choice: nothing is handed back for it)
+      if (key !== stateKeyRef.current) suppressLive.current = true;
+    }
     if (isOpen) {
       const span = table.columnSpan || (table.isFullWidth === false ? '1-column' : '2-column');
       setColumnSpan(span);
@@ -94,6 +104,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       setBreakAcrossPages(table.breakAcrossPages || 'auto');
       setSideColumn(table.sideColumn || 'auto');
       setAppendix(!!table.appendix);
+      setHyphenate(!!table.hyphenate);
       setLook(lookOf(table));
       setRowHeightTouched(false);
     }
@@ -101,12 +112,19 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
 
   // docked: what is chosen is handed over at once (the hooks stand before the early return below)
   const buildRef = useRef<() => PaperTable>(() => table);
-  const stateKey = JSON.stringify([columnSpan, isRotated, fontSize, rowStretch, bodyFill, placement, breakAcrossPages, appendix, sideColumn, look]);
+  const stateKey = JSON.stringify([columnSpan, isRotated, fontSize, rowStretch, bodyFill, placement, breakAcrossPages, appendix, sideColumn, look, hyphenate]);
+  stateKeyRef.current = stateKey;
   const lastKey = useRef(stateKey);
   useEffect(() => {
     if (!docked || stateKey === lastKey.current) return;
     lastKey.current = stateKey;
-    onLive?.(buildRef.current());
+    if (suppressLive.current) {
+      suppressLive.current = false;
+      return;
+    }
+    const next = buildRef.current();
+    lastEmitted.current = next;
+    onLive?.(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateKey]);
 
@@ -120,16 +138,29 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     setBodyFill('plain');
     setPlacement('auto');
     setSideColumn('auto');
+    setHyphenate(false);
     setLook({ borderStyle: 'journal', rowHeight: 0, headerHeight: 0 });
     setRowHeightTouched(true);
   };
 
   const rowCount = table.bodyRows?.length || table.rows?.length || 0;
+  // a table turned 90° or set across the whole page (over the side column) is wider than a column: it can only be over both columns
+  const forcedWide = isRotated || sideColumn === 'full';
+  const spanNow: '1-column' | '2-column' = forcedWide ? '2-column' : columnSpan;
+  const chooseRotated = (on: boolean) => {
+    // (what was shown as two columns because of it stays two columns when it is turned off: that is what the person saw)
+    setIsRotated(on);
+    if (on || forcedWide) setColumnSpan('2-column');
+  };
+  const chooseSide = (v: 'auto' | 'text' | 'full') => {
+    setSideColumn(v);
+    if (v === 'full' || forcedWide) setColumnSpan('2-column');
+  };
 
   const buildUpdated = (): PaperTable => ({
       ...applyLook(table, look, rowCount, rowHeightTouched),
-      columnSpan,
-      isFullWidth: columnSpan === '2-column',
+      columnSpan: spanNow,
+      isFullWidth: spanNow === '2-column',
       isRotated,
       fontSize,
       rowStretch,
@@ -139,6 +170,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       breakAcrossPages,
       sideColumn,
       appendix: appendix || undefined,
+      hyphenate: hyphenate || undefined,
   });
   const handleSave = () => {
     onSave(buildUpdated());
@@ -208,11 +240,12 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
           <SettingsCard title="Vị trí trên trang" hint="Bảng nằm trong một cột hay trải qua cả hai cột, thẳng hay xoay ngang." icon={<Columns />}>
             <div role="radiogroup" aria-label="Bố cục số cột bảng" className="grid grid-cols-2 gap-2.5">
               <ChoiceCard
-                selected={columnSpan === '1-column'}
+                selected={spanNow === '1-column'}
+                disabled={forcedWide}
                 onClick={() => setColumnSpan('1-column')}
                 title="1 cột"
                 sub="Vừa trong một cột văn bản"
-                tooltip="1 Cột: Bảng thu gọn trong 1 cột văn bản (thích hợp bảng 2-3 cột dữ liệu)"
+                tooltip={forcedWide ? 'Bảng xoay 90° hoặc chiếm cả trang (cột QR) luôn rộng hơn một cột nên chỉ có thể là 2 cột' : '1 Cột: Bảng thu gọn trong 1 cột văn bản (thích hợp bảng 2-3 cột dữ liệu)'}
               >
                 <MiniPage>
                   <MiniLines tone="object" widths={['w-full', 'w-full', 'w-2/3']} />
@@ -220,7 +253,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
                 </MiniPage>
               </ChoiceCard>
               <ChoiceCard
-                selected={columnSpan === '2-column'}
+                selected={spanNow === '2-column'}
                 onClick={() => setColumnSpan('2-column')}
                 title="2 cột"
                 sub="Trải ngang cả trang"
@@ -236,7 +269,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
               <SegmentedOptions
                 ariaLabel="Hướng hiển thị bảng"
                 value={isRotated ? 'rotated' : 'upright'}
-                onChange={(v) => setIsRotated(v === 'rotated')}
+                onChange={(v) => chooseRotated(v === 'rotated')}
                 options={[
                   { value: 'upright', label: 'Chiều dọc', title: 'Bảng thẳng đứng theo chiều dọc của trang' },
                   { value: 'rotated', label: 'Xoay ngang 90°', title: 'Xoay bảng sang chế độ ngang giúp chứa được bảng rất nhiều cột' },
@@ -268,6 +301,17 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
                   options={ROW_STRETCH}
                 />
               </Field>
+              <Field label="Ngắt từ bằng gạch nối" title="Cho phép tách một từ dài ở cuối dòng và thêm dấu gạch nối (-). Mặc định tắt: một từ không bao giờ bị tách" testId="table-hyphen-option">
+                <SegmentedOptions
+                  ariaLabel="Ngắt từ bằng gạch nối"
+                  value={hyphenate ? 'on' : 'off'}
+                  onChange={(v) => setHyphenate(v === 'on')}
+                  options={[
+                    { value: 'off', label: 'Tắt', title: 'Không tách từ' },
+                    { value: 'on', label: 'Bật', title: 'Tách từ dài ở cuối dòng bằng gạch nối' },
+                  ]}
+                />
+              </Field>
             </div>
           </SettingsCard>
 
@@ -286,7 +330,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
               bodyFill={bodyFill}
               onBodyFill={setBodyFill}
               sideColumn={sideColumn}
-              onSideColumn={setSideColumn}
+              onSideColumn={chooseSide}
             />
           </SettingsCard>
         </div>

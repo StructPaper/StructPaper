@@ -8,6 +8,7 @@ import { htmlToMarkup } from '@/lib/table-markup-dom';
 import { horizontalLine, rowValign, rowsOf, verticalLines } from '@/lib/table-cell-lines';
 import { resolveBodyFill, rowIsTinted } from '@/lib/table-fill';
 import { sourceLinesOf, sourceLook } from '@/lib/table-source';
+import { stripCaptionLabel } from '@/lib/docx-table-extras';
 import { tableRulesOf, DEFAULT_BORDER_WIDTH, rowHeightOf } from '@/lib/table-style';
 import { colsOfGrid, type GridCell, type Range, type TableGrid } from '@/lib/table-grid';
 import { columnWidthsPt, type Piece, type TablePaperLook } from '@/lib/table-pages';
@@ -17,6 +18,9 @@ import { columnWidthsPt, type Piece, type TablePaperLook } from '@/lib/table-pag
  * model stores; what is typed is read back into it. The element is only redrawn when the text differs from what it shows, so the caret
  * stays where it is while its own text comes back.
  */
+/** The citations of an HTML text as raised numbers (a citation is the number alone in the PDF, with no brackets and no space before it). */
+const citesRaised = (html: string): string => html.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, '<sup data-cite="1">$1</sup>');
+
 export const Editable: React.FC<{
   text: string;
   onText?: (text: string) => void;
@@ -28,13 +32,15 @@ export const Editable: React.FC<{
   onBlur?: (e: React.FocusEvent<HTMLElement>) => void;
   placeholder?: string;
   dataAttrs?: Record<string, string>;
-}> = ({ text, onText, className, editable = true, tag = 'div', onKeyDown, onFocus, onBlur, placeholder, dataAttrs }) => {
+  /** The numbers of citations ("[18]", "[3,4]") are drawn raised, as the PDF prints them. */
+  cites?: boolean;
+}> = ({ text, onText, className, editable = true, tag = 'div', onKeyDown, onFocus, onBlur, placeholder, dataAttrs, cites = false }) => {
   const el = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
     const n = el.current;
     if (!n) return;
-    if (htmlToMarkup(n) !== text) n.innerHTML = markupToHtml(text);
-  }, [text]);
+    if (htmlToMarkup(n) !== text) n.innerHTML = cites ? citesRaised(markupToHtml(text)) : markupToHtml(text);
+  }, [text, cites]);
   const Tag = tag as 'div';
   return (
     <Tag
@@ -143,7 +149,8 @@ export const PieceTable: React.FC<PieceProps> = ({
   const tint = table.bodyTint || theme.tableZebraColor;
   const ruleW = table.borderWidth && table.borderWidth > 0 ? table.borderWidth : DEFAULT_BORDER_WIDTH;
   const padV = (look.linePt * look.stretch - look.linePt) / 2;
-  const captionText = table.caption ?? '';
+  // (the label of the caption is the one the sheet prints, "Bảng 1:": a caption that began with its own label is shown without it, as the PDF sets it)
+  const captionText = stripCaptionLabel(table.caption ?? '');
   const srcLines = sourceLinesOf(table.source);
   const rowIdxOfBody = (r: number) => r - head;
 
@@ -172,7 +179,8 @@ export const PieceTable: React.FC<PieceProps> = ({
     const left = vLines[r][c];
     const right = vLines[r][Math.min(cols, c + cell.colSpan)];
     // (a cell merged down stands in the middle of the rows it spans, as LaTeX sets it)
-    const valign = rs > 1 ? 'middle' : cell.valign ?? rowValign(rowCells);
+    // (the cells of the head stand in the middle of their row unless the row says otherwise, as LaTeX sets them)
+    const valign = rs > 1 ? 'middle' : cell.valign ?? (inHead && !rowCells.some((x) => x?.valign) ? 'middle' : rowValign(rowCells));
     const bodyIdx = rowIdxOfBody(r);
     const align = cell.align ?? (inHead ? 'center' : 'left');
     const selected = !!selection && !clone && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
@@ -216,6 +224,7 @@ export const PieceTable: React.FC<PieceProps> = ({
       >
         <Editable
           className="tp-cell"
+          cites
           text={cell.text}
           editable={!!edit}
           onText={(t) => handlers?.onCellText(r, c, t)}
@@ -285,7 +294,7 @@ export const PieceTable: React.FC<PieceProps> = ({
           )}
         </div>
       )}
-      <table className="tp-table" style={{ width: `${widthPt}pt` }}>
+      <table className="tp-table" data-hyphen={table.hyphenate ? 'true' : undefined} lang={table.hyphenate ? 'en' : undefined} style={{ width: `${widthPt}pt` }}>
         <colgroup>
           {widths.map((w, i) => (
             <col key={i} style={{ width: `${w}pt` }} />

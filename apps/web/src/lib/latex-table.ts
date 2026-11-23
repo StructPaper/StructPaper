@@ -28,7 +28,7 @@ const APPENDIX_WORDS = { label: (n: number): string => `Phụ lục ${n}`, conti
 
 export function tableToLatex(
   table: PaperTable,
-  { isOneColumn, theme, inline = false, appendix, paperSize }: { isOneColumn: boolean; /** The paper size of the layout (the table's width on the sheet follows it). */ paperSize?: string; theme: ResolvedTheme; /** The words of an appendix table: its label ("Phụ lục 2"), the "(tiếp theo)" on its next pages and the foot line. */ appendix?: { label: (n: number) => string; continued: string; foot: string }; /** Set in the flow of a page that is already turned and as wide as it can be (an appendix page): no float, no page of its own. */ inline?: boolean }
+  { isOneColumn, theme, inline = false, appendix, paperSize, lineSpread = 1.13 }: { isOneColumn: boolean; /** The line spacing of the paper (the lines of the table share it). */ lineSpread?: number; /** The paper size of the layout (the table's width on the sheet follows it). */ paperSize?: string; theme: ResolvedTheme; /** The words of an appendix table: its label ("Phụ lục 2"), the "(tiếp theo)" on its next pages and the foot line. */ appendix?: { label: (n: number) => string; continued: string; foot: string }; /** Set in the flow of a page that is already turned and as wide as it can be (an appendix page): no float, no page of its own. */ inline?: boolean }
 ): string {
   const rawHeaders = table.headers && table.headers.length > 0 ? table.headers : ['Cột 1'];
   const rawRows = table.rows || [];
@@ -43,6 +43,10 @@ export function tableToLatex(
   const lineHeight = `${Math.round((parseFloat(fontSize) + 2) * 2) / 2}pt`;
   const arrayStretch = table.rowStretch || 1.2;
   const fill = resolveBodyFill(table);
+  // how the text of a cell is set: a ragged edge (left, centre, right) or both edges straight; a word is split at the end of a line only when the
+  // table says so (ragged2e's commands may split a word, and the penalty set below forbids it when the table does not allow it)
+  const hyph = !!table.hyphenate;
+  const rag: RaggedCmds = { l: hyph ? '\\RaggedRight' : '\\raggedright', c: hyph ? '\\Centering' : '\\centering', r: hyph ? '\\RaggedLeft' : '\\raggedleft', j: '\\justifying' };
 
   const bodyRows = table.bodyRows && table.bodyRows.length > 0
     ? table.bodyRows
@@ -77,7 +81,7 @@ export function tableToLatex(
   let raiseOf = new Map<string, number>();
   // a cell with a size of its own: its text is set in that size, on a baseline that grows with it (8 pt -> 10 pt)
   const sized = (c: any, body: string): string => (c?.fontSize > 0 ? `{\\fontsize{${c.fontSize}pt}{${Math.round((c.fontSize + 2) * 2) / 2}pt}\\selectfont ${body}}` : body);
-  const bodySpans = spanRenderer(maxCols, (c: any) => cellFill(c) + sized(c, cellBody(c)), 'l', rules, spanWidth, (r) => verticalLines(table, rules, r, maxCols), (r, c) => raiseOf.get(`${r}:${c}`) ?? 0);
+  const bodySpans = spanRenderer(maxCols, (c: any) => cellFill(c) + sized(c, cellBody(c)), 'l', rules, spanWidth, (r) => verticalLines(table, rules, r, maxCols), (r, c) => raiseOf.get(`${r}:${c}`) ?? 0, 'top', rag);
   const tintRgb = rgbCsv(table.bodyTint);
   const tintCmd = tintRgb ? `\\rowcolor[RGB]{${tintRgb}}` : '\\rowcolor{tablezebracolor}';
   // a row can be given a least height: a strut as tall as asked starts its first cell
@@ -145,7 +149,7 @@ export function tableToLatex(
   const caption = `\\captionsetup{width=\\linewidth,justification=raggedright,singlelinecheck=false,font={small,sf,bf}}\\caption${table.appendix ? '*' : ''}{{${capText}}}`;
   const label = table.appendix ? '' : `\\label{tab:${table.num || 1}}`;
   // Multi-row headers keep their merged cells ("Quan trắc" over 3 columns, "Dự báo" over 2 rows)
-  const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + sized(c, `\\textbf{${escapeLatex(c?.text ?? '')}}`), 'c', rules, spanWidth, (r) => verticalLines(table, rules, r, maxCols), (r, c) => raiseOf.get(`${r}:${c}`) ?? 0);
+  const headSpans = spanRenderer(maxCols, (c: any) => cellFill(c) + sized(c, `\\textbf{${escapeLatex(c?.text ?? '')}}`), 'c', rules, spanWidth, (r) => verticalLines(table, rules, r, maxCols), (r, c) => raiseOf.get(`${r}:${c}`) ?? 0, 'middle', rag);
   const headRgb = rgbCsv(table.headerFill);
   const headCmd = headRgb ? `\\rowcolor[RGB]{${headRgb}}` : '\\rowcolor{tableheadrcolor}';
   const headStrut = strut(table.headerHeight && table.headerHeight > 0 ? table.headerHeight : undefined);
@@ -155,7 +159,7 @@ export function tableToLatex(
     table.headerRows && (table.headerRows.length > 1 || styledHead)
       ? table.headerRows.map((r, i) => `${headCmd}\n${headSpans(r, i, strut(Math.max(table.headerHeight && table.headerHeight > 0 ? table.headerHeight : 0, extraMin.get(i) ?? 0) || undefined))} \\\\${afterRow(i + 1)}`).join('\n')
       : // as printed: the header band is grey with bold centred titles, and no rule between it and the body (the rules are above and below the table)
-        `${headCmd}\n${headStrut}${headers.map((h) => `\\centering\\arraybackslash\\textbf{${escapeLatex(h)}}`).join(' & ')} \\\\${afterRow(1)}`;
+        `${headCmd}\n${headStrut}${headers.map((h) => `${rag.c}\\arraybackslash\\textbf{${escapeLatex(h)}}`).join(' & ')} \\\\${afterRow(1)}`;
   // an appendix says "Phụ lục 2 (tiếp theo)", not "Table 2 continued"
   const continuedTitle = table.appendix ? escapeLatex(`${appendixLabelText} ${(appendix ?? APPENDIX_WORDS).continued}`) : escapeLatex(theme.continuedTitleText.replace('{n}', String(table.num || '')));
   const continuedFoot = table.appendix ? escapeLatex((appendix ?? APPENDIX_WORDS).foot) : escapeLatex(theme.continuedFootText);
@@ -170,7 +174,7 @@ export function tableToLatex(
   const weights = columnWeights(table, headers, bodyRows, { width: roomPt, fontPt: fontPtOfTable });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   // a cell merged down does not make its rows taller in LaTeX: the last row under it is given the height its lines need
-  const spanLayout = rowSpanLayout(table, columnWidthsPt(weights, roomPt), fontPtOfTable, arrayStretch, (r) => (r < headCount ? (table.headerHeight && table.headerHeight > 0 ? table.headerHeight : undefined) : rowHeightOf(table, r - headCount)));
+  const spanLayout = rowSpanLayout(table, columnWidthsPt(weights, roomPt), fontPtOfTable, arrayStretch, (r) => (r < headCount ? (table.headerHeight && table.headerHeight > 0 ? table.headerHeight : undefined) : rowHeightOf(table, r - headCount)), lineSpread);
   extraMin = spanLayout.minima;
   raiseOf = spanLayout.raise;
   const headRow = buildHeadRow(); // (built once the column widths are known)
@@ -179,7 +183,7 @@ export function tableToLatex(
     .map((w, c) => {
       const left = c === 0 && rules.vOuter ? '|' : '';
       const right = c === maxCols - 1 ? (rules.vOuter ? '|' : '') : rules.vInner ? '|' : '';
-      return `${left}>{\\raggedright\\arraybackslash}p{\\dimexpr(${lw}-${2 * maxCols}\\tabcolsep)*${w}/${totalWeight}\\relax}${right}`;
+      return `${left}>{${rag.l}\\arraybackslash}p{\\dimexpr(${lw}-${2 * maxCols}\\tabcolsep)*${w}/${totalWeight}\\relax}${right}`;
     })
     .join('');
   const ruleColor = rgbCsv(table.borderColor);
@@ -187,7 +191,8 @@ export function tableToLatex(
   const ruleSetup =
     (ruleColor ? `\\arrayrulecolor[RGB]{${ruleColor}}` : '') +
     (ruleWidth !== undefined && ruleWidth !== DEFAULT_BORDER_WIDTH ? `\\setlength{\\arrayrulewidth}{${ruleWidth}pt}` : '');
-  const sizeOpen = `{\\fontsize{${fontSize}}{${lineHeight}}\\selectfont\n\\def\\arraystretch{${arrayStretch}}${ruleSetup}`;
+  // (the lines of the table share the line spacing of the paper, as the reference journals' do: 8 pt type stands on 11.3 pt lines, 10 pt x 1.13)
+  const sizeOpen = `{\\fontsize{${fontSize}}{${lineHeight}}\\selectfont${hyph ? '\\hyphenpenalty=80\\relax\\doublehyphendemerits=10000\\relax' : '\\hyphenpenalty=10000\\relax'}\n\\def\\arraystretch{${arrayStretch}}${ruleSetup}`;
 
   const { isLong } = plan;
 
@@ -272,6 +277,8 @@ ${bottomRule}
  * A row whose cells have a say in their own lines or in where their text stands (the "vl" it is given and the cells' valign) is drawn
  * cell by cell, each with the column spec of its own; the other rows keep the columns' specs of the table.
  */
+type RaggedCmds = { l: string; c: string; r: string; j: string };
+
 function spanRenderer(
   maxCols: number,
   fmt: (cell: any) => string,
@@ -282,16 +289,19 @@ function spanRenderer(
   /** The vertical lines of a row (boundary k is left of column k), and whether any cell has said something about them. */
   vl?: (rowIndex: number) => { lines: boolean[]; explicit: boolean; colors?: (string | undefined)[] },
   /** How far the text of a cell merged down is lifted (points; key: first row and column of the cell): it is set in the last row of the cell, and stands in the middle of the span when lifted by half the rows above it. */
-  raiseOf?: (row: number, col: number) => number
+  raiseOf?: (row: number, col: number) => number,
+  /** Where the text stands in a row that says nothing about it (the head: the middle). */
+  defaultV: 'top' | 'middle' = 'top',
+  rag: RaggedCmds = { l: '\\raggedright', c: '\\centering', r: '\\raggedleft', j: '\\justifying' }
 ) {
   const core = (col: number, span: number, align: string, kind: 'p' | 'm' | 'b' = 'p') =>
-    widthOf ? `>{${align === 'c' ? '\\centering' : align === 'r' ? '\\raggedleft' : '\\raggedright'}\\arraybackslash}${kind}{${widthOf(col, span)}}` : align;
+    widthOf ? `>{${align === 'c' ? rag.c : align === 'r' ? rag.r : align === 'j' ? rag.j : rag.l}\\arraybackslash}${kind}{${widthOf(col, span)}}` : align;
   const cover: ({ left: number; span: number; text: string; rs: number; raise: number } | undefined)[] = [];
   // `lead` (the strut that gives a row its least height) goes inside the first cell: before a \multicolumn it would be a "Misplaced \omit"
   return (row: any[], rowIndex = -1, lead = ''): string => {
     const lines = vl && rowIndex >= 0 ? vl(rowIndex) : undefined;
     // where the text stands is a thing of the row (see rowValign): the cells that say nothing take the row's
-    const rowV = widthOf ? rowValign(row) : 'top';
+    const rowV = widthOf ? (defaultV !== 'top' && !row.some((x: any) => x?.valign) ? defaultV : rowValign(row)) : 'top';
     const aligned = rowV !== 'top';
     const own = !!lines && (lines.explicit || aligned);
     // a merged cell takes the place of its columns' specs, so it carries their vertical lines itself
@@ -317,8 +327,9 @@ function spanRenderer(
         // (a colour of the cell is the cell's own, outside the box the text is lifted in)
         const fillOf = cv.text.match(/^\\cellcolor\[RGB\]\{[^}]*}/)?.[0] ?? '';
         const inner = cv.text.slice(fillOf.length);
-        const lifted = widthOf && cv.raise > 0.5;
-        const body = first + fillOf + (cv.left === 0 ? (lifted ? `\\multirow{-${cv.rs}}{*}{\\raisebox{${cv.raise}pt}[0pt][0pt]{\\parbox[c]{${widthOf(col, cv.span)}}{\\centering\\arraybackslash ${inner}}}}` : widthOf ? `\\multirow{-${cv.rs}}{${widthOf(col, cv.span)}}{\\centering\\arraybackslash ${inner}}` : `\\multirow{-${cv.rs}}{*}{${inner}}`) : '');
+        // (always in a box centred on its middle: a box that hangs from its first line leaves a text of many lines low in its span)
+        const lifted = !!widthOf;
+        const body = first + fillOf + (cv.left === 0 ? (lifted ? `\\multirow{-${cv.rs}}{*}{\\raisebox{${cv.raise}pt}[0pt][0pt]{\\parbox[c]{${widthOf(col, cv.span)}}{${rag.c}\\arraybackslash ${inner}}}}` : `\\multirow{-${cv.rs}}{*}{${inner}}`) : '');
         out.push(cv.span > 1 || own ? `\\multicolumn{${cv.span}}{${spec(col, cv.span, 'c')}}{${body}}` : body);
         col += cv.span;
         continue;
@@ -336,13 +347,13 @@ function spanRenderer(
         cover[col] = { left: rs - 1, span: cs, text: body, rs, raise: raiseOf?.(rowIndex, col) ?? 0 };
         body = '';
       }
-      const align = cell?.align === 'center' || rs > 1 ? 'c' : cell?.align === 'right' ? 'r' : cell?.align === 'left' ? 'l' : groupAlign;
+      const align = cell?.align === 'center' || rs > 1 ? 'c' : cell?.align === 'right' ? 'r' : cell?.align === 'left' ? 'l' : cell?.align === 'justify' ? 'j' : groupAlign;
       body = (out.length === 0 ? lead : '') + body;
       // where the text stands in a tall row: a middle or bottom aligned paragraph column (the array package's m and b)
       const v = cell?.valign ?? rowV;
       const kind: 'p' | 'm' | 'b' = widthOf && v === 'middle' ? 'm' : widthOf && v === 'bottom' ? 'b' : 'p';
       // a single column is a paragraph column set to the left: a centred or right cell says so itself
-      const single = align === 'c' ? `\\centering\\arraybackslash ${body}` : align === 'r' ? `\\raggedleft\\arraybackslash ${body}` : body;
+      const single = align === 'c' ? `${rag.c}\\arraybackslash ${body}` : align === 'r' ? `${rag.r}\\arraybackslash ${body}` : align === 'j' ? `${rag.j}\\arraybackslash ${body}` : body;
       out.push(cs > 1 || own || kind !== 'p' ? `\\multicolumn{${cs}}{${spec(col, cs, align, kind)}}{${body}}` : single);
       col += cs;
     }

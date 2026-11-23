@@ -69,7 +69,7 @@ describe('table lines, fills and heights', () => {
     const out = tex(base({ borderStyle: 'grid', headerRows: [[{ text: 'A', colSpan: 2 }, { text: 'B' }], [{ text: 'a' }, { text: 'b' }, { text: 'c' }]] }));
     expect(out).toMatch(/\\begin\{tabular\}\{\|>\{[^}]*\}p\{[^}]*\}\|>/);
     // (a merged cell is a centred paragraph column as wide as its columns, with the lines around it)
-    expect(out).toMatch(/\\multicolumn\{2\}\{\|>\{\\centering\\arraybackslash\}p\{[^}]*\}\|\}/);
+    expect(out).toMatch(/\\multicolumn\{2\}\{\|>\{\\centering\\arraybackslash\}[pm]\{[^}]*\}\|\}/);
   });
   it('draws no lines at all, or only the outline', () => {
     expect(tex(base({ borderStyle: 'none' }))).not.toContain('\\hline \\rowcolor');
@@ -266,7 +266,7 @@ describe('a large table on pages of its own', () => {
     // (the box is as wide as its column, measured by the table's own width: inside a paragraph column \linewidth would be that column's)
     expect(out).toMatch(/\\multirow\{-2\}\{.*\\parbox\[c\]\{\\dimexpr\(\\sptw-[^}]*\\relax\}\{\\centering\\arraybackslash \\textbf\{Tác giả/);
     expect(out).toContain('\\setlength{\\sptw}{\\linewidth}');
-    expect(out).toMatch(/\\multicolumn\{2\}\{>\{\\centering\\arraybackslash\}p\{\\dimexpr/);
+    expect(out).toMatch(/\\multicolumn\{2\}\{>\{\\centering\\arraybackslash\}[pm]\{\\dimexpr/);
   });
   it('a table turned on its own page is as wide as the text, and its note stands as close as under a table that is not long', () => {
     const out = tex(base({ isRotated: true, columnSpan: '2-column', breakAcrossPages: 'always' }));

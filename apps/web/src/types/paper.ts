@@ -86,7 +86,8 @@ export interface TableCell {
   text: string;
   colSpan?: number;
   rowSpan?: number;
-  align?: 'left' | 'center' | 'right';
+  /** 'justify': both edges straight (the last line stays on the left). */
+  align?: 'left' | 'center' | 'right' | 'justify';
   isHeader?: boolean;
   /** Background of this cell as "#RRGGBB" (over the table's own fill). */
   fill?: string;
@@ -132,6 +133,8 @@ export interface PaperTable {
   /** Any size in points, as "8pt" or "8.5pt" (the table settings take a number). */
   fontSize?: `${number}pt`;
   rowStretch?: number; // Giãn dòng 1.1x, 1.4x, 1.6x
+  /** A long word may be split at the end of a line with a hyphen (default: no, a word is never broken). */
+  hyphenate?: boolean;
   hasZebraStripes?: boolean; // Sọc màu hàng xen kẽ
   placement?: 'auto' | 'top' | 'here' | 'bottom';
   breakAcrossPages?: 'auto' | 'always' | 'never'; // cho phép bảng ngắt qua trang
