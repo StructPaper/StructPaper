@@ -263,7 +263,9 @@ describe('a large table on pages of its own', () => {
       bodyRows: [[{ text: 'a' }, { text: 'b' }, { text: 'c' }]],
     } as Partial<PaperTable>);
     const out = tex(t);
-    expect(out).toMatch(/\\multirow\{-2\}\{\\dimexpr[^}]*\\relax\}\{\\centering\\arraybackslash \\textbf\{Tác giả/);
+    // (the box is as wide as its column, measured by the table's own width: inside a paragraph column \linewidth would be that column's)
+    expect(out).toMatch(/\\multirow\{-2\}\{.*\\parbox\[c\]\{\\dimexpr\(\\sptw-[^}]*\\relax\}\{\\centering\\arraybackslash \\textbf\{Tác giả/);
+    expect(out).toContain('\\setlength{\\sptw}{\\linewidth}');
     expect(out).toMatch(/\\multicolumn\{2\}\{>\{\\centering\\arraybackslash\}p\{\\dimexpr/);
   });
   it('a table turned on its own page keeps clear of the running head', () => {

@@ -90,6 +90,8 @@ export interface TableCell {
   isHeader?: boolean;
   /** Background of this cell as "#RRGGBB" (over the table's own fill). */
   fill?: string;
+  /** The size of the text of this cell in points (absent: the table's). */
+  fontSize?: number;
   /** Where the text stands in the height of the cell (default: top). */
   valign?: 'top' | 'middle' | 'bottom';
   /** The lines of this cell's four sides: 'line' draws one, 'none' leaves it out, whatever the table's own style says (absent: the table's style decides). */

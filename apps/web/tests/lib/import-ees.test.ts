@@ -77,7 +77,7 @@ describe('real file: EES ID850 imported from Word', () => {
     expect(tex).toMatch(/\\multicolumn\{3\}\{>\{\\centering\\arraybackslash\}p\{[^}]*\}\}\{\\textbf\{Quan trắc\}\}/);
     // (the header cells in single columns are centred, as the header band is)
     expect(tex.replace(/\\centering\\arraybackslash /g, '')).toContain(' & Không & C & D & C \\\\');
-    expect(tex).toMatch(/\\multirow\{-2\}\{[^}]*\}\{\\centering\\arraybackslash Dự báo\}/);
+    expect(tex).toMatch(/\\multirow\{-2\}\{.*\\centering\\arraybackslash Dự báo\}/);
   });
 
   it('lists the abbreviation table under its heading', () => {

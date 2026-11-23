@@ -75,6 +75,7 @@ export interface V1TableCell {
   valign?: 'top' | 'middle' | 'bottom';
   borders?: Record<string, string>;
   borderColors?: Record<string, string>;
+  fontSize?: number;
 }
 
 export interface V1PaperTable {

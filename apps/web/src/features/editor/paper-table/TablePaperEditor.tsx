@@ -69,6 +69,13 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // the ground fades in first; the sheets and the settings follow it (drawing them takes a moment that would stop the fade)
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 140);
+    return () => clearTimeout(t);
+  }, []);
+
   const [table, setTable] = useState<PaperTable>(initial);
   const tableRef = useRef(table);
   tableRef.current = table;
@@ -573,6 +580,26 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     }
     return out;
   })();
+  const tableFont = layout.look.fontPt;
+  const sizeOfCells = (() => {
+    if (!range) return tableFont;
+    const sizes: number[] = [];
+    for (let y = range.r0; y <= range.r1; y++) {
+      for (let x = range.c0; x <= range.c1; x++) {
+        const c = grid.cells[y]?.[x];
+        if (c && !c.covered) sizes.push(c.fontSize ?? tableFont);
+      }
+    }
+    return sizes.length > 0 && sizes.every((v) => v === sizes[0]) ? sizes[0] : tableFont;
+  })();
+  // with cells chosen the size is theirs; with none chosen it is the size of the whole table's text
+  const setFontSize = (pt: number | null) => {
+    if (!rangeRef.current) {
+      if (pt) commit({ ...tableRef.current, fontSize: `${pt}pt` as `${number}pt` }, 'font');
+      return;
+    }
+    applyGrid(patchRange(gridRef.current, rangeCells(), { fontSize: pt && pt !== tableFont ? pt : undefined }));
+  };
   const fillLead: BrandColor[] = [
     { label: 'Màu dải tiêu đề', hex: (table.headerFill || theme.tableHeaderColor).toUpperCase() },
     { label: 'Màu nền ô mặc định (hàng xen kẽ)', hex: (table.bodyTint || theme.tableZebraColor).toUpperCase() },
@@ -593,6 +620,8 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
     canUndo: past.current.length > 0,
     canRedo: future.current.length > 0,
     fmt,
+    fontSize: sizeOfCells,
+    setFontSize,
     fillLead,
     journalId: paper?.metadata.journalId,
     lineColor: lineColorChoice ?? baseLine,
@@ -706,15 +735,15 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="fixed inset-0 z-[9998] flex flex-col text-zinc-100"
-      style={{ background: 'rgba(24, 24, 27, 0.94)', paddingTop: 'var(--titlebar-height, 38px)' }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      className="fixed inset-0 z-[9998] flex flex-col text-zinc-900"
+      style={{ background: 'rgba(244, 245, 247, 0.74)', backdropFilter: 'blur(22px) saturate(1.1)', WebkitBackdropFilter: 'blur(22px) saturate(1.1)', paddingTop: 'var(--titlebar-height, 38px)' }}
       role="dialog" aria-label="Bảng trên trang giấy" data-testid="table-paper-editor">
-      <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0 border-b border-white/10">
+      <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0 border-b border-black/10 bg-white/50">
         <div className="min-w-0 flex items-baseline gap-2">
           <h2 className="text-sm font-extrabold tracking-tight whitespace-nowrap">Bảng trên trang giấy</h2>
           {chips.map((c) => (
-            <span key={c} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 whitespace-nowrap">
+            <span key={c} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5 text-zinc-600 whitespace-nowrap">
               {c}
             </span>
           ))}
@@ -748,7 +777,14 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
             }
           }}
         >
-          <div className="tp-stack flex flex-col items-center gap-8 py-8 min-w-max mx-auto" style={{ zoom }}>
+          {ready && (
+          <motion.div
+            className="tp-stack flex flex-col items-center gap-8 py-8 min-w-max mx-auto"
+            style={{ zoom }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
             <TablePaperPages
               table={table}
               grid={grid}
@@ -765,17 +801,16 @@ export const TablePaperEditor: React.FC<Props> = ({ table: initial, onChange, on
               handlers={handlers}
               onLayout={onLayout}
             />
-          </div>
+          </motion.div>
+          )}
         </div>
 
-        <aside className="w-[380px] max-w-[42vw] flex-shrink-0 border-l border-white/10 p-3 overflow-hidden hidden md:block" data-testid="table-paper-settings">
-          <TableSettingsModal
-            docked
-            table={table}
-            onSave={() => undefined}
-            onClose={onClose}
-            onLive={(next) => commit(next, 'settings')}
-          />
+        <aside className="w-[380px] max-w-[42vw] flex-shrink-0 border-l border-black/10 p-3 overflow-hidden hidden md:block" data-testid="table-paper-settings">
+          {ready && (
+            <motion.div className="h-full" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.28, ease: 'easeOut' }}>
+              <TableSettingsModal docked table={table} onSave={() => undefined} onClose={onClose} onLive={(next) => commit(next, 'settings')} />
+            </motion.div>
+          )}
         </aside>
       </div>
       {guide && (

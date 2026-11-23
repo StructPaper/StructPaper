@@ -2,6 +2,7 @@ import type { PaperTable } from '@/types/paper';
 import type { ResolvedTheme } from './theme-config';
 import { choosePlacement, estimateHeight, JOURNAL_GEOMETRY, measureTable } from './table-placement';
 import { stripMarkup } from './inline-markup';
+import { fitWeightsToWords, wordMinimums } from './table-fit';
 
 /**
  * Where a table goes on the printed page and how it is set: the one decision the LaTeX export and the paper view of the table share, so
@@ -67,12 +68,18 @@ export function planTable(table: PaperTable, theme: ResolvedTheme, opts: { isOne
  * column of long sentences. A banner merged over several columns says nothing about one column's width: the leaf header row decides,
  * and merged cells are left out.
  */
-export function columnWeights(table: PaperTable, headers: string[], bodyRows: Array<Array<{ text?: string; colSpan?: number } | string>>): number[] {
+export function columnWeights(
+  table: PaperTable,
+  headers: string[],
+  bodyRows: Array<Array<{ text?: string; colSpan?: number } | string>>,
+  /** The width the columns share (points) and the size of the type: a column is then given the room of its longest word, which TeX does not break. */
+  fit?: { width: number; fontPt: number }
+): number[] {
   const maxCols = headers.length;
   const explicit = table.colWeights && table.colWeights.length === maxCols && table.colWeights.every((w) => w > 0) ? table.colWeights.map((w) => Math.max(1, Math.round(w * 100))) : null;
   if (explicit) return explicit;
   const headerText = (c: number): string => stripMarkup(String(headers[c] ?? '')).split(' / ').pop() ?? '';
-  return headers.map((_h, c) => {
+  const base = headers.map((_h, c) => {
     const cells = [
       headerText(c),
       ...bodyRows
@@ -84,4 +91,5 @@ export function columnWeights(table: PaperTable, headers: string[], bodyRows: Ar
     // a label that fits on one line ("KCN Hiệp Phước GĐ1") gets the room to stay on it: grows linearly up to ~28 characters
     return Math.max(Math.round(Math.sqrt(L) * 10), L <= 28 ? Math.round(L * 3.2) : 0);
   });
+  return fit ? fitWeightsToWords(base, wordMinimums(table, maxCols, fit.fontPt), fit.width) : base;
 }

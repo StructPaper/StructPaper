@@ -243,6 +243,36 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
       <div data-edit-only className="flex items-center gap-1.5 ml-auto">
         {/* the page layout of a block is not set from here; the badge on the left shows one that was set earlier */}
 
+        {/* The table drawn alone on the printed sheets, to work on it there */}
+        {isTable && paperCtx && sec.table && (
+          <>
+            <button
+              type="button"
+              data-edit-only
+              data-testid="table-paper-open"
+              onClick={() => setPaperOpen(true)}
+              title="Xem và chỉnh bảng trên trang giấy thật"
+              aria-label="Xem bảng trên trang giấy"
+              className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                paperOpen ? 'bg-sky-100 text-sky-800 ring-1 ring-sky-300 shadow-2xs' : 'text-zinc-500 hover:text-zinc-900 hover:bg-white/80'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-sky-600" />
+              <span className="text-[10px] hidden sm:inline">Trang giấy</span>
+            </button>
+            <AnimatePresence>
+              {paperOpen && (
+                <TablePaperEditor
+                  key="table-paper"
+                  table={sec.table}
+                  onChange={(t) => onUpdateSection(idx, { ...sec, table: t })}
+                  onClose={() => setPaperOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        )}
+
         {/* Page Break Toggle */}
         <button
           type="button"
@@ -288,35 +318,6 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
         >
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
-
-        {isTable && paperCtx && sec.table && (
-          <>
-            <button
-              type="button"
-              data-edit-only
-              data-testid="table-paper-open"
-              onClick={() => setPaperOpen(true)}
-              title="Xem và chỉnh bảng trên trang giấy thật"
-              aria-label="Xem bảng trên trang giấy"
-              className={`px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                paperOpen ? 'bg-[#D9F99D] text-[#14532D] ring-1 ring-[#84CC16] shadow-2xs' : 'bg-[#ECFCCB] text-[#14532D] ring-1 ring-[#B4E50D]/70 shadow-2xs hover:bg-[#D9F99D]'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5 text-[#4D7C0F]" />
-              <span className="text-[10px]">Trang giấy</span>
-            </button>
-            <AnimatePresence>
-              {paperOpen && (
-                <TablePaperEditor
-                  key="table-paper"
-                  table={sec.table}
-                  onChange={(t) => onUpdateSection(idx, { ...sec, table: t })}
-                  onClose={() => setPaperOpen(false)}
-                />
-              )}
-            </AnimatePresence>
-          </>
-        )}
 
         {(isFigure || isTable) && (
           <div className="relative">

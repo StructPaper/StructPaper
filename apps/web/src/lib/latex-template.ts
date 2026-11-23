@@ -544,6 +544,7 @@ ${sidebox}
 % a table that takes a page of its own may use the whole width, over the side column (QR code, contact), then the text area comes back
 % (the running head is set 11.4pc left of the text area, into the side column; across the whole page it starts at the text edge)
 \\newlength{\\spheadshift}\\setlength{\\spheadshift}{11.4pc}
+\\newlength{\\sptw}
 \\newcommand{\\spwidegeometry}{\\newgeometry{left=${theme.margins.left}cm,right=${theme.margins.right}cm,footskip=0cm,bottom=${(theme.margins.bottom + 1.4).toFixed(1)}cm,paperheight=${paperHeightStr},paperwidth=${paperWidthStr},headsep=.2cm,top=${theme.margins.top}cm}\\setlength{\\spheadshift}{0pt}}
 \\newcommand{\\sptextgeometry}{\\newgeometry{left=15.4pc,right=3.1pc,footskip=0cm,bottom=${(theme.margins.bottom + 1.4).toFixed(1)}cm,paperheight=${paperHeightStr},paperwidth=${paperWidthStr},headsep=.2cm,top=${theme.margins.top}cm}\\setlength{\\spheadshift}{11.4pc}}
 ${isOneColumn
@@ -677,7 +678,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
     } else if (sec.type === 'table' && sec.table) {
       // a rotated table inside a landscape page is already sideways
       // (on an appendix page the table is already across the turned page: it flows there, a float would be sent off the page)
-      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix, appendix: appendixWords });
+      bodyLatex += tableToLatex(layoutTracker.landscape || inAppendix ? { ...sec.table, isRotated: false } : sec.table, { isOneColumn: oneCol || inAppendix, theme, inline: inAppendix, appendix: appendixWords, paperSize: settings.paperSize });
     }
 
     if (sec.pageBreakAfter) {

@@ -129,15 +129,6 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
           <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">
             Tiêu đề bảng (Caption):
           </label>
-          <button data-edit-only
-            type="button"
-            onClick={() => onOpenTableZoom(idx, table)}
-            className="px-2 py-0.5 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 text-[10px] font-bold border border-lime-200 flex items-center gap-1 shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            title="Phóng to bảng số liệu toàn màn hình & chỉnh sửa kiểu Google Sheets"
-          >
-            <Maximize2 className="w-2.5 h-2.5 text-lime-600" />
-            <span>Phóng to</span>
-          </button>
         </div>
         <RichLineInput
           lazy

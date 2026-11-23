@@ -169,7 +169,8 @@ export const PieceTable: React.FC<PieceProps> = ({
     const bottom = lastOfPiece ? (piece.last ? hLines[R][c] : true) : hLines[lastRow + 1][c];
     const left = vLines[r][c];
     const right = vLines[r][Math.min(cols, c + cell.colSpan)];
-    const valign = cell.valign ?? rowValign(rowCells);
+    // (a cell merged down stands in the middle of the rows it spans, as LaTeX sets it)
+    const valign = rs > 1 ? 'middle' : cell.valign ?? rowValign(rowCells);
     const bodyIdx = rowIdxOfBody(r);
     const align = cell.align ?? (inHead ? 'center' : 'left');
     const selected = !!selection && !clone && r >= selection.r0 && r <= selection.r1 && c >= selection.c0 && c <= selection.c1;
@@ -181,6 +182,7 @@ export const PieceTable: React.FC<PieceProps> = ({
     const edgeLeft = vAll[r].colors[c];
     const edgeRight = vAll[r].colors[Math.min(cols, c + cell.colSpan)];
     const style: React.CSSProperties = {
+      ...(cell.fontSize ? { fontSize: `${cell.fontSize}pt`, lineHeight: `${Math.round((cell.fontSize + 2) * 2) / 2}pt` } : {}),
       ...(edgeTop ? { borderTopColor: edgeTop } : {}),
       ...(edgeBottom ? { borderBottomColor: edgeBottom } : {}),
       ...(edgeLeft ? { borderLeftColor: edgeLeft } : {}),

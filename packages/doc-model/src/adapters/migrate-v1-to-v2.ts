@@ -496,7 +496,7 @@ const FIGURE_KNOWN = new Set(['id', 'num', 'caption', 'src', 'source', 'columnSp
  * What a cell carries besides its text, spans and alignment (a fill, the vertical alignment, its lines), kept by the cell's place in the
  * grid ("row:cell", the header rows first) so that it comes back with the table.
  */
-const CELL_STYLE_KEYS = ['fill', 'valign', 'borders', 'borderColors'] as const;
+const CELL_STYLE_KEYS = ['fill', 'valign', 'borders', 'borderColors', 'fontSize'] as const;
 function withCellStyles(extras: Record<string, unknown> | undefined, tbl: any): Record<string, unknown> | undefined {
   const styles: Record<string, Record<string, unknown>> = {};
   const rows: any[][][] = [...(tbl.headerRows ?? []), ...(tbl.bodyRows ?? [])];

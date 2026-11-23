@@ -48,6 +48,9 @@ export interface PaperTableOps {
   canRedo: boolean;
   fmt: PaperTableFormat;
   mark: (key: 'b' | 'i' | 'u' | 'sup' | 'sub') => void;
+  /** The size of the text of the cells chosen in points (what the table sets when they have none of their own), and the setter (null: back to the table's). */
+  fontSize: number;
+  setFontSize: (pt: number | null) => void;
   textColor: (hex: string | null) => void;
   fill: (hex: string | null) => void;
   /** The colours this table's fills start from: the header band and the tinted rows. */
@@ -87,8 +90,8 @@ export interface PaperTableOps {
 const noDown = (e: React.MouseEvent) => e.preventDefault();
 
 const BTN = 'h-8 rounded-lg flex items-center justify-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed';
-const idle = 'text-zinc-300 hover:bg-white/10 hover:text-white';
-const on = 'bg-white/20 text-white';
+const idle = 'text-zinc-600 hover:bg-black/5 hover:text-zinc-900';
+const on = 'bg-black/10 text-zinc-900';
 
 const Btn: React.FC<{ title: string; onClick?: () => void; active?: boolean; disabled?: boolean; testId?: string; children: React.ReactNode; wide?: boolean }> = ({
   title,
@@ -114,7 +117,7 @@ const Btn: React.FC<{ title: string; onClick?: () => void; active?: boolean; dis
   </button>
 );
 
-const Sep = () => <span className="w-px h-5 bg-white/15 mx-1 flex-shrink-0" aria-hidden />;
+const Sep = () => <span className="w-px h-5 bg-black/10 mx-1 flex-shrink-0" aria-hidden />;
 
 /** A button that opens a small panel under it (closed by a click outside or Esc). The panel is drawn on the page: the toolbar scrolls sideways and would cut it. */
 const Menu: React.FC<{ title: string; label: React.ReactNode; testId?: string; children: (close: () => void) => React.ReactNode; width?: number; active?: boolean }> = ({ title, label, testId, children, width = 232, active }) => {
@@ -126,7 +129,7 @@ const Menu: React.FC<{ title: string; label: React.ReactNode; testId?: string; c
     if (!open) return;
     const away = (e: PointerEvent) => {
       const t = e.target as Node;
-      if (!box.current?.contains(t) && !panel.current?.contains(t)) setOpen(false);
+      if (!box.current?.contains(t) && !panel.current?.contains(t) && !(t as Element).closest?.('[data-testid="color-panel"]')) setOpen(false);
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -227,7 +230,7 @@ const ColorMenu: React.FC<{
         className={`${BTN} w-8 relative ${open ? on : idle}`}
       >
         {icon}
-        <span aria-hidden className="absolute left-1.5 right-1.5 bottom-[3px] h-[3px] rounded-full" style={{ background: swatch, boxShadow: '0 0 0 0.5px rgba(255,255,255,.35)' }} />
+        <span aria-hidden className="absolute left-1.5 right-1.5 bottom-[3px] h-[3px] rounded-full" style={{ background: swatch, boxShadow: '0 0 0 0.5px rgba(0,0,0,.3)' }} />
       </button>
     )}
   >
@@ -247,6 +250,59 @@ const ColorMenu: React.FC<{
     )}
   </Popover>
 );
+
+/** The size of the text: a minus, the number, a plus (the size of the table's text when the cells have none of their own). */
+const FontSize: React.FC<{ value: number; onChange: (pt: number | null) => void }> = ({ value, onChange }) => {
+  const [text, setText] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(String(value));
+  }, [value, editing]);
+  const clamp = (n: number) => Math.max(5, Math.min(24, Math.round(n * 2) / 2));
+  const commit = () => {
+    setEditing(false);
+    const n = parseFloat(text.replace(',', '.'));
+    if (Number.isFinite(n) && n > 0) onChange(clamp(n));
+    else setText(String(value));
+  };
+  return (
+    <div className="flex items-center gap-0.5 flex-shrink-0" data-testid="tp-font-size">
+      <button type="button" title="Giảm cỡ chữ" aria-label="Giảm cỡ chữ" data-testid="tp-font-minus" onMouseDown={noDown} onClick={() => onChange(clamp(value - 1))} className={`${BTN} w-6 text-base ${idle}`}>
+        −
+      </button>
+      <input
+        value={text}
+        inputMode="decimal"
+        aria-label="Cỡ chữ (pt)"
+        title="Cỡ chữ (pt)"
+        data-testid="tp-font-input"
+        onFocus={(e) => {
+          setEditing(true);
+          e.currentTarget.select();
+        }}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            setEditing(false);
+            setText(String(value));
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+        }}
+        className="w-9 h-7 rounded-md border border-zinc-300/80 bg-white/60 text-center text-[12px] font-semibold text-zinc-800 outline-none focus:border-[#78C841] focus:bg-white"
+      />
+      <button type="button" title="Tăng cỡ chữ" aria-label="Tăng cỡ chữ" data-testid="tp-font-plus" onMouseDown={noDown} onClick={() => onChange(clamp(value + 1))} className={`${BTN} w-6 text-base ${idle}`}>
+        +
+      </button>
+    </div>
+  );
+};
 
 /** The lines a border choice draws, as a little picture of a 3 × 3 grid: the dotted ones are the lines the choice leaves out. */
 export const BorderIcon: React.FC<{ mode: BorderMode }> = ({ mode }) => {
@@ -277,18 +333,17 @@ export const BorderIcon: React.FC<{ mode: BorderMode }> = ({ mode }) => {
   );
 };
 
-const BORDER_ITEMS: Array<{ mode: BorderMode; label: string }> = [
+const BORDER_GRID: Array<{ mode: BorderMode; label: string }> = [
   { mode: 'all', label: 'Tất cả viền' },
-  { mode: 'outer', label: 'Viền ngoài' },
   { mode: 'inner', label: 'Viền trong' },
   { mode: 'inner-h', label: 'Kẻ ngang bên trong' },
   { mode: 'inner-v', label: 'Kẻ dọc bên trong' },
+  { mode: 'outer', label: 'Viền ngoài' },
   { mode: 'top', label: 'Viền trên' },
   { mode: 'bottom', label: 'Viền dưới' },
   { mode: 'left', label: 'Viền trái' },
   { mode: 'right', label: 'Viền phải' },
   { mode: 'none', label: 'Bỏ hết viền (ô chọn)' },
-  { mode: 'reset', label: 'Theo kiểu kẻ của bảng' },
 ];
 
 export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => {
@@ -308,6 +363,8 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
       <Btn title="Làm lại (Ctrl+Y)" onClick={ops.redo} disabled={!ops.canRedo} testId="tp-redo">
         <Redo2 className="w-4 h-4" />
       </Btn>
+      <Sep />
+      <FontSize value={ops.fontSize} onChange={ops.setFontSize} />
       <Sep />
       <Btn title="In đậm (Ctrl+B)" onClick={() => ops.mark('b')} active={f.b} testId="tp-bold">
         <Bold className="w-4 h-4" />
@@ -332,7 +389,7 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
         title="Màu chữ"
         panelTitle="Màu chữ"
         icon={<Baseline className="w-4 h-4" />}
-        swatch={f.color ?? '#FFFFFF'}
+        swatch={f.color ?? '#000000'}
         value={f.color}
         clearLabel="Về màu đen"
         journalId={ops.journalId}
@@ -384,35 +441,85 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
           </>
         )}
       </Menu>
-      <Menu title="Đường viền cho các ô đã chọn" label={<BorderIcon mode="all" />} testId="tp-borders" width={252}>
+      <Menu title="Đường viền và màu đường kẻ" label={<BorderIcon mode="all" />} testId="tp-borders" width={292}>
         {(close) => (
-          <>
-            {BORDER_ITEMS.map((it) => (
-              <MenuItem key={it.mode} testId={`tp-border-${it.mode}`} onClick={() => { ops.borders(it.mode); close(); }}>
-                <BorderIcon mode={it.mode} />
-                {it.label}
-              </MenuItem>
-            ))}
-            <p className="px-2.5 pt-1.5 text-[10px] leading-snug text-zinc-500">Đường kẻ mới vẽ bằng màu đang chọn ở nút bên cạnh.</p>
-          </>
+          <div>
+            <div className="flex gap-2">
+              <div className="grid grid-cols-5 gap-1">
+                {BORDER_GRID.map((it) => (
+                  <button
+                    key={it.mode}
+                    type="button"
+                    title={it.label}
+                    aria-label={it.label}
+                    data-testid={`tp-border-${it.mode}`}
+                    onClick={() => {
+                      ops.borders(it.mode);
+                      close();
+                    }}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-100 transition-colors"
+                  >
+                    <BorderIcon mode={it.mode} />
+                  </button>
+                ))}
+              </div>
+              <span className="w-px bg-zinc-200" aria-hidden />
+              <div className="flex flex-col gap-1 justify-start">
+                <Popover
+                  label={null}
+                  title="Màu đường kẻ"
+                  width={300}
+                  chevron={false}
+                  testId="tp-line-color-pop"
+                  align="right"
+                  trigger={(open, toggle) => (
+                    <button
+                      type="button"
+                      title="Màu đường kẻ: các đường kẻ vẽ sau đó dùng màu này"
+                      aria-label="Màu đường kẻ"
+                      data-testid="tp-line-color"
+                      onClick={toggle}
+                      className={`w-9 h-9 rounded-lg relative flex items-center justify-center cursor-pointer transition-colors ${open ? 'bg-zinc-100' : 'hover:bg-zinc-100'}`}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                        <path d="M3.5 10.5 10.8 3.2a1.4 1.4 0 0 1 2 0l0 0a1.4 1.4 0 0 1 0 2L5.5 12.5 2.8 13z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                      </svg>
+                      <span aria-hidden className="absolute left-2 right-2 bottom-1 h-[3px] rounded-full" style={{ background: ops.lineColor, boxShadow: '0 0 0 0.5px rgba(0,0,0,.3)' }} />
+                    </button>
+                  )}
+                >
+                  {(closeColor) => (
+                    <ColorPanel
+                      title="Màu đường kẻ"
+                      value={ops.lineColor}
+                      journalId={ops.journalId}
+                      clearLabel="Về màu đường kẻ của bảng"
+                      onPick={(hex) => {
+                        ops.setLineColor(hex);
+                        closeColor();
+                      }}
+                    />
+                  )}
+                </Popover>
+                <button
+                  type="button"
+                  title="Theo kiểu kẻ của bảng (bỏ đường kẻ riêng của các ô chọn)"
+                  aria-label="Theo kiểu kẻ của bảng"
+                  data-testid="tp-border-reset"
+                  onClick={() => {
+                    ops.borders('reset');
+                    close();
+                  }}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-100 transition-colors"
+                >
+                  <BorderIcon mode="reset" />
+                </button>
+              </div>
+            </div>
+            <p className="px-1 pt-2 text-[10px] leading-snug text-zinc-500">Chọn màu rồi chọn kiểu viền: đường kẻ vẽ ra mang màu đang chọn (gạch dưới biểu tượng bút).</p>
+          </div>
         )}
       </Menu>
-      <ColorMenu
-        title="Màu đường kẻ (cho các đường kẻ vẽ sau đó)"
-        panelTitle="Màu đường kẻ"
-        icon={
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-            <path d="M2 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M3.5 10.5 10.8 3.2a1.4 1.4 0 0 1 2 0l0 0a1.4 1.4 0 0 1 0 2L5.5 12.5 2.8 13z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-          </svg>
-        }
-        swatch={ops.lineColor}
-        value={ops.lineColor}
-        clearLabel="Về màu đường kẻ của bảng"
-        journalId={ops.journalId}
-        testId="tp-line-color"
-        onPick={ops.setLineColor}
-      />
       <Sep />
       <Btn title="Gộp các ô đã chọn" onClick={ops.merge} disabled={!ops.canMerge} testId="tp-merge">
         <Merge className="w-4 h-4" />
@@ -518,7 +625,7 @@ export const TablePaperToolbar: React.FC<{ ops: PaperTableOps }> = ({ ops }) => 
       <Btn title="Phóng to" onClick={() => ops.setZoom(Math.min(2.5, Math.round((ops.zoom + 0.1) * 10) / 10))} testId="tp-zoom-in">
         <ZoomIn className="w-4 h-4" />
       </Btn>
-      <span className="ml-2 text-[11px] font-semibold text-zinc-400 whitespace-nowrap" data-testid="tp-selection">{ops.selectionLabel}</span>
+      <span className="ml-2 text-[11px] font-semibold text-zinc-500 whitespace-nowrap" data-testid="tp-selection">{ops.selectionLabel}</span>
     </div>
   );
 };

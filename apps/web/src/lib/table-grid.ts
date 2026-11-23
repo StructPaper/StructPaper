@@ -12,6 +12,7 @@ export interface GridCell {
   rowSpan: number;
   align?: TableCell['align'];
   valign?: TableCell['valign'];
+  fontSize?: number;
   fill?: string;
   borders?: CellBorders;
   borderColors?: CellBorderColors;
@@ -51,6 +52,7 @@ export function toGrid(table: PaperTable): TableGrid {
           rowSpan: p.rowSpan,
           ...(cell.align ? { align: cell.align } : {}),
           ...(cell.valign ? { valign: cell.valign } : {}),
+          ...(cell.fontSize ? { fontSize: cell.fontSize } : {}),
           ...(cell.fill ? { fill: cell.fill } : {}),
           ...(cell.borders ? { borders: { ...cell.borders } } : {}),
           ...(cell.borderColors ? { borderColors: { ...cell.borderColors } } : {}),
@@ -68,6 +70,7 @@ const cellOut = (c: GridCell, isHeader: boolean): TableCell => ({
   ...(c.rowSpan > 1 ? { rowSpan: c.rowSpan } : {}),
   ...(c.align ? { align: c.align } : {}),
   ...(c.valign ? { valign: c.valign } : {}),
+  ...(c.fontSize ? { fontSize: c.fontSize } : {}),
   ...(c.fill ? { fill: c.fill } : {}),
   ...(c.borders && Object.keys(c.borders).length > 0 ? { borders: c.borders } : {}),
   ...(c.borderColors && Object.keys(c.borderColors).length > 0 ? { borderColors: c.borderColors } : {}),
@@ -164,7 +167,7 @@ export function setText(grid: TableGrid, r: number, c: number, text: string): Ta
 }
 
 /** Sets the same look on every cell of the range (a cell merged over several places once). */
-export function patchRange(grid: TableGrid, range: Range, patch: Partial<Pick<GridCell, 'align' | 'valign' | 'fill' | 'text'>>): TableGrid {
+export function patchRange(grid: TableGrid, range: Range, patch: Partial<Pick<GridCell, 'align' | 'valign' | 'fill' | 'text' | 'fontSize'>>): TableGrid {
   const g = clone(grid);
   const r = expandRange(g, range);
   for (let y = r.r0; y <= r.r1; y++) {

@@ -24,9 +24,10 @@ export function deriveTableLayout(table: PaperTable, theme: ResolvedTheme, opts:
   const cols = Math.max(table.headers?.length ?? 0, ...(table.bodyRows ?? []).map((r) => r.reduce((n, c) => n + Math.max(1, c.colSpan ?? 1), 0)), ...(table.rows ?? []).map((r) => r.length), 1);
   const headers = Array.from({ length: cols }, (_, i) => table.headers?.[i] ?? '');
   const body = table.bodyRows && table.bodyRows.length > 0 ? table.bodyRows : (table.rows ?? []).map((r) => r.map((text) => ({ text })));
-  const weights = columnWeights(table, headers, body);
   const percent = table.widthPercent && table.widthPercent > 0 && table.widthPercent < 100 ? table.widthPercent : 100;
-  return { plan, sheet, frame, look, cols, weights, widthPt: (frame.table.w * percent) / 100 };
+  const widthPt = (frame.table.w * percent) / 100;
+  const weights = columnWeights(table, headers, body, { width: widthPt, fontPt: look.fontPt });
+  return { plan, sheet, frame, look, cols, weights, widthPt };
 }
 
 /** The share each column has when its width in points is `width` (the padding of the columns, 6 pt on each side, is not shared). */
