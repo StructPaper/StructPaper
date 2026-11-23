@@ -27,6 +27,14 @@ export interface TablePlan {
 /** The sheet in points (the sample PDFs): 216 × 279 mm. */
 export const SHEET_PT = { width: 612.28, height: 790.7 };
 
+/**
+ * Does a table on pages of its own take the whole width of the sheet, over the side column (QR code, contact)? Only when the author set it so
+ * (`sideColumn: 'full'`), or for an appendix table (the journals set those across the page) that is not kept in the text. A table of the text
+ * stays in the text area unless the author says otherwise.
+ */
+export const wideOf = (table: Pick<PaperTable, 'sideColumn' | 'appendix'>, spansOneColumn: boolean): boolean =>
+  table.sideColumn === 'full' || (!!table.appendix && table.sideColumn !== 'text' && !spansOneColumn);
+
 /** The decision, as the LaTeX export takes it (see lib/latex-table). */
 export function planTable(table: PaperTable, theme: ResolvedTheme, opts: { isOneColumn: boolean; inline?: boolean }): TablePlan {
   const inline = !!opts.inline;
@@ -56,7 +64,7 @@ export function planTable(table: PaperTable, theme: ResolvedTheme, opts: { isOne
 
   if (isLong && spansOneColumn && !isRotated && !inline) return { mode: 'column-flow', isRotated, spansOneColumn, isLong, wide: false, fontSize };
   if (isLong || inline) {
-    const wide = !inline && (table.sideColumn === 'full' || (table.sideColumn !== 'text' && !spansOneColumn));
+    const wide = !inline && wideOf(table, spansOneColumn);
     return { mode: 'own-pages', isRotated, spansOneColumn, isLong, wide, fontSize };
   }
   return { mode: 'float', isRotated, spansOneColumn, isLong, wide: false, fontSize };

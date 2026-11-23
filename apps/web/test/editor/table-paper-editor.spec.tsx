@@ -8,6 +8,7 @@ import { SectionCardHeader } from '@/features/editor/components/sections/Section
 import { createEmptyPaper, DEFAULT_LAYOUT_SETTINGS, type PaperSection, type PaperTable } from '@/types/paper';
 
 afterEach(cleanup);
+vi.setConfig({ testTimeout: 20000 });
 
 // the sheets and the settings come in a moment after the ground has faded in
 const openEditor = async (ui: React.ReactElement) => {

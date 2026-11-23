@@ -147,6 +147,7 @@ export const TablePaperPages: React.FC<TablePaperPagesProps> = ({
     label: w.label,
     continuedTitle: w.cont,
     continuedFoot: w.foot,
+    roomPt: frame.table.w,
   };
 
   const lineStep = 12.35;

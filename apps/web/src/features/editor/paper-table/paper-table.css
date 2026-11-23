@@ -90,6 +90,7 @@
   color: var(--tp-title);
 }
 .tp-source {
+  font-family: var(--tp-serif);
   font-size: 7.5pt;
   line-height: 9.6pt;
   margin-top: 2.5pt;

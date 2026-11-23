@@ -696,7 +696,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
     const inner = renderSections(list, indexBase, true);
     return (
       `\n\\clearpage\n\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n${isOneColumn ? '' : '\\onecolumn\n'}` +
-      `\\begin{landscape}\n{\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}\n${inner}\n}\n\\end{landscape}\n` +
+      `\\begin{landscape}\n${inner}\n\\end{landscape}\n` +
       `\\clearpage\n\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n${isOneColumn ? '' : '\\twocolumn\n'}`
     );
   };
@@ -705,7 +705,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
 
   // a heading right before a table that has its own page(s) goes onto that page, not alone on the page before
   bodyLatex = bodyLatex.replace(
-    /(\n\\phantomsection\\addcontentsline[^\n]*\n\\(?:sub)*section\*\n {2}\{\\textbf\{[^\n]*\}\}\n)(\n\\clearpage\n\\onecolumn\n)/g,
+    /(\n\\phantomsection\\addcontentsline[^\n]*\n\\(?:sub)*section\*\n {2}\{\\textbf\{[^\n]*\}\}\n)(\n\\clearpage\n\\onecolumn\n)(?!\\begin\{landscape\})/g,
     '$2$1'
   );
   if (bodyLatex.includes('\\fiteq{')) bodyLatex = EQUATION_FIT_MACRO + bodyLatex;

@@ -211,7 +211,7 @@ ${bodyRows.map(renderRow).join('\n')}
   if (isLong || inline) {
     // on pages of its own a large table takes the whole width of the page, over the side column (as the printed journal's appendix tables
     // do), unless the author keeps it in the text; a table turned on its side keeps the text area
-    const wide = !inline && (table.sideColumn === 'full' || (table.sideColumn !== 'text' && !spansOneColumn));
+    const wide = plan.wide;
     const leave = inline ? "" : (wide ? '\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n' : '') + (isOneColumn ? '' : '\\onecolumn\n');
     // (the text area is put back first, so the two columns are measured from it)
     const back = inline ? "" : (wide ? '\\ifdefined\\sptextgeometry\\sptextgeometry\\fi\n' : '') + (isOneColumn ? '' : '\\twocolumn\n');
@@ -222,8 +222,10 @@ ${bodyRows.map(renderRow).join('\n')}
       ? `\\hline ${contLine}\n${headRow}\n\\endhead`
       : `\\hline ${contLine}\n\\endhead`;
     const page = inline ? '' : '\\clearpage\n';
-    return `\n${page}${leave}${open}${sizeOpen}${isRotated && !inline ? '\n% on the turned page the table keeps clear of the running head and the foot\n\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}' : ''}
+    return `\n${page}${leave}${open}${sizeOpen}
 \\setlength{\\sptw}{\\linewidth}
+% the note under the table stands close to it, as under a table that is not long (longtable leaves a gap after its last row)
+\\setlength{\\LTpost}{0pt}
 \\begin{longtable}${table.tableAlign === 'left' ? '[l]' : table.tableAlign === 'right' ? '[r]' : ''}{${colSpec}}
 ${caption}${label}\\\\
 ${topRule}${headRow}

@@ -82,8 +82,8 @@ export function frameFor(plan: TablePlan, theme: ResolvedTheme, sheet: Sheet): P
   if (plan.isRotated) {
     const regionW = plan.wide ? wideW : textW;
     const regionX = plan.wide ? m.wideLeft : m.textLeft;
-    // (the table is set across the turned page: its width is the height of the text, less 1.6 cm that keeps it clear of the head and foot)
-    const tableW = bodyH - 1.6 * CM;
+    // (the table is set across the turned page: its width is the height of the text)
+    const tableW = bodyH;
     if (theme.turnSheets) {
       // the PDF's page is turned to the reader: its left margin is now at the top, its bottom margin at the left
       const landscape: Sheet = { w: sheet.h, h: sheet.w };

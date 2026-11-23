@@ -226,8 +226,8 @@ describe('alignment of a cell, as the Word file has it', () => {
 
 describe('a large table on pages of its own', () => {
   const big = (extra: Partial<PaperTable> = {}) => base({ columnSpan: '2-column', isFullWidth: true, breakAcrossPages: 'always', ...extra });
-  it('takes the whole width of the page, over the side column, by default, and the text area comes back after it', () => {
-    const out = tex(big());
+  it('takes the whole width of the page, over the side column, when the author sets it so, and the text area comes back after it', () => {
+    const out = tex(big({ sideColumn: 'full' }));
     expect(out).toContain('\\spwidegeometry');
     expect(out).toContain('\\sptextgeometry');
     expect(out.indexOf('\\spwidegeometry')).toBeLessThan(out.indexOf('\\begin{longtable}'));
@@ -268,10 +268,17 @@ describe('a large table on pages of its own', () => {
     expect(out).toContain('\\setlength{\\sptw}{\\linewidth}');
     expect(out).toMatch(/\\multicolumn\{2\}\{>\{\\centering\\arraybackslash\}p\{\\dimexpr/);
   });
-  it('a table turned on its own page keeps clear of the running head', () => {
+  it('a table turned on its own page is as wide as the text, and its note stands as close as under a table that is not long', () => {
     const out = tex(base({ isRotated: true, columnSpan: '2-column', breakAcrossPages: 'always' }));
     expect(out).toContain('\\begin{landscape}');
-    expect(out).toContain('\\setlength{\\linewidth}{\\dimexpr\\linewidth-1.6cm\\relax}');
+    expect(out).not.toContain('1.6cm');
+    expect(out).toContain('\\setlength{\\LTpost}{0pt}');
+  });
+  it('a table of the text does not take the side column by itself: only one set across the page, or an appendix', () => {
+    expect(tex(big({}))).not.toContain('\\spwidegeometry');
+    expect(tex(big({ sideColumn: 'full' }))).toContain('\\spwidegeometry');
+    expect(tex(big({ appendix: true }))).toContain('\\spwidegeometry');
+    expect(tex(big({ appendix: true, sideColumn: 'text' }))).not.toContain('\\spwidegeometry');
   });
   it('a table in one column is not touched', () => {
     expect(tex(base({ breakAcrossPages: 'always' }))).not.toContain('\\spwidegeometry');

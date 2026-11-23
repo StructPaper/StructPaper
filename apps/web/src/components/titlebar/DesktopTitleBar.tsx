@@ -25,7 +25,7 @@ import { SaveVersionButton } from './SaveVersionButton';
 import { JournalTitleBarInfo, JournalHistoryButton } from './JournalTitleBarInfo';
 import { PaperProfileInfoButton } from '@/features/journals/components/PaperProfileInfoButton';
 
-const SHOW_EDITOR_VIEW_SWITCH = true;
+const SHOW_EDITOR_VIEW_SWITCH = false;
 
 /**
  * Top-level application chrome bar.

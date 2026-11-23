@@ -94,7 +94,8 @@ export interface PieceProps {
   label: string;
   continuedTitle: string;
   continuedFoot: string;
-  /** Body rows start at this row of the grid (the head is the rows before). */
+  /** The room the table stands in (points): the note under it is as wide as that, not as wide as a table narrower than its room. */
+  roomPt?: number;
   tableAlign?: 'left' | 'center' | 'right';
 }
 
@@ -118,6 +119,7 @@ export const PieceTable: React.FC<PieceProps> = ({
   label,
   continuedTitle,
   continuedFoot,
+  roomPt,
 }) => {
   const cols = colsOfGrid(grid);
   const head = grid.head;
@@ -256,7 +258,10 @@ export const PieceTable: React.FC<PieceProps> = ({
     );
   };
 
-  const srcAlign = srcLines.length > 0 ? sourceLook(table.sourceStyle, srcLines[0]).align : 'left';
+  // the note is set as the PDF sets it: in the serif type of the text, a note ("Chú thích", "Ghi chú") in italic, a source upright, to the left,
+  // unless the author chose bold, italic or an alignment for the block
+  const srcLook = sourceLook(table.sourceStyle, srcLines[0] ?? '');
+  const srcAlign = srcLook.align;
   const vars = {
     ['--tp-font' as string]: `${look.fontPt}pt`,
     ['--tp-line' as string]: `${look.linePt}pt`,
@@ -311,7 +316,7 @@ export const PieceTable: React.FC<PieceProps> = ({
         </tbody>
       </table>
       {(piece.last || measure) && (
-        <div className="tp-source" data-measure="source" data-empty={srcLines.length === 0 ? 'true' : undefined} style={{ textAlign: srcAlign, width: `${widthPt}pt` }}>
+        <div className="tp-source" data-measure="source" data-empty={srcLines.length === 0 ? 'true' : undefined} style={{ textAlign: srcAlign, width: `${roomPt ?? widthPt}pt`, fontStyle: srcLook.italic ? 'italic' : 'normal', fontWeight: srcLook.bold ? 700 : 400 }}>
           {srcLines.length === 0 && (measure || !interactive) ? null : (
             <Editable
               text={table.source ?? ''}

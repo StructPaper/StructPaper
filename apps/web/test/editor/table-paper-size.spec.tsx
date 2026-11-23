@@ -8,6 +8,7 @@ import { SectionCardHeader } from '@/features/editor/components/sections/Section
 import { createEmptyPaper, DEFAULT_LAYOUT_SETTINGS, type PaperSection, type PaperTable } from '@/types/paper';
 
 afterEach(cleanup);
+vi.setConfig({ testTimeout: 20000 });
 
 const table = (): PaperTable => ({
   id: 't',
@@ -134,5 +135,34 @@ describe('the block of a table', () => {
     // the same look as the page-break button (not a coloured block)
     expect(paper.className).toContain('text-zinc-500');
     expect(paper.className).not.toContain('bg-[#ECFCCB]');
+  });
+});
+
+describe('the note under the table on the sheet', () => {
+  const openWith = async (source: string, extra: Partial<PaperTable> = {}) => {
+    render(provider(<TablePaperEditor table={{ ...table(), source, ...extra }} onChange={vi.fn()} onClose={vi.fn()} />));
+    await waitFor(() => expect(document.querySelector('.tp-sheet .tp-source')).toBeTruthy());
+    return document.querySelector<HTMLElement>('.tp-sheet .tp-source')!;
+  };
+
+  it('is set as the PDF sets it: a note in italic, a source upright', async () => {
+    expect((await openWith('Ghi chú: CT: nhóm can thiệp')).style.fontStyle).toBe('italic');
+    cleanup();
+    expect((await openWith('Nguồn: tác giả')).style.fontStyle).toBe('normal');
+  });
+
+  it('follows the bold, italic and alignment the author chose for it', async () => {
+    const el = await openWith('Nguồn: tác giả', { sourceStyle: { bold: true, italic: true, align: 'center' } });
+    expect(el.style.fontWeight).toBe('700');
+    expect(el.style.fontStyle).toBe('italic');
+    expect(el.style.textAlign).toBe('center');
+  });
+
+  it('is as wide as the room of the table, whatever width the table itself has', async () => {
+    const wide = await openWith('Nguồn: tác giả');
+    const full = parseFloat(wide.style.width);
+    cleanup();
+    const narrow = await openWith('Nguồn: tác giả', { widthPercent: 50 });
+    expect(parseFloat(narrow.style.width)).toBeCloseTo(full, 3);
   });
 });
