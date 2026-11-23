@@ -168,7 +168,7 @@ export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, i
         spellCheck={false}
         placeholder="Ví dụ: \frac{a}{b} = \sum_{i=1}^{n} x_i"
         aria-label="Mã LaTeX của công thức"
-        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:ring-2 focus:ring-lime-300"
+        className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-800 outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300"
       />
 
       {structuralError && (

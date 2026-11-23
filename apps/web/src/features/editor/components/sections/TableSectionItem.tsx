@@ -69,7 +69,7 @@ export const TableSourceField: React.FC<{ source: string; style?: TableSourceSty
         ariaLabel="Nguồn và chú thích dưới bảng"
         placeholder="vd: Nguồn: Tác giả"
         textClassName={`${look.italic ? 'italic' : ''} ${look.bold ? 'font-bold' : ''} ${look.align === 'center' ? 'text-center' : look.align === 'right' ? 'text-right' : 'text-left'}`}
-        className="w-full p-2.5 rounded-xl text-xs text-zinc-800 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-lime-200 focus-within:border-lime-400 transition-all shadow-2xs cursor-text"
+        className="w-full p-2.5 rounded-xl text-xs text-zinc-800 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all shadow-2xs cursor-text"
       />
       <p className="mt-1 text-[10px] text-zinc-400">Mỗi dòng gõ ở đây là một dòng in dưới bảng. Dòng bắt đầu bằng &quot;Chú thích:&quot; tự in nghiêng.</p>
     </div>
@@ -152,7 +152,7 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
           placeholder="Nhập tiêu đề bảng (ví dụ: Bảng 1: Kết quả khảo sát...)"
           ariaLabel="Tiêu đề bảng"
           textClassName="font-bold"
-          className="w-full p-2.5 rounded-xl text-xs text-zinc-900 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-lime-200 focus-within:border-lime-400 transition-all shadow-2xs cursor-text"
+          className="w-full p-2.5 rounded-xl text-xs text-zinc-900 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all shadow-2xs cursor-text"
         />
       </div>
 

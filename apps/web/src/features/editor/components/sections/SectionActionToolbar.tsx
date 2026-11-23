@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   FileText,
   Table as TableIcon,
@@ -9,7 +9,10 @@ import {
   AlignLeft,
   Layers,
   Sigma,
+  Settings2,
 } from 'lucide-react';
+import { useHoverInsert } from '@/lib/editor-prefs';
+import { ContentSettingsModal } from '../ContentSettingsModal';
 import type { SectionFilterType } from '../../hooks/tab-view-state-store';
 
 export interface SectionActionToolbarProps {
@@ -37,6 +40,10 @@ const SectionActionToolbarBase: React.FC<SectionActionToolbarProps> = ({
   onFilterChange,
   counts,
 }) => {
+  const [hoverInsert, setHoverInsert] = useHoverInsert();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | undefined>();
+  const settingsButton = useRef<HTMLButtonElement>(null);
   return (
     <div className="flex flex-col space-y-3 flex-shrink-0">
       {/* Top Header */}
@@ -47,7 +54,26 @@ const SectionActionToolbarBase: React.FC<SectionActionToolbarProps> = ({
             Nội dung bài báo ({totalSections})
           </h3>
         </div>
+        <div className="relative flex items-center gap-1.5" data-edit-only>
+          <button
+            ref={settingsButton}
+            type="button"
+            data-testid="content-settings-button"
+            title="Cài đặt nội dung"
+            aria-label="Cài đặt nội dung"
+            onClick={() => {
+              setRect(settingsButton.current?.getBoundingClientRect());
+              setSettingsOpen(true);
+            }}
+            className="h-8 w-8 rounded-xl bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 flex items-center justify-center shadow-2xs cursor-pointer transition-colors"
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+      {settingsOpen && (
+        <ContentSettingsModal triggerRect={rect} settings={{ hoverInsert }} onSave={(next) => setHoverInsert(next.hoverInsert)} onClose={() => setSettingsOpen(false)} />
+      )}
 
       {/* Filter Chips Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 flex-shrink-0 no-scrollbar select-none text-[11px]">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { placeCaretAt, type ClickPoint } from './caret-at-point';
 import type { EditorOptions } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Subscript from '@tiptap/extension-subscript';
@@ -40,6 +41,21 @@ export interface TipTapActiveEditorProps {
   ariaLabel?: string;
   references?: PaperReference[];
   noteOffset?: number;
+  /** The box (border, ring) and the toolbar belong to the shell around it (TipTapParagraphEditor): this is only the text and its dialogs. */
+  bare?: boolean;
+  /** Where the text was clicked to start editing: the caret goes there (otherwise to the end). */
+  startPoint?: ClickPoint | null;
+  /** What the shell needs to draw the toolbar over this editor; null when the editor goes. */
+  onController?: (controller: ParagraphController | null) => void;
+}
+
+/** The editor and the four things the toolbar can ask of it. */
+export interface ParagraphController {
+  editor: Editor;
+  toggleRefPicker: () => void;
+  toggleMath: () => void;
+  openXref: () => void;
+  openNote: () => void;
 }
 
 export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
@@ -53,6 +69,9 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
   ariaLabel = 'Nội dung đoạn văn',
   references = [],
   noteOffset = 0,
+  bare = false,
+  startPoint = null,
+  onController,
 }) => {
   const [isRefPickerOpen, setIsRefPickerOpen] = useState(false);
   const [refSearch, setRefSearch] = useState('');
@@ -213,7 +232,7 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
     () => ({
       attributes: {
         class:
-          'w-full p-3 text-xs sm:text-sm text-zinc-900 bg-white leading-relaxed outline-none min-h-[3rem] rounded-b-2xl',
+          `w-full ${bare ? 'px-3 pt-1 pb-3' : 'p-3'} text-xs sm:text-sm text-zinc-900 bg-white leading-relaxed outline-none min-h-[3rem] rounded-b-2xl`,
         role: 'textbox',
         'aria-label': ariaLabel,
         spellcheck: 'false',
@@ -230,7 +249,7 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
         return false;
       },
     }),
-    [ariaLabel, openRefPicker]
+    [ariaLabel, openRefPicker, bare]
   );
 
   const editor = useEditor({
@@ -276,9 +295,12 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
     }
   }, [editor, currentInlines, clearDebounceTimer]);
 
+  const startPointRef = useRef(startPoint);
+  startPointRef.current = startPoint;
   useEffect(() => {
     if (editor && !editor.isFocused) {
-      editor.commands.focus('end');
+      const at = startPointRef.current;
+      if (!(at && placeCaretAt(editor, at))) editor.commands.focus('end');
     }
   }, [editor]);
 
@@ -378,11 +400,31 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
     onKeyDown?.(e);
   };
 
+  // what the toolbar of the shell asks for goes through a ref, so the controller is handed over once per editor, not on every render
+  const actionsRef = useRef({ toggleRef: () => {}, toggleMath: () => {} });
+  actionsRef.current = {
+    toggleRef: () => (isRefPickerOpen ? closeRefPicker() : openRefPicker()),
+    toggleMath: () => (isMathModalOpen ? closeMathModal() : openMathModal()),
+  };
+  const onControllerRef = useRef(onController);
+  onControllerRef.current = onController;
+  useEffect(() => {
+    if (!editor) return;
+    onControllerRef.current?.({
+      editor,
+      toggleRefPicker: () => actionsRef.current.toggleRef(),
+      toggleMath: () => actionsRef.current.toggleMath(),
+      openXref: () => setIsXrefOpen(true),
+      openNote: () => setIsNoteOpen(true),
+    });
+    return () => onControllerRef.current?.(null);
+  }, [editor]);
+
   return (
     <div
       ref={containerRef}
       style={{ counterReset: `ov-fn ${noteOffset} ov-fnn ${noteOffset}` }}
-      className={`tiptap-paragraph-editor relative w-full rounded-2xl bg-white border border-blue-300 ring-4 ring-blue-200 shadow-2xs transition-all ${className}`}
+      className={bare ? 'tiptap-paragraph-editor relative w-full' : `tiptap-paragraph-editor relative w-full rounded-2xl bg-white border border-blue-300 ring-4 ring-blue-200 shadow-2xs transition-all ${className}`}
       onFocus={() => {
         hasNotifiedBlurRef.current = false;
       }}
@@ -391,14 +433,15 @@ export const TipTapActiveEditor: React.FC<TipTapActiveEditorProps> = ({
       }}
       onKeyDown={handleContainerKeyDown}
     >
-      {/* Compact Mini Toolbar */}
-      <TipTapFormattingToolbar
-        editor={editor}
-        onToggleRefPicker={() => (isRefPickerOpen ? closeRefPicker() : openRefPicker())}
-        onToggleMathModal={() => (isMathModalOpen ? closeMathModal() : openMathModal())}
-        onToggleXref={() => setIsXrefOpen(true)}
-        onToggleNote={() => setIsNoteOpen(true)}
-      />
+      {!bare && (
+        <TipTapFormattingToolbar
+          editor={editor}
+          onToggleRefPicker={() => (isRefPickerOpen ? closeRefPicker() : openRefPicker())}
+          onToggleMathModal={() => (isMathModalOpen ? closeMathModal() : openMathModal())}
+          onToggleXref={() => setIsXrefOpen(true)}
+          onToggleNote={() => setIsNoteOpen(true)}
+        />
+      )}
 
       <XrefDialog open={isXrefOpen} targets={xrefCtx.targets} lang={xrefCtx.lang} onSelect={handleInsertXref} onClose={() => { setIsXrefOpen(false); restoreEditorFocus(); }} />
       <FootnoteDialog open={isNoteOpen} onSubmit={handleInsertNote} onClose={() => { setIsNoteOpen(false); restoreEditorFocus(); }} />

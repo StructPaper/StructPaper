@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import StarterKit from '@tiptap/starter-kit';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
@@ -10,6 +11,7 @@ import { FootnoteNotes, OvCite, OvFootnote, OvMath, OvXref, TextColor } from '..
 import { Bold, Italic, Underline, Bookmark, Sigma, Link2, Asterisk } from 'lucide-react';
 import { useXrefTargets } from '../../xref-context';
 import { markupToHtml } from '@/lib/inline-markup';
+import { placeCaretAt, type ClickPoint } from './caret-at-point';
 import { renderLatexToHtml } from '@/features/preview/components/MathText';
 import { labelOfRef } from './markers';
 import type { RefTarget } from '@/lib/cross-refs';
@@ -35,7 +37,7 @@ type RichLineInputProps = {
   lazy?: boolean;
 };
 
-const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolean }> = ({ value, onChange, placeholder, className = '', ariaLabel, textClassName = '', tools = true, multiline = false, focusOnMount = false }) => {
+const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolean; focusPoint?: ClickPoint | null }> = ({ value, onChange, placeholder, className = '', ariaLabel, textClassName = '', tools = true, multiline = false, focusOnMount = false, focusPoint = null }) => {
   const docOf = (text: string) => ({ type: 'doc', content: (multiline ? text.split('\n') : [text]).map((line) => ({ type: 'paragraph', content: textToContent(line) })) });
   const { targets, lang, references } = useXrefTargets();
   const [focused, setFocused] = useState(false);
@@ -88,7 +90,10 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
     },
   });
   useEffect(() => {
-    if (focusOnMount && editor && !editor.isDestroyed) editor.commands.focus('end');
+    if (!focusOnMount || !editor || editor.isDestroyed) return;
+    // the caret goes where the text was clicked (the editor takes the place of the text, line for line), else to the end
+    if (!(focusPoint && placeCaretAt(editor, focusPoint))) editor.commands.focus('end');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusOnMount, editor]);
   // a change from outside (undo, the settings popup): the line is drawn again
   useEffect(() => {
@@ -134,7 +139,10 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
         setFocused(false);
       }}
     >
-      {tools && (focused || dialog) && (
+      {tools && (
+        <AnimatePresence initial={false}>
+          {(focused || dialog) && (
+            <motion.div key="field-tools" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18, ease: 'easeOut' }} style={{ overflow: 'hidden' }}>
         <div data-field-tools className="mb-2 pb-1.5 border-b border-zinc-200/70 flex flex-wrap items-center gap-0.5 font-normal not-italic text-xs">
           <button type="button" tabIndex={-1} title="Đậm (Ctrl+B)" aria-label="Đậm" onMouseDown={noDown} onClick={() => editor?.chain().focus().toggleBold().run()} className={tool}>
             <Bold className="w-3.5 h-3.5" />
@@ -152,7 +160,7 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
             x₂
           </button>
           <span className="w-px h-4 bg-zinc-300 mx-1" />
-          <button type="button" tabIndex={-1} title="Chèn trích dẫn tài liệu" aria-label="Chèn trích dẫn" onMouseDown={noDown} onClick={() => setDialog('cite')} className={`${tool} text-blue-600`} data-testid="field-cite">
+          <button type="button" tabIndex={-1} title="Chèn trích dẫn tài liệu" aria-label="Chèn trích dẫn" onMouseDown={noDown} onClick={() => setDialog('cite')} className={tool} data-testid="field-cite">
             <Bookmark className="w-3.5 h-3.5" />
             Trích dẫn
           </button>
@@ -169,6 +177,9 @@ const RichLineInputActive: React.FC<RichLineInputProps & { focusOnMount?: boolea
             Chú thích
           </button>
         </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
       {/* the placeholder sits inside the text area, so it keeps the same padding as the text */}
       <div className="relative">
@@ -216,7 +227,8 @@ export const RichLineInput: React.FC<RichLineInputProps> = (props) => {
   const { targets, lang } = useXrefTargets();
   const [built, setBuilt] = useState(!props.lazy);
   const [clicked, setClicked] = useState(false);
-  if (built) return <RichLineInputActive {...props} focusOnMount={clicked} />;
+  const [point, setPoint] = useState<ClickPoint | null>(null);
+  if (built) return <RichLineInputActive {...props} focusOnMount={clicked} focusPoint={point} />;
   const { value, placeholder, className = '', ariaLabel, textClassName = '' } = props;
   return (
     <div
@@ -225,7 +237,8 @@ export const RichLineInput: React.FC<RichLineInputProps> = (props) => {
       tabIndex={0}
       aria-label={ariaLabel ?? placeholder ?? 'Văn bản'}
       {...(placeholder ? ({ placeholder } as Record<string, string>) : {})}
-      onMouseDown={() => {
+      onMouseDown={(e) => {
+        setPoint({ x: e.clientX, y: e.clientY });
         setClicked(true);
         setBuilt(true);
       }}

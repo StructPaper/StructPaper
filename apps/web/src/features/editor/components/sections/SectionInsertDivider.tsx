@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useHoverInsert } from '@/lib/editor-prefs';
 import {
   Heading,
   AlignLeft,
@@ -27,6 +28,9 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
   onAddFigure,
   onAddEquation,
 }) => {
+  // the strip can be switched off (settings of the content tab); to add blocks it is switched on again
+  const [hoverInsert] = useHoverInsert();
+  if (!hoverInsert) return null;
   return (
     <div data-edit-only className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none group-hover:pointer-events-auto">
       <div className="overflow-hidden">
