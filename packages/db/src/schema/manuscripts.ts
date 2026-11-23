@@ -31,10 +31,14 @@ export const manuscripts = pgTable(
   metadata: jsonb('metadata').$type<Record<string, any>>().notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  /** Set when the paper is moved to the trash; null = a live paper. The trash purges it for good after the retention period. */
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [
     check('chk_manuscripts_profile_pin', sql`jsonb_typeof(${t.profilePin}) = 'object'`),
     index('idx_manuscripts_journal').on(t.journalId),
+    index('idx_manuscripts_deleted_at').on(t.deletedAt),
   ],
 );
 

@@ -122,6 +122,8 @@ ${open} {\\vspace*{-1pc}\\begin{mdframed}[innerrightmargin=1pc,innerleftmargin=1
 
 \\noindent\\prolight\\textbf{${labels.keywords}: }{${escapeLatex(keywords)}.\\newline}\\end{onecolabstract}\\end{mdframed}}\\vspace*{.8pc}${close}
 \\thispagestyle{plain}
+% this page is set like the first: its number goes where the first page's goes (see the page number in latex-template.ts)
+\\expandafter\\gdef\\csname ovlowpage\\thepage\\endcsname{}
 \\makeatother
 `;
 }

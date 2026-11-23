@@ -4,6 +4,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
 export interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
@@ -28,9 +30,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <motion.div
       data-testid={testId}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={isTest ? false : { opacity: 0, y: 20 }}
+      animate={isTest ? undefined : { opacity: 1, y: 0 }}
+      transition={{ duration: isTest ? 0 : 0.3 }}
       className={`flex flex-col items-center justify-center text-center px-0 w-full ${className}`}
     >
       <div className="mb-6">

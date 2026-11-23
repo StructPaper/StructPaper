@@ -1,7 +1,8 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useGoBack } from '@/lib/app-history';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { usePaper } from '@/context/PaperContext';
 import {
@@ -12,7 +13,7 @@ import {
 } from '@/features/editor';
 
 function PreviewContent() {
-  const router = useRouter();
+  const goBack = useGoBack();
   const searchParams = useSearchParams();
   const paperId = searchParams.get('id');
   const { paper, setPaper, setCurrentJournal } = usePaper();
@@ -59,7 +60,7 @@ function PreviewContent() {
   const handleBackToEditor = () => {
     const id = paperId || paper?.id;
     const destination = id ? `/papers/${encodeURIComponent(id)}` : '/papers';
-    router.push(destination);
+    goBack(destination);
   };
 
   if (isLoadingPaper) {

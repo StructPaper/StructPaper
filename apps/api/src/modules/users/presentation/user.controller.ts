@@ -36,7 +36,15 @@ const toInt = (value?: string): number | undefined => {
   return Number.isFinite(n) ? n : undefined;
 };
 
-const actorOf = (req: any): InviteActor => ({ user: req?.user, ability: req?.ability });
+/** The page the request came from (browsers send Origin on POSTs, Referer otherwise): the domain an invitation should point to. */
+const originOf = (req: any): string | null => {
+  const headers = req?.headers ?? {};
+  const origin = headers.origin;
+  if (typeof origin === 'string' && origin && origin !== 'null') return origin;
+  return typeof headers.referer === 'string' ? headers.referer : null;
+};
+
+const actorOf = (req: any): InviteActor => ({ user: req?.user, ability: req?.ability, origin: originOf(req) });
 
 @Controller('users')
 @UseGuards(PoliciesGuard)

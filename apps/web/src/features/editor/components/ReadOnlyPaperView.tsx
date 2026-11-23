@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGoBack, isHistoryPage } from '@/lib/app-history';
 import type { CompletePaper } from '@/types/paper';
 import { computePreflightCheck } from '@/lib/docx-extractor';
 import { useEditorSession } from '@/context/EditorSessionContext';
@@ -34,6 +34,10 @@ interface ReadOnlyPaperViewProps {
   paper: CompletePaper;
   /** Signed-in readers can have the PDF laid out for them; guests can only read the content. */
   canCompile: boolean;
+  /** Shown above the paper (the trash uses it for "this paper is deleted" and its buttons). */
+  banner?: React.ReactNode;
+  /** Where the back button goes when there is no page of the app behind this one. */
+  backFallback?: string;
 }
 
 /**
@@ -41,8 +45,8 @@ interface ReadOnlyPaperViewProps {
  * Same layout as the editor, but there is nothing to save: no autosave, no sync, no editing
  * controls, and every tab is a read-only view of the content.
  */
-export const ReadOnlyPaperView: React.FC<ReadOnlyPaperViewProps> = ({ paper, canCompile }) => {
-  const router = useRouter();
+export const ReadOnlyPaperView: React.FC<ReadOnlyPaperViewProps> = ({ paper, canCompile, banner, backFallback = '/papers' }) => {
+  const goBack = useGoBack();
   const { setDocumentSession } = useEditorSession();
   const [activeTab, setActiveTab] = useState<EditorTabKey>('metadata');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -128,9 +132,9 @@ export const ReadOnlyPaperView: React.FC<ReadOnlyPaperViewProps> = ({ paper, can
       <div className="h-full w-full flex flex-row p-3 min-h-0 gap-2 sm:gap-3 overflow-hidden" data-testid="readonly-paper-view">
         <EditorLeftDock
           readOnly
-          homeHref="/papers"
+          homeHref={backFallback}
           paperId={paper.id}
-          onBackClick={() => router.push('/papers')}
+          onBackClick={() => goBack(backFallback, isHistoryPage)}
           workflowStatus={normalizeWorkflowStatus((paper as any).workflowStatus || paper.status)}
           onOpenExtractedDrawer={() => setIsDrawerOpen(true)}
           onOpenLayoutSettings={noop}
@@ -152,6 +156,7 @@ export const ReadOnlyPaperView: React.FC<ReadOnlyPaperViewProps> = ({ paper, can
         />
 
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
+          {banner && <div className="flex-shrink-0 mb-2 sm:mb-3">{banner}</div>}
           <div className="flex sm:hidden flex-shrink-0 items-center justify-center p-1.5 mb-1.5 bg-white/70 rounded-2xl border border-zinc-200">
             <div className="flex items-center gap-1 bg-zinc-200/70 p-0.5 rounded-xl">
               <button type="button" onClick={() => setMobilePane('content')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${mobilePane === 'content' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-600'}`}>Nội dung</button>

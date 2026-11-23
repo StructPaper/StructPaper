@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUnsavedChangesWarning } from '@/features/editor/hooks/useUnsavedChangesWarning';
+import { useGoBack } from '@/lib/app-history';
 
 /** A click that stays inside the app and leaves this page: the only kind worth stopping. */
 function internalHrefOf(event: MouseEvent): string | null {
@@ -23,7 +24,10 @@ function internalHrefOf(event: MouseEvent): string | null {
  */
 export function useUnsavedNavigationGuard(isDirty: boolean) {
   const router = useRouter();
+  const goBack = useGoBack();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  // a pending "back" button (as opposed to a link): leaving goes back one page, or to the fallback
+  const pendingBack = useRef(false);
   const dirty = useRef(isDirty);
   dirty.current = isDirty;
 
@@ -53,14 +57,33 @@ export function useUnsavedNavigationGuard(isDirty: boolean) {
     [router],
   );
 
-  const stay = useCallback(() => setPendingHref(null), []);
+  /** For the back button: one page back when there is one in the app, else `fallback`; asks first when something is unsaved. */
+  const guardedBack = useCallback(
+    (fallback: string) => {
+      if (dirty.current) {
+        pendingBack.current = true;
+        setPendingHref(fallback);
+      } else goBack(fallback);
+    },
+    [goBack],
+  );
+
+  const stay = useCallback(() => {
+    pendingBack.current = false;
+    setPendingHref(null);
+  }, []);
   const leave = useCallback(() => {
     const href = pendingHref;
     setPendingHref(null);
     // the edits are being thrown away on purpose: do not ask again on the way out
     dirty.current = false;
-    if (href) router.push(href);
-  }, [pendingHref, router]);
+    const back = pendingBack.current;
+    pendingBack.current = false;
+    if (href) {
+      if (back) goBack(href);
+      else router.push(href);
+    }
+  }, [pendingHref, router, goBack]);
 
-  return { isOpen: pendingHref !== null, stay, leave, guardedPush };
+  return { isOpen: pendingHref !== null, stay, leave, guardedPush, guardedBack };
 }

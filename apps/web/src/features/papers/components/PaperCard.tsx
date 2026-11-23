@@ -84,9 +84,9 @@ export const PaperCard: React.FC<PaperCardProps> = ({
     <motion.div
       data-testid={`paper-card-${info.id}`}
       onClick={() => onOpenEditor(info.id)}
-      whileHover={isTest || isMenuOpen ? undefined : { scale: 1.02 }}
+      whileHover={isTest || isMenuOpen ? undefined : { scale: 1.035, y: -3 }}
       whileTap={isTest || isMenuOpen ? undefined : { scale: 0.98 }}
-      transition={isTest ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
+      transition={isTest ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 17, mass: 0.7 }}
       className={`w-full bg-gray-200/50 p-4 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] group relative select-none min-h-[178px] ${
         isMenuOpen ? 'z-40 shadow-xl bg-white' : 'z-10'
       }`}
@@ -312,7 +312,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
         </h4>
 
         {/* Authors */}
-        <p className="text-[11px] text-zinc-500 line-clamp-2 mb-2">
+        <p className="text-[11px] text-zinc-500 line-clamp-1 mb-2">
           {authors || 'Tác giả bài báo'}
         </p>
 

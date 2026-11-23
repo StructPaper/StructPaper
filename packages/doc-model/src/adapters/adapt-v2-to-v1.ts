@@ -243,6 +243,7 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
             type: 'figure',
             content: caption,
             figure: {
+              ...(((block.layout as any)?.extras as Record<string, unknown> | undefined) ?? {}),
               id: block.id,
               num: figNum,
               caption,
@@ -313,6 +314,7 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
             type: 'table',
             content: caption,
             table: {
+              ...(((block.layout as any)?.extras as Record<string, unknown> | undefined) ?? {}),
               id: block.id,
               num: tblNum,
               caption,
@@ -398,10 +400,17 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
     if (!e) continue;
     if (e.pageLayout) sec.pageLayout = e.pageLayout;
     if (e.pageBreakAfter) sec.pageBreakAfter = true;
+    if (e.appendixOrigin) (sec as any).appendixOrigin = e.appendixOrigin;
+    if (e.appendix) (sec as any).appendix = true;
     if (sec.equation) {
       if (e.eqNum !== undefined && sec.equation.numbered) sec.equation.num = e.eqNum;
       if (e.eqSpan) sec.equation.columnSpan = e.eqSpan;
     }
+  }
+  // fields of the v1 metadata the v2 document has no slot for come back from the copy kept at save time (never over a field it did rebuild)
+  const metadataV1 = v2Doc.layoutOverrides?.metadataV1 as Record<string, unknown> | undefined;
+  if (metadataV1) {
+    for (const [k, v] of Object.entries(metadataV1)) if ((metadata as any)[k] === undefined && v !== undefined) (metadata as any)[k] = v;
   }
   const titleOriginal = v2Doc.layoutOverrides?.titleOriginal as string | undefined;
   if (titleOriginal) (metadata as any).titleOriginal = titleOriginal;

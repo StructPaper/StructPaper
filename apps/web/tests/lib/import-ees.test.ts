@@ -24,7 +24,9 @@ describe('real file: EES ID850 imported from Word', () => {
     expect(paper.references).toHaveLength(26);
     expect(paper.references.map((r) => r.id)).toEqual(Array.from({ length: 26 }, (_, i) => i + 1));
     expect(paper.references[0].raw).toMatch(/^W\. C\. Skamarock/);
-    expect(paper.references[24].raw).toContain('10.1029/2024MS004556');
+    // the DOI at the end is kept in its own field, and printed after "Available from:" by the typesetter
+    expect(paper.references[24].doi).toBe('10.1029/2024MS004556');
+    expect(paper.references[24].raw).not.toContain('doi.org');
     expect(paper.references.some((r) => /Correspondence|Research Article|Sub-Institute|Email:/.test(r.raw))).toBe(false);
   });
 
@@ -72,9 +74,10 @@ describe('real file: EES ID850 imported from Word', () => {
     expect(t1.headerRows?.[0].map((c) => [c.text, c.colSpan ?? 1])).toEqual([['', 2], ['Quan trắc', 3]]);
     // LaTeX keeps the merged cells and the row-merged 'Dự báo' (no shifted second row)
     const tex = tableToLatex(t1, { isOneColumn: false, theme: resolveTheme(undefined) });
-    expect(tex).toContain(String.raw`\multicolumn{3}{c}{\textbf{Quan trắc}}`);
-    expect(tex).toContain(' & Không & C & D & C \\\\');
-    expect(tex).toContain(String.raw`\multirow{-2}{*}{Dự báo}`);
+    expect(tex).toMatch(/\\multicolumn\{3\}\{>\{\\centering\\arraybackslash\}p\{[^}]*\}\}\{\\textbf\{Quan trắc\}\}/);
+    // (the header cells in single columns are centred, as the header band is)
+    expect(tex.replace(/\\centering\\arraybackslash /g, '')).toContain(' & Không & C & D & C \\\\');
+    expect(tex).toMatch(/\\multirow\{-2\}\{[^}]*\}\{\\centering\\arraybackslash Dự báo\}/);
   });
 
   it('lists the abbreviation table under its heading', () => {
@@ -92,7 +95,7 @@ describe('real file: the journal Vietnamese template sample', () => {
     expect(p.sections.some((s) => /Hướng dẫn dành cho tác giả|không thuộc nội dung bài báo/.test(s.content || s.title || ''))).toBe(false);
     const h1 = p.sections.filter((s) => s.type === 'h1').map((s) => s.title);
     expect(h1).toEqual(expect.arrayContaining(['Đóng góp của các tác giả', 'Xung đột lợi ích', 'Tính khả dụng của dữ liệu']));
-    expect(p.metadata.titleEn).toMatch(/^FACTORS AFFECTING/);
+    expect(p.metadata.titleEn).toMatch(/^Factors affecting/);
   }, 60_000);
 });
 

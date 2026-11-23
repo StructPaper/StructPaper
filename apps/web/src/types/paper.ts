@@ -29,6 +29,10 @@ export interface PaperDates {
 export interface PaperMetadata {
   title: string;
   titleEn?: string;
+  /** Language the first page is written in ('vi' | 'en'): found when the Word file is imported, changed with the title-bar language picker. */
+  primaryLanguage?: 'vi' | 'en';
+  /** How the appendices are set (see lib/appendix): where they go, turned or not, numbered 1,2,3 or A,B,C. */
+  appendix?: { placement?: 'afterReferences' | 'beforeReferences' | 'inContent' | 'original';  numbering?: 'number' | 'letter' };
   /** Code of the article type in the paper's journal ("research"): the author's choice; the server applies that type's rules. */
   articleTypeCode?: string;
   articleType: string; // 'Bài tổng quan' | 'Bài báo nghiên cứu' | 'Báo cáo ca lâm sàng' | 'Research Article' | 'Review Article'
@@ -53,7 +57,7 @@ export interface PaperMetadata {
   year: string;
   firstPage: number;
   lastPage: number;
-  titleOriginal?: string; articleTypeEn?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
+  titleOriginal?: string; titleEnOriginal?: string; importNotes?: string[]; articleTypeEn?: string; publication?: PublicationInfo; // Word title before normalization (undo); "?" publication fields until entered
 }
 
 export interface PaperFigure {
@@ -62,6 +66,12 @@ export interface PaperFigure {
   caption: string;
   src: string;
   source?: string;
+  /** An appendix figure ("Phụ lục 4"): numbered on its own, apart from the figures of the text. */
+  appendix?: boolean;
+  /** 'full': the figure takes a page of its own across the whole width, over the side column (QR code, contact). */
+  sideColumn?: 'auto' | 'text' | 'full';
+  /** Turned on its side (only when the figure has a page of its own, see sideColumn). */
+  isRotated?: boolean;
   isFullWidth?: boolean;
   columnSpan?: '1-column' | '2-column';
   scalePercent?: number; // 50 to 100
@@ -72,19 +82,27 @@ export interface PaperFigure {
 }
 
 export interface TableCell {
+  /** The text; may carry <b>, <i>, <u> and <color=#rrggbb> tags (see lib/inline-markup). */
   text: string;
   colSpan?: number;
   rowSpan?: number;
   align?: 'left' | 'center' | 'right';
   isHeader?: boolean;
+  /** Background of this cell as "#RRGGBB" (over the table's own fill). */
+  fill?: string;
 }
+
+/** How the lines of a table are drawn: the journal's (rules above and below), none, between rows, between columns, all, or the outline only. */
+export type TableBorderStyle = 'journal' | 'none' | 'horizontal' | 'vertical' | 'grid' | 'outer';
 
 export interface PaperTable {
   id: string;
   num: number;
   caption: string;
-  /** Source line shown under the table, e.g. "Nguồn: Kết quả của nhóm tác giả". */
+  /** What is printed under the table, one line per line typed ("Nguồn: Kết quả của nhóm tác giả", "Chú thích: …"). */
   source?: string;
+  /** How those lines are set (absent: as the journal prints them: a note in italic, a source upright, to the left). */
+  sourceStyle?: { bold?: boolean; italic?: boolean; align?: 'left' | 'center' | 'right' };
   headers: string[];
   rows: string[][];
   headerRows?: TableCell[][];
@@ -93,12 +111,33 @@ export interface PaperTable {
   isFullWidth?: boolean;
   columnSpan?: '1-column' | '2-column';
   isRotated?: boolean; // Xoay bảng 90 độ ngang (sidewaystable)
-  fontSize?: '7pt' | '8pt' | '9pt' | '10pt';
+  /** Any size in points, as "8pt" or "8.5pt" (the table settings take a number). */
+  fontSize?: `${number}pt`;
   rowStretch?: number; // Giãn dòng 1.1x, 1.4x, 1.6x
   hasZebraStripes?: boolean; // Sọc màu hàng xen kẽ
   placement?: 'auto' | 'top' | 'here' | 'bottom';
   breakAcrossPages?: 'auto' | 'always' | 'never'; // cho phép bảng ngắt qua trang
+  /** A table that takes pages of its own: set within the text ('text'), or across the whole page, over the side column ('full'). 'auto' (default): as the printed journal does, a large table takes the whole page. */
+  sideColumn?: 'auto' | 'text' | 'full';
+  /** An appendix table ("Phụ lục 2"): numbered on its own, apart from the tables of the text, and set at the end of the paper. */
+  appendix?: boolean;
   bodyFill?: 'plain' | 'zebra' | 'shaded'; // nền thân bảng: trắng (mặc định) / sọc / tô đều
+  /** Lines of the table (default: the journal's). */
+  borderStyle?: TableBorderStyle;
+  /** Colour of the lines, "#RRGGBB" (default black). */
+  borderColor?: string;
+  /** Thickness of the lines in points (default 0.4). */
+  borderWidth?: number;
+  /** Least height in points of each body row (null/absent: as the text needs). */
+  rowHeights?: Array<number | null>;
+  /** Least height in points of the header rows. */
+  headerHeight?: number;
+  /** Relative width of each column (absent: worked out from the text). */
+  colWeights?: number[];
+  /** Colour of the header band, "#RRGGBB" (default: the theme's). */
+  headerFill?: string;
+  /** Colour of the tinted body rows, "#RRGGBB" (default: the theme's). */
+  bodyTint?: string;
 }
 
 /**
@@ -396,6 +435,10 @@ export interface PaperSection {
   figure?: PaperFigure;
   table?: PaperTable;
   pageBreakAfter?: boolean;
+  /** A block of text (heading, paragraph, formula …) that belongs to the appendices; a table or figure carries the flag in itself. */
+  appendix?: boolean;
+  /** Where an appendix stood in the Word file: after this block, or after the references. */
+  appendixOrigin?: { after?: string; afterReferences: boolean };
   pageLayout?: SectionPageLayout; // new page here with these columns/orientation, until the next marker
 }
 
@@ -464,7 +507,7 @@ export interface StructuralIssue {
   title: string;
   message: string;
   suggestion: string;
-  fixTab?: 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation';
+  fixTab?: 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation' | 'appendix';
   /** Stable machine code when the issue comes from the shared validation rules (e.g. "numbering.table"). */
   code?: string;
 }
@@ -499,6 +542,8 @@ export interface PreflightCheck {
 }
 
 export interface JournalTemplate {
+  /** What the journal prints before a reference's DOI link ("Available from: "); empty prints the link alone. */
+  referenceDoiLabel?: string;
   doiPrefix?: string; officialNameEn?: string; officialAbbvEn?: string; // DOI prefix (DOI = prefix.v{vol}i{issue}.{articleId}); English name/abbreviation for headers and citation
   id: string;
   name: string;
@@ -540,6 +585,12 @@ export interface LayoutSettings {
   columnSep?: '1pc' | '1.5pc' | '2pc';
   lineSpacing?: '1.13' | '1.2' | '1.3';
   pageNumbering?: PageNumberingSettings;
+  /** The DOI at the end of a reference: as the journal prints it (default), with "Available from:", as a bare link, or not at all. */
+  referenceDoi?: 'journal' | 'available' | 'link' | 'none';
+  /** The two columns of the last page end at the same height (default on). */
+  balanceColumns?: boolean;
+  /** Hyphens between numbers (268-9, 2016-2023) are printed as en dashes (default on). */
+  rangeDash?: boolean;
 }
 
 export const DEFAULT_LAYOUT_SETTINGS: LayoutSettings = {

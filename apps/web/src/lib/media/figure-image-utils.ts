@@ -5,6 +5,7 @@ import {
   mimeToImageExt,
   readBlobAsArrayBuffer,
 } from './blob-image-registry';
+import { isTiff, tiffToPng } from './tiff';
 
 const BASE64_CHUNK_SIZE = 0x8000; // 32KB slices prevent call stack overflow on large images
 
@@ -85,6 +86,21 @@ function bytesToBase64(bytes: Uint8Array): string {
   return '';
 }
 
+/** A TIFF (whatever its name or declared type) becomes a PNG; null when it cannot be converted. Other pictures are returned as they are. */
+async function convertIfTiff(base64: string, ext: 'jpg' | 'png'): Promise<{ base64: string; ext: 'jpg' | 'png' } | null> {
+  let head: Uint8Array;
+  try {
+    const bin = atob(base64.slice(0, 16));
+    head = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  } catch {
+    return { base64, ext };
+  }
+  if (!isTiff(head)) return { base64, ext };
+  const bin = atob(base64);
+  const png = await tiffToPng(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  return png ? { base64: bytesToBase64(png), ext: 'png' } : null;
+}
+
 /**
  * Converts a data:image* URI or blob:* Object URL into raw base64 payload + extension.
  */
@@ -105,7 +121,7 @@ export async function imageSrcToBase64(
     const base64 = trimmed.slice(commaIdx + 1).trim();
     if (!base64) return null;
     const isJpg = header.includes('image/jpeg') || header.includes('image/jpg');
-    return { base64, ext: isJpg ? 'jpg' : 'png' };
+    return convertIfTiff(base64, isJpg ? 'jpg' : 'png');
   }
 
   if (lower.startsWith('blob:')) {
@@ -130,7 +146,7 @@ export async function imageSrcToBase64(
       if (!ext) {
         ext = getTrackedObjectUrlExt(trimmed) ?? detectImageExtFromBytes(bytes) ?? 'png';
       }
-      return { base64, ext };
+      return convertIfTiff(base64, ext);
     } catch {
       return null;
     }
@@ -164,13 +180,21 @@ export async function extractPaperImagesAsync(
     }))
   );
 
+  // every figure number of the paper, with or without a picture: a position-based alias must never take the name of a figure
+  // that has none (it would then show somebody else's picture under its caption)
+  const claimed = new Set<number>(figureEntries.map((e) => e.num));
+  sections.forEach((sec) => {
+    if (sec.type === 'figure' && sec.figure?.num) claimed.add(sec.figure.num);
+  });
   for (const { idx, num, resolved } of resolvedEntries) {
     if (!resolved) continue;
     const { base64, ext } = resolved;
     images[`fig${num}.${ext}`] = base64;
     images[`image${num}.${ext}`] = base64;
-    images[`image${idx + 1}.${ext}`] = base64;
-    images[`fig${idx + 1}.${ext}`] = base64;
+    if (!claimed.has(idx + 1) || idx + 1 === num) {
+      images[`image${idx + 1}.${ext}`] = base64;
+      images[`fig${idx + 1}.${ext}`] = base64;
+    }
   }
 
   return images;

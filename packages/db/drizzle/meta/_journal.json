@@ -15,6 +15,13 @@
       "when": 1795300000000,
       "tag": "0001_manuscript_revision_history",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795400000000,
+      "tag": "0002_manuscript_trash",
+      "breakpoints": true
     }
   ]
 }

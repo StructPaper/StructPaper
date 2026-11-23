@@ -1,0 +1,1028 @@
+/*
+ * The overview page: the paper drawn the way the journal prints it, on sheets of the real size (measured on the sample PDFs).
+ * A sheet is 612.72 × 792 pt; the text starts 184 pt from the left (the first 136 pt of text width are the column of QR code and
+ * contact details), in two 190 pt columns 12 pt apart; 9 pt Minion text on a 12.35 pt line, 12/10 pt Myriad headings, 8 pt Myriad
+ * tables. Everything here is fixed typography for the screen; what the author changes in the settings (colours, fonts, sizes,
+ * columns) is passed in as CSS variables. Lengths are in pt so the sheet scales with `zoom` and keeps its proportions.
+ */
+
+.ov-root {
+  --ov-title: #2b74b7;
+  --ov-number: #003e88;
+  --ov-blue: #e7ecf7;
+  --ov-head: #e5e5e5;
+  --ov-body-font: 'Times New Roman', Tinos, 'Liberation Serif', 'Nimbus Roman', Times, serif;
+  --ov-sans: 'Source Sans 3', 'Myriad Pro', Calibri, Arial, sans-serif;
+  --ov-font-size: 9pt;
+  --ov-line: 12.35pt;
+  --ov-col-gap: 12pt;
+  height: 100%;
+  overflow: auto;
+  background: transparent;
+  padding: 10px 6px 40px;
+  /* the frames drawn round the block under the pointer and the block being edited are placed against it */
+  position: relative;
+}
+
+/* the sheet: the editor's own box carries the margins of the printed page */
+.ov-page {
+  position: relative;
+  width: 612.72pt;
+  max-width: none;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.1);
+  min-height: 792pt;
+  font-family: var(--ov-body-font);
+  font-size: var(--ov-font-size);
+  line-height: var(--ov-line);
+  color: #000;
+  text-align: justify;
+  hyphens: manual;
+  cursor: text;
+  /* glyphs advance by their exact widths, as in the PDF, not rounded to whole pixels: a line the PDF filled must fit here */
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+}
+
+/*
+ * Cut into printed sheets: the white runs the whole length, and the gap between two sheets is a bar in the colour of what is behind the
+ * page (see .ov-gapbar). Where the sheets end and begin comes from the compiled PDF, so nothing here counts pages.
+ */
+.ov-page[data-paged='true'] {
+  background: #fff;
+}
+
+.ov-page .ProseMirror {
+  position: relative;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
+  display: block;
+  padding: 51.8pt 36.72pt 0 184pt;
+  min-height: 792pt;
+  box-sizing: border-box;
+}
+
+/* English text is hyphenated as the PDF does */
+.ov-page[lang='en'] .ProseMirror {
+  hyphens: auto;
+}
+
+/* the body flows in two columns, or one */
+.ov-page[data-columns='2'] .ProseMirror {
+  column-count: 2;
+  column-gap: var(--ov-col-gap);
+  column-fill: balance;
+}
+.ov-page[data-columns='1'] .ProseMirror {
+  column-count: 1;
+}
+
+/* everything that stretches over both columns */
+.ov-page .ov-front,
+.ov-page .ov-span-all {
+  column-span: all;
+}
+
+/* ── what is printed around the text ── */
+.ov-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--ov-sans);
+}
+.ov-p1-head > * {
+  position: absolute;
+  white-space: nowrap;
+  line-height: 1;
+}
+.ov-p1-journal {
+  left: 47.8pt;
+  top: 35.3pt;
+  font: italic 700 8pt/1 var(--ov-sans);
+}
+.ov-p1-oa {
+  left: 58.4pt;
+  top: 49.4pt;
+  font: 700 8pt/1 var(--ov-body-font);
+  color: #808080;
+}
+.ov-oa-icon {
+  position: absolute;
+  left: -9.9pt;
+  top: -2pt;
+  width: 8.6pt;
+  height: 13.5pt;
+  object-fit: contain;
+}
+.ov-p1-type {
+  right: 39.4pt;
+  top: 44.65pt;
+  font: italic 700 12pt/1 var(--ov-body-font);
+  text-decoration: underline;
+  text-decoration-thickness: 0.4pt;
+  text-underline-offset: 3.4pt;
+}
+/*
+ * The column on the left of the first page is set from its foot up (the print anchors the bottom of the box at a fixed place, so a
+ * longer affiliation pushes everything up): its last line ends at 697.6 pt. The spacing between the parts is the print's, in points.
+ */
+.ov-rail {
+  position: absolute;
+  left: 48pt;
+  top: 0;
+  height: 697.6pt;
+  width: 124.8pt;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: left;
+}
+.ov-rail-rule {
+  display: block;
+  height: 0;
+  border-top: 0.5pt solid #000;
+  width: 124.8pt;
+}
+.ov-rail-aff {
+  margin-top: 9pt;
+  font: italic 8pt/9pt var(--ov-body-font);
+}
+.ov-rail-aff sup {
+  font-size: 5pt;
+  line-height: 0;
+}
+.ov-rail-label {
+  font: 700 7pt/8pt var(--ov-body-font);
+  color: var(--ov-title);
+  margin: 10pt 0 4.9pt;
+}
+.ov-rail-aff + .ov-rail-label {
+  margin-top: 10pt;
+}
+.ov-rail-text {
+  font: 300 7pt/9pt var(--ov-sans);
+}
+.ov-rail-text b {
+  font-weight: 700;
+}
+.ov-rail-email {
+  margin-top: 4.2pt;
+}
+.ov-rail-label-history {
+  margin: 8.2pt 0 0;
+}
+.ov-rail-history {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 2pt;
+  font: 8pt/10.15pt var(--ov-body-font);
+}
+.ov-rail-history li::before {
+  content: '• ';
+  color: var(--ov-title);
+}
+.ov-rail-doi {
+  margin-top: 6.9pt;
+  font: 600 7pt/9pt var(--ov-sans);
+  color: var(--ov-title);
+  word-break: break-all;
+}
+.ov-rail-doi b {
+  color: #000;
+  font-weight: 600;
+}
+.ov-rail-check {
+  display: block;
+  width: 107.8pt;
+  height: 22.7pt;
+  margin-top: 8.3pt;
+}
+.ov-rail-label-copy {
+  margin: 10.4pt 0 2.4pt;
+}
+.ov-rail-copy {
+  font: 300 7pt/10.15pt var(--ov-sans);
+}
+.ov-copy-serif {
+  font-family: var(--ov-body-font);
+  font-weight: 400;
+}
+.ov-muted {
+  color: #9ca3af;
+}
+.ov-qr-anchor {
+  column-span: all;
+  position: relative;
+  height: 0;
+}
+.ov-qr-anchor .ov-qr {
+  position: absolute;
+  left: -99.1pt;
+  top: -1.8pt;
+  width: 42pt;
+}
+.ov-qr-anchor svg {
+  width: 42pt;
+  height: 42pt;
+  display: block;
+}
+.ov-qr-anchor .ov-qr-cap {
+  position: absolute;
+  left: -141pt;
+  top: 38.5pt;
+  width: 124pt;
+  text-align: center;
+  font: 8pt/10.6pt var(--ov-body-font);
+  color: #808080;
+}
+
+/* ── the foot of a sheet, the gap, the head of the next ── */
+.ov-pagegap {
+  column-span: all;
+  margin-left: -184pt;
+  width: 612.72pt;
+  position: relative;
+  user-select: none;
+  font-family: var(--ov-sans);
+}
+.ov-pagegap .ov-foot {
+  position: relative;
+}
+.ov-pageno {
+  position: absolute;
+  top: 35.6pt;
+  font: 700 10pt/1 var(--ov-sans);
+}
+.ov-pageno[data-side='left'] {
+  left: 184pt;
+}
+.ov-pageno[data-side='right'] {
+  right: 36.72pt;
+}
+.ov-pageno[data-side='center'] {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ov-pageno[data-first='true'] {
+  top: 55.6pt;
+  right: 36.72pt;
+  font-size: 9pt;
+}
+.ov-cite-foot {
+  position: absolute;
+  left: 184.1pt;
+  top: 10.2pt;
+  width: 393.6pt;
+  box-sizing: border-box;
+  background: #d9d9ff;
+  padding: 8.1pt 3pt 7pt;
+  font: 700 9pt/10pt var(--ov-sans);
+  text-align: left;
+}
+.ov-cite-foot b {
+  font-weight: 700;
+}
+/* a row of a long table that holds the gap between two sheets: no lines, no fill, nothing of the table's own */
+.ov-table-block tr.ov-pagegap-row > td {
+  padding: 0;
+  border: 0 !important;
+  background: none !important;
+  overflow: visible;
+}
+.ov-table-block tr.ov-pagegap-row .ov-pagegap {
+  column-span: none;
+}
+/* the top of the next sheet of a table the PDF carries over: "Table N continued", and the head again */
+.ov-table-block td.ov-continued {
+  text-align: center;
+  font-style: italic;
+  padding: 1.5pt 3pt;
+}
+.ov-table-block td.ov-continued::before {
+  content: var(--ov-tab-label, 'Bảng ') counter(ov-tab) var(--ov-tab-cont, ' (tiếp theo)');
+}
+.ov-table-block tr.ov-continued-row > td {
+  border: 0 !important;
+  background: none !important;
+}
+.ov-gapbar {
+  position: relative;
+  background: var(--ov-gap-bg, #f4f4f5);
+  /* covers the shadow of the page on both sides over the gap, and nothing above or below it */
+  box-shadow: 0 0 0 30pt var(--ov-gap-bg, #f4f4f5), inset 0 7px 6px -6px rgba(0, 0, 0, 0.16), inset 0 -7px 6px -6px rgba(0, 0, 0, 0.16);
+  clip-path: inset(0 -30pt);
+}
+
+/* a column that ends where the PDF's does: the text after it starts the next column */
+.ov-page .ov-colbreak {
+  display: block;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  break-after: column;
+}
+/* nothing is added above the first line of a page or a column: the print leaves no room there either */
+.ov-page .ov-colbreak + *,
+.ov-page .ov-pagegap + * {
+  margin-top: 0;
+}
+
+/*
+ * A paragraph the PDF printed is set line by line: a line break where each printed line starts, every line before a break spread to the
+ * width of the column (as TeX does) with the spaces allowed to shrink by the most TeX shrinks them, so that the words of a line never
+ * need more room than the line has. The last line is not spread: `fitTails` gives it a tail that fills the rest of it. A paragraph that
+ * a page or column breaks through has the line before the break spread the same way. Where an author edits a paragraph these go and
+ * the text flows by itself again.
+ */
+.ov-page p.ov-cut {
+  text-align-last: justify;
+}
+/* while the last lines are measured the paragraphs are not spread */
+.ov-page.ov-measuring p.ov-cut {
+  text-align-last: auto;
+}
+.ov-page .ov-pinned {
+  word-spacing: -0.75pt;
+  /* the lines are the PDF's: a line that is a hair too wide runs over the edge rather than breaking into two */
+  white-space: nowrap;
+}
+.ov-page .ov-lb,
+.ov-page .ov-hy {
+  user-select: none;
+}
+.ov-page .ov-tail {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+.ov-page h1.ov-cut,
+.ov-page h2.ov-cut,
+.ov-page h3.ov-cut {
+  text-align-last: left;
+  word-spacing: 0;
+}
+.ov-head {
+  position: relative;
+}
+.ov-head-text {
+  position: absolute;
+  left: 47.8pt;
+  top: 35.5pt;
+  font: italic 700 8.5pt/1 var(--ov-sans);
+  white-space: nowrap;
+}
+.ov-head-rule {
+  position: absolute;
+  left: 184.1pt;
+  right: 36.72pt;
+  top: 45.35pt;
+  border-top: 0.5pt solid #000;
+}
+
+/* ── front matter ── */
+.ov-page .ov-front-title {
+  font-family: var(--ov-sans);
+  font-size: 17.9pt;
+  line-height: 21.4pt;
+  font-weight: 700;
+  color: var(--ov-title);
+  text-align: left;
+  /* the title runs over the column on the left: from 46 pt to 572 pt of the sheet */
+  margin: 23.9pt 0 24.7pt -137.4pt;
+  width: 502.2pt;
+}
+.ov-front-title:empty::before,
+.ov-front-abstract:empty::after,
+.ov-front-keywords:empty::after {
+  color: #a3a3a3;
+  font-weight: 400;
+}
+.ov-front-title:empty::before {
+  content: 'Tiêu đề bài báo';
+}
+.ov-page .ov-authors {
+  font-family: var(--ov-sans);
+  font-size: 11pt;
+  line-height: 12pt;
+  color: var(--ov-title);
+  text-align: left;
+  margin: 0 0 18.6pt -136.4pt;
+  width: 529pt;
+  position: relative;
+}
+.ov-authors sup {
+  font-size: 7pt;
+  line-height: 0;
+}
+.ov-authors-edit {
+  position: absolute;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font: 600 10px/1 system-ui, sans-serif;
+  color: #3f6212;
+  background: #ecfccb;
+  border-radius: 999px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.ov-authors:hover .ov-authors-edit {
+  opacity: 1;
+}
+.ov-page .ov-front-abstract {
+  display: block;
+  background: var(--ov-blue);
+  padding: 15.1pt 12pt 0;
+  font-family: var(--ov-sans);
+  font-size: 9.5pt;
+  line-height: 10.05pt;
+  font-weight: 300;
+  text-align: justify;
+}
+.ov-front-abstract::before {
+  content: attr(data-label);
+  display: block;
+  text-align: left;
+  text-align-last: left;
+  font-weight: 700;
+  font-size: 9pt;
+  line-height: 10pt;
+  color: var(--ov-title);
+  margin-bottom: 0;
+}
+.ov-front-abstract:empty::after {
+  content: attr(data-placeholder);
+}
+.ov-page .ov-front-keywords {
+  display: block;
+  background: var(--ov-blue);
+  padding: 0 12pt 13.4pt;
+  margin: 0 0 16.3pt;
+  font-family: var(--ov-sans);
+  font-size: 9.5pt;
+  line-height: 10.05pt;
+  font-weight: 300;
+  text-align: justify;
+}
+.ov-front-keywords::before {
+  content: attr(data-label);
+  font-weight: 700;
+  color: #000;
+}
+.ov-front-keywords:empty::after {
+  content: attr(data-placeholder);
+}
+.ov-page .ov-cite-strip {
+  background: #d9dcff;
+  font-family: var(--ov-sans);
+  font-size: 9pt;
+  line-height: 11pt;
+  padding: 4pt 6pt;
+  margin: 0 0 8pt;
+  text-align: left;
+  user-select: none;
+}
+.ov-cite-strip b {
+  font-weight: 700;
+}
+
+/* ── headings ── */
+.ov-page h1,
+.ov-page h2,
+.ov-page h3 {
+  font-family: var(--ov-sans);
+  color: var(--ov-title);
+  text-align: left;
+  break-after: avoid;
+  margin: 0;
+}
+.ov-page h1 {
+  font-size: 12pt;
+  line-height: 13pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 7.4pt 0 3.5pt;
+}
+.ov-page h2 {
+  font-size: 10pt;
+  line-height: 12pt;
+  font-weight: 700;
+  margin: 11.2pt 0 3.3pt;
+}
+.ov-page h3 {
+  font-size: 10pt;
+  line-height: 12pt;
+  font-weight: 700;
+  font-style: italic;
+  margin: 11.2pt 0 3.3pt;
+}
+/* the first heading of the body, at the top of its column, has the little room the print leaves there */
+.ov-page .ov-front-keywords + h1,
+.ov-page .ov-front-keywords + h2,
+.ov-page .ov-front-keywords + h3 {
+  margin-top: 1pt;
+}
+/* a heading right under another is set closer to it */
+.ov-page h1 + h2,
+.ov-page h1 + h3,
+.ov-page h2 + h3 {
+  margin-top: 6.7pt;
+}
+
+/* ── paragraphs ── */
+.ov-page p {
+  margin: 0;
+  text-indent: 0;
+  orphans: 2;
+  widows: 2;
+}
+.ov-page p[data-variant='quote'] {
+  margin: 3pt 14pt;
+  font-style: italic;
+}
+.ov-page p[data-variant='box'] {
+  margin: 4pt 0;
+  padding: 4pt 6pt;
+  background: var(--ov-blue);
+}
+
+/* citations print as small coloured superscript numbers */
+.ov-cite {
+  font-size: 7pt;
+  line-height: 0;
+  vertical-align: super;
+  color: var(--ov-number);
+  font-family: var(--ov-sans);
+  cursor: pointer;
+}
+.ov-xref {
+  color: var(--ov-title);
+  cursor: pointer;
+}
+.ov-math {
+  white-space: nowrap;
+}
+
+/* ── figures ── */
+.ov-figure {
+  background: var(--ov-blue);
+  padding: 6pt 8pt 6pt;
+  margin: 6pt 0;
+  break-inside: avoid;
+  text-align: center;
+  position: relative;
+}
+.ov-figure img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
+.ov-figure-frame {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+.ov-fig-handle {
+  position: absolute;
+  right: 2pt;
+  bottom: 2pt;
+  width: 9pt;
+  height: 9pt;
+  border-radius: 2pt;
+  background: #78c841;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ov-figure:hover .ov-fig-handle,
+.ov-figure:focus-within .ov-fig-handle {
+  opacity: 1;
+}
+.ov-figure[data-align='left'] .ov-figure-frame {
+  justify-content: flex-start;
+}
+.ov-figure[data-align='right'] .ov-figure-frame {
+  justify-content: flex-end;
+}
+.ov-figure-missing {
+  min-height: 70pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font: 12px system-ui, sans-serif;
+}
+.ov-fig-caption,
+.ov-tab-caption {
+  font-family: var(--ov-sans);
+  font-size: 8pt;
+  line-height: 10pt;
+  text-align: left;
+}
+.ov-fig-caption {
+  margin-top: 4pt;
+}
+.ov-fig-caption::before {
+  content: var(--ov-fig-label, 'Hình ') counter(ov-fig) '. ';
+  counter-increment: ov-fig;
+  font-weight: 700;
+  color: var(--ov-title);
+}
+.ov-tab-caption {
+  font-weight: 700;
+  margin: 0 0 1.4pt;
+}
+.ov-tab-caption::before {
+  content: var(--ov-tab-label, 'Bảng ') counter(ov-tab) ': ';
+  counter-increment: ov-tab;
+  color: var(--ov-title);
+}
+.ov-figure[data-appendix] .ov-fig-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) '. ';
+  counter-increment: ov-app;
+}
+.ov-table-block[data-appendix] .ov-tab-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) '. ';
+  counter-increment: ov-app;
+}
+.ov-table-block[data-appendix] td.ov-continued::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app) var(--ov-tab-cont, ' (tiếp theo)');
+}
+.ov-figure[data-appendix='letter'] .ov-fig-caption::before,
+.ov-table-block[data-appendix='letter'] .ov-tab-caption::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app, upper-alpha) '. ';
+}
+.ov-table-block[data-appendix='letter'] td.ov-continued::before {
+  content: var(--ov-app-label, 'Phụ lục ') counter(ov-app, upper-alpha) var(--ov-tab-cont, ' (tiếp theo)');
+}
+.ov-fig-source,
+.ov-tab-source {
+  font-family: var(--ov-sans);
+  font-size: 8pt;
+  line-height: 10pt;
+  text-align: left;
+  margin: 0;
+}
+.ov-fig-source {
+  font-style: italic;
+}
+/*
+ * The lines under a table are set as the PDF sets them: a source upright, a note ("Chú thích: …", marked by the page) in italic, to the left,
+ * unless the author chose bold, italic or an alignment for the block (the table block says so in its data-src-* attributes).
+ */
+.ov-tab-source {
+  /* the PDF sets them in the footnote size (7.5 pt on a 9.6 pt line), a little below the table's last rule */
+  font-size: 7.5pt;
+  line-height: 9.6pt;
+  font-style: normal;
+}
+.tableWrapper + .ov-tab-source {
+  margin-top: 2.5pt;
+}
+.ov-tab-source.ov-src-note {
+  font-style: italic;
+}
+.ov-table-block[data-src-italic='true'] .ov-tab-source {
+  font-style: italic;
+}
+.ov-table-block[data-src-italic='false'] .ov-tab-source {
+  font-style: normal;
+}
+.ov-table-block[data-src-bold='true'] .ov-tab-source {
+  font-weight: 700;
+}
+.ov-table-block[data-src-align='center'] .ov-tab-source {
+  text-align: center;
+}
+.ov-table-block[data-src-align='right'] .ov-tab-source {
+  text-align: right;
+}
+.ov-fig-source:empty,
+.ov-tab-source:empty {
+  display: none;
+}
+.ov-figure:hover .ov-fig-source:empty,
+.ov-figure:focus-within .ov-fig-source:empty,
+.ov-table-block:hover .ov-tab-source:empty,
+.ov-table-block:focus-within .ov-tab-source:empty {
+  display: block;
+  color: #a3a3a3;
+}
+.ov-fig-source:empty::before,
+.ov-table-block .tableWrapper + .ov-tab-source:empty::before {
+  content: 'Nguồn: …';
+}
+
+/* ── the frames round the block under the pointer and the block being edited (drawn over the page, they take no room) ── */
+.ov-frames {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.ov-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+  border: 1.5px solid rgba(132, 204, 22, 0.7);
+  transition: opacity 0.12s ease-out;
+}
+.ov-frame[data-kind='selected'] {
+  border: 2px solid #65a30d;
+}
+.ov-frame-tag {
+  position: absolute;
+  left: -2px;
+  top: -20px;
+  padding: 2px 7px;
+  border-radius: 6px 6px 6px 0;
+  background: #65a30d;
+  color: #fff;
+  font: 700 10.5px/14px system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ov-root {
+  counter-reset: ov-fig ov-tab ov-app ov-eq ov-fn ov-fnn;
+}
+/* an item of a list: its mark hangs out to the left of the text, as it is set in the PDF */
+.ov-page p.ov-li {
+  padding-left: 1.6em;
+  text-indent: -1.1em;
+}
+/* a footnote: its number in the text, counted down the page as the PDF counts them */
+.ov-fn {
+  position: relative;
+}
+.ov-fn-mark {
+  font-size: 0.7em;
+  line-height: 0;
+  font-weight: 700;
+  color: var(--ov-title);
+  cursor: pointer;
+}
+.ov-fn-mark::after {
+  counter-increment: ov-fn;
+  content: '[' counter(ov-fn, lower-alpha) ']';
+}
+/* the notes of a block, at its end, in the foot size: each with the letter of its mark (the PDF letters them a, b, c… down the paper) */
+.ov-notes {
+  display: block;
+  margin-top: 3pt;
+  padding-top: 2pt;
+  border-top: 0.4pt solid #a1a1aa;
+  width: 40%;
+  text-align: left;
+  text-align-last: left;
+  text-indent: 0;
+  font-size: 7pt;
+  line-height: 8.5pt;
+  font-style: normal;
+  font-weight: 400;
+  color: #000;
+  word-spacing: 0;
+}
+.ov-note {
+  display: block;
+  cursor: pointer;
+  white-space: normal;
+}
+.ov-note::before {
+  counter-increment: ov-fnn;
+  content: '[' counter(ov-fnn, lower-alpha) '] ';
+  font-weight: 700;
+  color: var(--ov-title);
+}
+.ov-note:hover {
+  background: #fefce8;
+}
+.ov-fn-edit {
+  position: absolute;
+  left: 0;
+  top: 1.4em;
+  z-index: 20;
+  width: 220px;
+  font: 12px/1.35 system-ui, sans-serif;
+}
+.ov-fn-edit textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #d4d4d8;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  resize: none;
+}
+
+/* ── tables ── */
+.ov-table-block {
+  margin: 6pt 0;
+  --ov-tcolor: #000;
+  --ov-tweight: 0.4pt;
+  --ov-thead: var(--ov-head);
+  --ov-ttint: var(--ov-blue);
+  --ov-tsize: 8pt;
+  --ov-tline: 10pt;
+  font-family: var(--ov-sans);
+  text-align: left;
+}
+.ov-table-block table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  font-size: var(--ov-tsize);
+  line-height: var(--ov-tline);
+  margin: 0;
+}
+.ov-table-block td,
+.ov-table-block th {
+  position: relative;
+  vertical-align: top;
+  padding: 1.5pt 3pt;
+  border: 0;
+  min-width: 1em;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.ov-table-block th {
+  background: var(--ov-thead);
+  font-weight: 700;
+  text-align: center;
+}
+.ov-table-block td > p,
+.ov-table-block th > p {
+  margin: 0;
+  text-align: inherit;
+  line-height: inherit;
+}
+/* the journal's lines: above and below the table */
+.ov-table-block[data-border='journal'] table,
+.ov-table-block[data-border='horizontal'] table,
+.ov-table-block[data-border='vertical'] table,
+.ov-table-block[data-border='grid'] table,
+.ov-table-block[data-border='outer'] table {
+  border-top: var(--ov-tweight) solid var(--ov-tcolor);
+  border-bottom: var(--ov-tweight) solid var(--ov-tcolor);
+}
+.ov-table-block[data-border='horizontal'] td,
+.ov-table-block[data-border='horizontal'] th,
+.ov-table-block[data-border='grid'] td,
+.ov-table-block[data-border='grid'] th {
+  border-bottom: var(--ov-tweight) solid var(--ov-tcolor);
+}
+.ov-table-block[data-border='vertical'] td:not(:last-child),
+.ov-table-block[data-border='vertical'] th:not(:last-child),
+.ov-table-block[data-border='grid'] td,
+.ov-table-block[data-border='grid'] th {
+  border-right: var(--ov-tweight) solid var(--ov-tcolor);
+}
+.ov-table-block[data-border='grid'] table,
+.ov-table-block[data-border='outer'] table {
+  border-left: var(--ov-tweight) solid var(--ov-tcolor);
+  border-right: var(--ov-tweight) solid var(--ov-tcolor);
+}
+.ov-table-block[data-fill='shaded'] td {
+  background: var(--ov-ttint);
+}
+.ov-table-block[data-fill='zebra'] tr:nth-child(odd) td {
+  background: var(--ov-ttint);
+}
+.ov-table-block td[data-fill],
+.ov-table-block th[data-fill] {
+  background: var(--ov-cell-fill);
+}
+.ov-table-block .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.18);
+  pointer-events: none;
+}
+.ov-table-block .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #78c841;
+  pointer-events: none;
+}
+.ov-table-block.resize-cursor {
+  cursor: col-resize;
+}
+.ov-table-flag {
+  position: absolute;
+  top: -8pt;
+  right: 0;
+  font: 600 9px/1 system-ui, sans-serif;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 999px;
+  padding: 2px 6px;
+}
+
+/* ── equations ── */
+.ov-equation {
+  position: relative;
+  margin: 4pt 0;
+  text-align: center;
+  break-inside: avoid;
+}
+.ov-equation[data-numbered='true']::after {
+  counter-increment: ov-eq;
+  content: '(' counter(ov-eq) ')';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ov-equation textarea {
+  width: 100%;
+  font: 12px/1.4 ui-monospace, monospace;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-top: 4pt;
+}
+
+/* ── references ── */
+.ov-refs-title {
+  font-family: var(--ov-sans);
+  color: var(--ov-title);
+  font-weight: 700;
+  font-size: 12pt;
+  line-height: 13pt;
+  text-transform: uppercase;
+  margin: 10pt 0 4pt;
+  text-align: left;
+  user-select: none;
+}
+.ov-ref {
+  font-family: var(--ov-sans);
+  font-size: 7.5pt;
+  line-height: 9pt;
+  padding-left: 14pt;
+  text-indent: -14pt;
+  text-align: justify;
+}
+.ov-ref::before {
+  content: attr(data-num) '. ';
+  display: inline-block;
+  width: 14pt;
+  text-indent: 0;
+  color: var(--ov-title);
+  font-weight: 700;
+}
+
+.ov-readonly-note {
+  font: 11px system-ui, sans-serif;
+  color: #64748b;
+}
+
+/* ── page breaks taken from the PDF ── */
+.ov-pagebreak {
+  column-span: all;
+  display: flex;
+  align-items: center;
+  gap: 8pt;
+  margin: 8pt 0;
+  user-select: none;
+  color: #94a3b8;
+  font: 600 8pt/1 var(--ov-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ov-pagebreak::before,
+.ov-pagebreak::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed #cbd5e1;
+}
+
+/* ── a block the PDF pointed at ── */
+.ov-flash {
+  animation: ov-flash 1.4s ease-out;
+}
+@keyframes ov-flash {
+  0% {
+    background: #d9f99d;
+    box-shadow: 0 0 0 4px #d9f99d;
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}

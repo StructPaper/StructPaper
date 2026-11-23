@@ -1,3 +1,4 @@
+import { arrangeForOutput, appendixSettingsOf } from './appendix';
 import { Document, Packer, Paragraph, SectionType, type ISectionOptions } from 'docx';
 import type { CompletePaper, PaperMetadata } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
@@ -129,7 +130,10 @@ export interface DocxExportOptions {
   loadImage?: ImageLoader;
 }
 
+import { resolveCrossRefs } from './cross-refs';
+
 export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOptions = {}): Promise<Blob> {
+  paper = resolveCrossRefs(paper, 'vi');
   const theme = resolveTheme(paper.layoutSettings);
   const color = theme.titleColor.slice(1);
   const pub = resolvePublication(paper.metadata);
@@ -139,7 +143,11 @@ export async function exportPaperToDocx(paper: CompletePaper, opts: DocxExportOp
   const page = pageFor(false);
   const ls = resolvePaperLayout(paper);
 
-  const segments = buildBody(paper.sections || [], paper.references || [], {
+  const arranged = arrangeForOutput(paper, 'vi');
+  const segments = buildBody(arranged.body, paper.references || [], {
+    appendices: arranged.afterReferences,
+    appendixLandscape: resolveTheme(paper.layoutSettings).turnSheets,
+    appendixNumbering: appendixSettingsOf(paper).numbering,
     theme,
     color,
     figures: assets.figures,

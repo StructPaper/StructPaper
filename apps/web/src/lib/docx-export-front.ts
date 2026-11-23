@@ -1,3 +1,4 @@
+import { parseMarkup } from './inline-markup';
 import {
   AlignmentType,
   BorderStyle,
@@ -146,7 +147,7 @@ export function buildFrontMatter(fm: FrontMatter, color: string, art: { qr: Docx
   const abstractParas = fm.abstract
     .split(/\n+/)
     .filter((t) => t.trim())
-    .map((t) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, style: 'Abstract', children: [run(t.trim(), { size: 19 })] }));
+    .map((t) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, style: 'Abstract', children: parseMarkup(t.trim()).map((seg) => run(seg.text, { size: 19, ...(seg.b ? { bold: true } : {}), ...(seg.i ? { italics: true } : {}), ...(seg.u ? { underline: {} } : {}), ...(seg.color ? { color: seg.color.slice(1) } : {}) })) }));
   const box: Paragraph[] = [
     new Paragraph({ style: 'SectionAbstract', children: [run(L.abstract, { bold: true, color, size: 18 })] }),
     ...abstractParas,

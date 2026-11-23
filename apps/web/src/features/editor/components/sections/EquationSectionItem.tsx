@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { Check, ClipboardCopy, Eraser, Link2, Sigma, Wrench } from 'lucide-react';
 import type { PaperSection } from '@/types/paper';
 import { MathFormula } from '@/features/preview';
 import { checkLatexMath } from '@/lib/math-text';
-import { SegmentedOptions } from './SegmentedOptions';
+import { FORMULA_TEMPLATES, TOOL_GROUPS, bracketBalance, cleanPastedLatex, equationMention, insertSnippet } from '@/lib/equation-tools';
 
 interface EquationSectionItemProps {
   sec: PaperSection;
@@ -12,19 +13,81 @@ interface EquationSectionItemProps {
   onUpdateSection: (index: number, updated: PaperSection) => void;
 }
 
-const SAMPLES: Array<{ label: string; latex: string }> = [
-  { label: 'Phân số', latex: '\\frac{a}{b}' },
-  { label: 'Tổng', latex: '\\sum_{i=1}^{n} x_i' },
-  { label: 'Căn', latex: '\\sqrt{x^2+y^2}' },
-  { label: 'Hồi quy', latex: 'y_{i,t} = \\alpha + \\beta x_{i,t} + \\varepsilon_{i,t}' },
-];
+type PanelId = 'greek' | 'operators' | 'structures' | 'templates';
 
+const PANEL_NAMES: Record<PanelId, string> = {
+  structures: 'Cấu trúc',
+  greek: 'Chữ Hy Lạp',
+  operators: 'Toán tử',
+  templates: 'Công thức mẫu',
+};
+const PANEL_ORDER: PanelId[] = ['structures', 'greek', 'operators', 'templates'];
+
+const BTN = 'px-2 py-1 rounded-lg bg-white hover:bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-700 cursor-pointer active:scale-95 transition-all';
+
+/**
+ * The equation block. The formula is typed as LaTeX, with a preview above it. To make that quick: buttons put symbols
+ * (Greek letters, operators) and structures (fraction, root, sum, integral, matrix...) at the cursor, wrapping what is selected;
+ * a list of formulas that come up often (mean, regression, normal distribution...); pasted LaTeX is cleaned of its $$ / \[ \] /
+ * \begin{equation} wrapping; and the number can be copied as "Công thức (n)" to point at the equation from the text.
+ */
 export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, idx, onUpdateSection }) => {
   const eq = sec.equation || { latex: '', numbered: true };
   const structuralError = eq.latex.trim() ? checkLatexMath(eq.latex) : null;
+  const balance = eq.latex.trim() && !structuralError ? bracketBalance(eq.latex) : { ok: true as boolean, message: undefined as string | undefined };
 
-  const update = (patch: Partial<typeof eq>) =>
-    onUpdateSection(idx, { ...sec, equation: { ...eq, ...patch }, content: patch.latex ?? eq.latex });
+  const area = useRef<HTMLTextAreaElement>(null);
+  const pendingSelection = useRef<{ start: number; end: number } | null>(null);
+  // a new, empty formula opens on the structures: that is what somebody starting one reaches for
+  const [panel, setPanel] = useState<PanelId | null>(eq.latex.trim() ? null : 'structures');
+  const [copied, setCopied] = useState<'latex' | 'mention' | null>(null);
+
+  const update = (patch: Partial<typeof eq>) => onUpdateSection(idx, { ...sec, equation: { ...eq, ...patch }, content: patch.latex ?? eq.latex });
+
+  // after a button changed the text, the cursor goes where the snippet wants it
+  useLayoutEffect(() => {
+    const sel = pendingSelection.current;
+    const el = area.current;
+    if (!sel || !el) return;
+    pendingSelection.current = null;
+    el.focus();
+    el.setSelectionRange(sel.start, sel.end);
+  }, [eq.latex]);
+
+  const put = (snippet: string) => {
+    const el = area.current;
+    const start = el?.selectionStart ?? eq.latex.length;
+    const end = el?.selectionEnd ?? eq.latex.length;
+    const edit = insertSnippet(eq.latex, start, end, snippet);
+    pendingSelection.current = { start: edit.start, end: edit.end };
+    update({ latex: edit.text });
+  };
+
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const raw = e.clipboardData.getData('text');
+    const clean = cleanPastedLatex(raw);
+    if (!raw || clean === raw.trim()) return; // nothing to clean: the browser pastes as usual
+    e.preventDefault();
+    const el = e.currentTarget;
+    const edit = insertSnippet(eq.latex, el.selectionStart, el.selectionEnd, clean);
+    pendingSelection.current = { start: edit.start, end: edit.end };
+    update({ latex: edit.text });
+  };
+
+  const copy = async (what: 'latex' | 'mention') => {
+    try {
+      await navigator.clipboard.writeText(what === 'latex' ? eq.latex : equationMention(eq.num));
+      setCopied(what);
+      setTimeout(() => setCopied(null), 1600);
+    } catch {
+      // no clipboard (insecure context): nothing to confirm
+    }
+  };
+
+  const togglePanel = (id: PanelId) => setPanel((current) => (current === id ? null : id));
+  const keepSelection = (e: React.MouseEvent) => e.preventDefault(); // a button must not take the selection out of the box
+
+  const group = panel && panel !== 'templates' ? TOOL_GROUPS.find((g) => g.id === panel) : undefined;
 
   return (
     <div className="space-y-2" data-testid="equation-item">
@@ -33,7 +96,7 @@ export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, i
           {eq.latex.trim() ? (
             <MathFormula latex={eq.latex} display />
           ) : (
-            <span className="text-xs text-zinc-400">Nhập mã LaTeX bên dưới để xem công thức…</span>
+            <span className="text-xs text-zinc-400">Nhập mã LaTeX bên dưới hoặc chọn một cấu trúc để xem công thức…</span>
           )}
         </div>
         {eq.numbered && (
@@ -43,10 +106,65 @@ export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, i
         )}
       </div>
 
+      <div className="flex items-center gap-1 flex-wrap" role="tablist" aria-label="Công cụ nhập công thức" data-edit-only data-testid="equation-tools">
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 pr-1">
+          <Wrench className="w-3 h-3" />
+          Công cụ
+        </span>
+        {PANEL_ORDER.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={panel === id}
+            data-testid={`equation-panel-${id}`}
+            onMouseDown={keepSelection}
+            onClick={() => togglePanel(id)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all ${panel === id ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+          >
+            {PANEL_NAMES[id]}
+          </button>
+        ))}
+      </div>
+
+      {group && (
+        <div className="flex flex-wrap gap-1 rounded-2xl bg-gray-200/50 p-2" data-edit-only data-testid="equation-tool-buttons">
+          {group.tools.map((t) => (
+            <button key={t.hint} type="button" title={t.hint} aria-label={t.hint} onMouseDown={keepSelection} onClick={() => put(t.snippet)} className={`${BTN} min-w-[2rem]`} data-testid="equation-tool">
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {panel === 'templates' && (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 rounded-2xl bg-gray-200/50 p-2" data-edit-only data-testid="equation-templates">
+          {FORMULA_TEMPLATES.map((f) => (
+            <li key={f.name}>
+              <button
+                type="button"
+                onMouseDown={keepSelection}
+                onClick={() => {
+                  update({ latex: f.latex });
+                  setPanel(null);
+                }}
+                title={f.latex}
+                className="w-full text-left px-2.5 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-700 cursor-pointer active:scale-[0.99] transition-all"
+              >
+                <Sigma className="inline w-3 h-3 mr-1 text-zinc-400" />
+                {f.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <textarea
+        ref={area}
         value={eq.latex}
         onChange={(e) => update({ latex: e.target.value })}
-        rows={2}
+        onPaste={onPaste}
+        rows={Math.min(8, Math.max(2, eq.latex.split('\n').length))}
         spellCheck={false}
         placeholder="Ví dụ: \frac{a}{b} = \sum_{i=1}^{n} x_i"
         aria-label="Mã LaTeX của công thức"
@@ -58,43 +176,36 @@ export const EquationSectionItem: React.FC<EquationSectionItemProps> = ({ sec, i
           {structuralError}
         </p>
       )}
-
-      <div className="space-y-1" data-testid="equation-span">
-        <SegmentedOptions
-          ariaLabel="Độ rộng công thức"
-          value={eq.columnSpan ?? '1-column'}
-          onChange={(columnSpan) => update({ columnSpan })}
-          options={[
-            { value: '1-column', label: 'Trong 1 cột', testId: 'equation-span-1', title: 'Công thức nằm trong 1 cột, tự xuống dòng ở dấu + - = khi quá rộng' },
-            { value: '2-column', label: 'Trải 2 cột', testId: 'equation-span-2', title: 'Công thức trải ngang cả 2 cột, nằm trên một dòng liền mạch' },
-          ]}
-        />
-        <p className="text-[10px] text-zinc-500 leading-snug">
-          Trải 2 cột: công thức nằm trên một dòng liền mạch, như bảng/hình rộng
+      {!structuralError && !balance.ok && (
+        <p className="text-[11px] font-semibold text-amber-700" role="status" data-testid="equation-balance">
+          {balance.message}
         </p>
-      </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={eq.numbered}
-            onChange={(e) => update({ numbered: e.target.checked })}
-            className="accent-lime-500"
-          />
+          <input type="checkbox" checked={eq.numbered} onChange={(e) => update({ numbered: e.target.checked })} className="accent-lime-500" />
           Đánh số công thức
         </label>
         <div className="flex items-center gap-1 flex-wrap">
-          {SAMPLES.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => update({ latex: eq.latex ? `${eq.latex} ${s.latex}` : s.latex })}
-              className="px-2 py-0.5 rounded-lg bg-white hover:bg-zinc-100 border border-zinc-200 text-[10px] font-bold text-zinc-700"
-            >
-              {s.label}
+          {eq.numbered && (
+            <button type="button" onClick={() => copy('mention')} title={`Sao chép "${equationMention(eq.num)}" để nhắc tới công thức này trong văn bản`} data-testid="equation-copy-mention" className={`${BTN} inline-flex items-center gap-1`}>
+              {copied === 'mention' ? <Check className="w-3 h-3 text-emerald-600" /> : <Link2 className="w-3 h-3" />}
+              {copied === 'mention' ? 'Đã sao chép' : equationMention(eq.num)}
             </button>
-          ))}
+          )}
+          {eq.latex.trim() && (
+            <>
+              <button type="button" onClick={() => copy('latex')} title="Sao chép mã LaTeX" data-testid="equation-copy-latex" className={`${BTN} inline-flex items-center gap-1`}>
+                {copied === 'latex' ? <Check className="w-3 h-3 text-emerald-600" /> : <ClipboardCopy className="w-3 h-3" />}
+                {copied === 'latex' ? 'Đã sao chép' : 'Sao chép LaTeX'}
+              </button>
+              <button type="button" data-edit-only onClick={() => update({ latex: '' })} title="Xóa nội dung công thức" data-testid="equation-clear" className={`${BTN} inline-flex items-center gap-1 hover:!bg-red-50 hover:!text-red-600`}>
+                <Eraser className="w-3 h-3" />
+                Xóa
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -18,6 +18,11 @@ export function isJournalDetailRoute(pathname?: string | null): boolean {
   return !!pathname && /^\/templates\/journal\/[^/]+\/?$/.test(pathname);
 }
 
+/** A deleted paper opened from the trash (read-only): the title bar says so and offers restore / delete for good. */
+export function isTrashPreviewRoute(pathname?: string | null): boolean {
+  return !!pathname && /^\/trash\/[^/]+\/?$/.test(pathname);
+}
+
 /** The version history page of a paper: the title bar shows what it is and the way back to the editor. */
 export function isPaperHistoryRoute(pathname?: string | null): boolean {
   return !!pathname && /^\/papers\/[^/]+\/history\/?$/.test(pathname);

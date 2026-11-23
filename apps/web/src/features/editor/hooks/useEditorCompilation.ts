@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CompletePaper } from '@/types/paper';
+import { CompletePaper, JournalTemplate } from '@/types/paper';
 import { resolvePaperLayout } from '@/lib/layout/paper-profile';
 import { exportToLatex } from '@/lib/exporters';
 import {
@@ -33,6 +33,8 @@ export interface UseEditorCompilationOptions {
   autoCompile?: boolean;
   /** Keep the server copy of the PDF up to date for readers (editors only; default on). */
   publishPreview?: boolean;
+  /** Typeset with this journal template instead of the registered one (the Template editor's preview of unsaved rules). */
+  latexTemplate?: JournalTemplate;
 }
 
 export function useEditorCompilation({
@@ -46,7 +48,10 @@ export function useEditorCompilation({
   debounceMs = 500,
   autoCompile = true,
   publishPreview = true,
+  latexTemplate,
 }: UseEditorCompilationOptions) {
+  const latexTemplateRef = useRef(latexTemplate);
+  latexTemplateRef.current = latexTemplate;
   // The language the PDF is laid out in is chosen in the title bar.
   const { pdfLanguage } = useEditorSession();
   const isDefaultHs630 =
@@ -123,6 +128,10 @@ export function useEditorCompilation({
   /** Outcome of the last finished compile, so callers can tell "cancelled" from "failed". */
   const lastOutcomeRef = useRef<'success' | 'cancelled' | 'error' | null>(null);
   const [compileStartedAt, setCompileStartedAt] = useState<number | null>(null);
+  /** What the PDF on screen was made from: the LaTeX plus the size of each picture. */
+  const compiledSignatureRef = useRef<string | null>(null);
+  const [hasChangesSinceCompile, setHasChangesSinceCompile] = useState(true);
+  const signatureOf = (p: CompletePaper, tex: string) => `${tex}|${(p.sections || []).map((s) => s.figure?.src?.length ?? '').join(',')}`;
 
   // NetworkMonitor subscription and Sticky Toast management
   useEffect(() => {
@@ -185,17 +194,22 @@ export function useEditorCompilation({
   }, [customRouter]);
 
   const compileLatexToPdf = useCallback(
-    async (customPaperData?: CompletePaper): Promise<string | null> => {
+    async (customPaperData?: CompletePaper, opts?: { aside?: boolean }): Promise<string | null> => {
       const paperToCompile = customPaperData || formData;
       const settings = resolvePaperLayout(paperToCompile);
 
-      const seq = ++compileSeqRef.current;
-      const isLatest = () => seq === compileSeqRef.current;
+      // `aside`: a PDF made only to be downloaded in another form (the sheets upright, say): the preview on screen is left as it is
+      const aside = opts?.aside === true;
+      const seq = aside ? compileSeqRef.current : ++compileSeqRef.current;
+      const isLatest = () => !aside && seq === compileSeqRef.current;
       try {
-        setIsCompilingPdf(true);
-        setCompileStartedAt(Date.now());
-        setCompileErrorInfo(null);
-        const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage });
+        if (!aside) {
+          setIsCompilingPdf(true);
+          setCompileStartedAt(Date.now());
+          setCompileErrorInfo(null);
+        }
+        const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
+        const signature = signatureOf(paperToCompile, texContent);
         const images = await extractPaperImagesAsync(paperToCompile);
 
         const scheduler = ensureInfra();
@@ -213,6 +227,8 @@ export function useEditorCompilation({
             (result.pdfBlob ? URL.createObjectURL(result.pdfBlob) : null);
           if (url && isLatest()) {
             setCompiledPdfUrl(url);
+            compiledSignatureRef.current = signature;
+            setHasChangesSinceCompile(false);
           }
           const pdf = result.pdfBlob ?? (result.pdfBuffer ? new Blob([result.pdfBuffer as any], { type: 'application/pdf' }) : null);
           if (publishPreview && pdf && isLatest()) void publishPdfPreview(paperToCompile.id, pdf);
@@ -221,7 +237,7 @@ export function useEditorCompilation({
             result.engine ||
             (engineKind === 'browser-wasm' ? 'XeLaTeX WASM' : 'Server XeLaTeX');
 
-          setCompileStats({
+          if (!aside) setCompileStats({
             durationMs: result.durationMs,
             sizeKb: Math.round(
               (result.pdfBlob?.size ?? result.pdfBuffer?.length ?? 0) / 1024
@@ -243,7 +259,7 @@ export function useEditorCompilation({
           lastOutcomeRef.current = 'cancelled';
           return null;
         } else {
-          if (!isLatest()) return null;
+          if (!aside && !isLatest()) return null;
           lastOutcomeRef.current = 'error';
           setCompileErrorInfo({
             error: result.error || 'Biên dịch thất bại',
@@ -266,7 +282,7 @@ export function useEditorCompilation({
           lastOutcomeRef.current = 'cancelled';
           return null;
         }
-        if (!isLatest()) return null;
+        if (!aside && !isLatest()) return null;
         lastOutcomeRef.current = 'error';
         setCompileErrorInfo({
           error: 'Lỗi kết nối máy chủ biên dịch',
@@ -282,6 +298,20 @@ export function useEditorCompilation({
     },
     [formData, pdfLanguage]
   );
+
+  // Is there anything the PDF on screen does not show yet? (the recompile button is dimmed when not)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        const tex = exportToLatex(formData, resolvePaperLayout(formData), { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
+        setHasChangesSinceCompile(compiledSignatureRef.current !== signatureOf(formData, tex));
+      } catch {
+        setHasChangesSinceCompile(true);
+      }
+    }, 500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, pdfLanguage, compiledPdfUrl]);
 
   // Sync with paper changes and compile initial
   useEffect(() => {
@@ -307,6 +337,8 @@ export function useEditorCompilation({
     async (customPaper?: CompletePaper) => {
       const target = customPaper || formData;
       onUpdatePaper(target);
+      // Typesetting does not depend on the save finishing: start it (and its spinner) at once, save alongside.
+      const compiling = compileLatexToPdf(target);
       if (onSavePaper) {
         try {
           await onSavePaper(target);
@@ -315,7 +347,7 @@ export function useEditorCompilation({
         }
       }
       setIsDirty?.(false);
-      compileLatexToPdf(target);
+      await compiling;
     },
     [formData, onUpdatePaper, onSavePaper, setIsDirty, compileLatexToPdf]
   );
@@ -332,6 +364,7 @@ export function useEditorCompilation({
     setCompileErrorInfo,
     compileLatexToPdf,
     handleRecompile,
+    hasChangesSinceCompile,
     networkMonitor: monitorRef.current,
     compilerRouter: routerRef.current,
   };

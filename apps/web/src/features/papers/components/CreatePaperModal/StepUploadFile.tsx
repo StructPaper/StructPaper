@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { UploadCloud, FileText, Loader2, Sparkles, FilePlus, AlertCircle } from 'lucide-react';
 import { parseDocxFile } from '@/lib/docx-parser';
+import { registerPendingSource } from '@/lib/documents/word-source';
 import type { CompletePaper } from '@/types/paper';
 import { MAX_BATCH_FILES } from '@/lib/batch-import/run-batch';
 
@@ -13,7 +14,8 @@ export function pickWordFiles(files: File[]): { words: File[]; skipped: number }
 }
 
 interface StepUploadFileProps {
-  onSuccess: (result: { parsedPaper?: CompletePaper; isBlank: boolean }) => void;
+  /** May take a while (it checks for a paper with the same title and creates the paper): the step shows it is working until it is done. */
+  onSuccess: (result: { parsedPaper?: CompletePaper; isBlank: boolean }) => void | Promise<void>;
   /** Two or more Word files picked at once: create one paper per file. */
   onBatch?: (files: File[], skipped: number) => void;
   targetJournalName?: string;
@@ -46,6 +48,7 @@ export const StepUploadFile: React.FC<StepUploadFileProps> = ({
       const buffer = await file.arrayBuffer();
       setStatusText('Đang phân tích cấu trúc OpenXML...');
       const parsed = await parseDocxFile(buffer, file.name);
+      registerPendingSource(parsed.id, buffer, file.name, parsed);
 
       if (targetJournalCode) {
         parsed.metadata.journalId = targetJournalCode;
@@ -54,7 +57,8 @@ export const StepUploadFile: React.FC<StepUploadFileProps> = ({
         parsed.metadata.journalName = targetJournalName;
       }
 
-      onSuccess({ parsedPaper: parsed, isBlank: false });
+      setStatusText('Đang kiểm tra trùng tiêu đề...');
+      await onSuccess({ parsedPaper: parsed, isBlank: false });
     } catch (err: any) {
       console.error('Lỗi khi đọc file DOCX:', err);
       setErrorMsg(err.message || 'Không thể trích xuất cấu trúc tệp Word');
@@ -174,7 +178,15 @@ export const StepUploadFile: React.FC<StepUploadFileProps> = ({
           type="button"
           data-testid="skip-to-blank-btn"
           disabled={isParsing}
-          onClick={() => onSuccess({ isBlank: true })}
+          onClick={async () => {
+            setIsParsing(true);
+            setStatusText('Đang tạo bản thảo trắng...');
+            try {
+              await onSuccess({ isBlank: true });
+            } finally {
+              setIsParsing(false);
+            }
+          }}
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors p-2 rounded-xl hover:bg-slate-100 cursor-pointer"
         >
           <FilePlus className="w-4 h-4 text-slate-400" />

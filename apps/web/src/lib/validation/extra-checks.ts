@@ -1,5 +1,6 @@
 import type { CompletePaper } from '@/types/paper';
 import { resolvePublication, UNKNOWN } from '../publication';
+import { arrangeForOutput, appendixLabel, appendixMark, appendixSettingsOf, isAppendix, isNumberedAppendix } from '../appendix';
 import type { ValidationGate, ValidationIssue } from './validators';
 
 type Issue = Omit<ValidationIssue, 'gate'>;
@@ -40,14 +41,20 @@ export function extraChecks(paper: CompletePaper, _gate: ValidationGate): Issue[
   if (md.abstractEn?.trim() && (enWords < 275 || enWords > 500)) {
     out.push({ id: 'abstract_en_words', severity: 'warning', code: 'field.abstractEn.length', title: `Abstract có ${enWords} từ`, message: 'Bản tiếng Anh cũng nên dài 275–500 từ như bản tiếng Việt.', fixTab: 'abstract' });
   }
-  const kwVi = clean(md.keywords).length;
-  const kwEn = clean(md.keywordsEn).length;
-  if (kwEn > 0 && (kwEn < 3 || kwEn > 5)) {
-    out.push({ id: 'keywords_en_count', severity: 'warning', code: 'field.keywordsEn.count', title: `Có ${kwEn} từ khóa tiếng Anh`, message: 'Template quy định 3–5 từ khóa.', fixTab: 'abstract' });
-  }
-  if (kwVi > 0 && kwEn > 0 && kwVi !== kwEn) {
-    out.push({ id: 'keywords_mismatch', severity: 'info', code: 'field.keywords.mismatch', title: 'Số từ khóa hai ngôn ngữ khác nhau', message: `Tiếng Việt ${kwVi} từ khóa, tiếng Anh ${kwEn}.`, suggestion: 'Hai bản nên là cùng một danh sách từ khóa.', fixTab: 'abstract' });
-  }
+  // (the number of keywords, in either language, is not checked: it does not matter to the journal)
+
+  // ---- appendices: each should be named in the text, and have a title
+  const appendices = arrangeForOutput(paper).appendices.filter(isNumberedAppendix);
+  const numbering = appendixSettingsOf(paper).numbering;
+  const bodyText = sections.filter((x) => !isAppendix(x)).map((x) => `${x.title ?? ''} ${x.content ?? ''}`).join('\n');
+  appendices.forEach((a) => {
+    const n = (a.table ?? a.figure)!.num;
+    const mark = appendixMark(n, numbering);
+    const named = new RegExp(`(ph[uụ]\\s*l[uụ]c|appendix)\\s*${mark}(?![0-9A-Za-z])`, 'i').test(bodyText);
+    if (!named) out.push({ id: `appendix_unmentioned_${n}`, severity: 'warning', code: 'appendix.unmentioned', title: `${appendixLabel(n, numbering)} chưa được nhắc trong văn bản`, message: `Cần nhắc ${appendixLabel(n, numbering)} trong văn bản (ví dụ "xem ${appendixLabel(n, numbering)}").`, fixTab: 'sections' });
+    const caption = (a.table?.caption ?? a.figure?.caption ?? '').replace(/^\s*(ph[uụ]\s*l[uụ]c|appendix)\s*[0-9A-Z]*\s*[:.\-–]?\s*/i, '').trim();
+    if (!caption) out.push({ id: `appendix_untitled_${n}`, severity: 'warning', code: 'appendix.untitled', title: `${appendixLabel(n, numbering)} chưa có tiêu đề`, message: 'Phụ lục cần một tiêu đề ngắn sau số thứ tự.', fixTab: 'appendix' });
+  });
 
   // ---- article type
   if (!(md.articleType || '').trim()) {
@@ -165,7 +172,15 @@ export function extraChecks(paper: CompletePaper, _gate: ValidationGate): Issue[
   const norm = raw.map((r) => r.toLowerCase().replace(/\s+/g, ' '));
   const dupRefs = norm.filter((r, i) => r.length > 0 && norm.indexOf(r) !== i).length;
   if (dupRefs) {
-    out.push({ id: 'refs_dupe', severity: 'warning', code: 'reference.duplicate', title: `${dupRefs} tài liệu tham khảo bị lặp`, message: 'Hai mục giống hệt nhau.', fixTab: 'refs' });
+    // say which ones: the numbers as they are printed, and the start of the entry
+    const groups = new Map<string, number[]>();
+    norm.forEach((r, i) => {
+      if (r.length > 0) groups.set(r, [...(groups.get(r) ?? []), i]);
+    });
+    const lines = [...groups.values()]
+      .filter((g) => g.length > 1)
+      .map((g) => `${g.map((i) => `[${i + 1}]`).join(' và ')}: “${raw[g[0]].slice(0, 70)}${raw[g[0]].length > 70 ? '…' : ''}”`);
+    out.push({ id: 'refs_dupe', severity: 'warning', code: 'reference.duplicate', title: `${dupRefs} tài liệu tham khảo bị lặp`, message: lines.join('\n'), suggestion: 'Xoá bớt một mục (và đổi lại số trích dẫn nếu cần).', fixTab: 'refs' });
   }
 
   return out;

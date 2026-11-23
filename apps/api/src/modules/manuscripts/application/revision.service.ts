@@ -1,6 +1,6 @@
 import { Injectable, Inject, Optional, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'node:crypto';
-import { manuscripts, manuscriptRevisions, users, eq, and, desc, lt, ne, inArray, sql } from '@structpaper/db';
+import { manuscripts, manuscriptRevisions, users, eq, and, desc, lt, ne, inArray, isNull, sql } from '@structpaper/db';
 import { diffDocs, contentFingerprintSource, docFromStored, storedFromDoc, EMPTY_STATS, type DocLike } from '@structpaper/doc-diff';
 import type {
   CreateRevision,
@@ -385,7 +385,7 @@ export class RevisionService {
 
   private async requireManuscript(id: string, ability: AppAbility | undefined, action: 'read' | 'update'): Promise<any> {
     if (!this.db) throw new NotFoundException(`Manuscript with ID ${id} not found`);
-    const [manuscript] = await this.db.select().from(manuscripts).where(eq(manuscripts.id, id)).limit(1);
+    const [manuscript] = await this.db.select().from(manuscripts).where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt))).limit(1);
     if (!manuscript) throw new NotFoundException(`Manuscript with ID ${id} not found`);
     if (ability && !ability.can(action, subject('Manuscript', manuscript))) {
       throw new ForbiddenException(action === 'read' ? 'You may not see the history of this manuscript' : 'You may not change this manuscript');

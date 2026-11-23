@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import './pdf-viewer.css';
+import { onGoToPdfPage } from '@/lib/editor/pdf-nav';
 import { groupItemsIntoLines, type PdfLine, type PdfTextItem } from '@/lib/editor/pdf-section-map';
 import { lineForClick, pageFill } from '@/lib/editor/pdf-click-target';
 
@@ -40,8 +41,18 @@ export interface PdfFillIssue {
   nextLines: string[];
 }
 
+/** Where each paper was last read (page, place in the page, zoom): kept when the PDF is made again and when the viewer is closed and opened. */
+const placeStore = new Map<string, { page: number; frac: number; scale: string | number }>();
+
+/** The page the reader was last on in the viewer of this paper (the browser's own PDF frame is opened there). */
+export function lastReadPage(key: string): number {
+  return placeStore.get(key)?.page ?? 1;
+}
+
 interface PdfInteractiveViewerProps {
   url: string;
+  /** Remember the reading place under this key (the paper). */
+  placeKey?: string;
   /** A double click on content: the lines of that page and the index of the clicked line. */
   onPickText?: (ctx: PdfPickContext) => void;
   /** "Turn this page": the lines of the page and of the pages around it. */
@@ -70,6 +81,7 @@ interface PageText {
  */
 export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
   url,
+  placeKey,
   onPickText,
   onRotatePage,
   onLoadError,
@@ -83,7 +95,7 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
   const busRef = useRef<any>(null);
   const docRef = useRef<any>(null);
   const textCache = useRef<Map<number, PageText>>(new Map());
-  const place = useRef<{ page: number; frac: number; scale: string | number }>({ page: 1, frac: 0, scale: 'page-width' });
+  const place = useRef<{ page: number; frac: number; scale: string | number }>((placeKey && placeStore.get(placeKey)) || { page: 1, frac: 0, scale: 'page-width' });
   const [shown, setShown] = useState(false);
   const [sizes, setSizes] = useState<PageSize[]>([]);
   const [current, setCurrent] = useState(1);
@@ -94,6 +106,16 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
   const [findOpen, setFindOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<{ current: number; total: number } | null>(null);
+
+  // the overview page can ask for a page
+  useEffect(
+    () =>
+      onGoToPdfPage((page) => {
+        const v = pdfViewerRef.current;
+        if (v && page <= (v.pagesCount ?? 0)) v.currentPageNumber = page;
+      }),
+    []
+  );
 
   // a copy of the pane that is not on screen (width 0) loads nothing
   useEffect(() => {
@@ -166,6 +188,7 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
         if (view) place.current = { ...place.current, page: v.currentPageNumber, frac: Math.max(0, (box.scrollTop - view.div.offsetTop) / Math.max(1, view.div.offsetHeight)) };
         v.setDocument(null);
       }
+      if (placeKey) placeStore.set(placeKey, { ...place.current });
       pdfViewerRef.current = null;
       busRef.current = null;
       docRef.current = null;
@@ -194,14 +217,20 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
     return entry;
   }, []);
 
-  // pages cut short by a layout change: little text, and the next page starts with a section that changes the layout
+  // pages cut short by a layout change: little text, and the next page starts with a section that changes the layout.
+  // The host's callbacks are read through refs and the state is only replaced when it really differs: functions that the host makes
+  // anew on every render, or a fresh empty list each time, must not set this effect and its state going round and round.
+  const canFillRef = useRef(canFill);
+  canFillRef.current = canFill;
+  const hasFill = !!onFillPage;
+  const sameIssues = (a: PdfFillIssue[], b: PdfFillIssue[]) => a.length === b.length && a.every((x, i) => x.page === b[i].page);
   useEffect(() => {
-    if (!onFillPage || sizes.length < 3) {
-      setIssues([]);
+    if (!hasFill || sizes.length < 3) {
+      setIssues((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     let dead = false;
-    setDismissed([]);
+    setDismissed((prev) => (prev.length === 0 ? prev : []));
     (async () => {
       const list: PdfFillIssue[] = [];
       for (let p = 1; p < sizes.length; p++) {
@@ -212,13 +241,15 @@ export const PdfInteractiveViewer: React.FC<PdfInteractiveViewerProps> = ({
         const used = pageFill(here.items, a.w, a.h);
         if (used < 0.55) list.push({ page: p, used, lines: here.lines.map((l) => l.text), nextLines: next.lines.map((l) => l.text) });
       }
-      if (!dead) setIssues(list.filter((i) => !canFill || canFill(i)));
+      const fill = canFillRef.current;
+      const shown = list.filter((i) => !fill || fill(i));
+      if (!dead) setIssues((prev) => (sameIssues(prev, shown) ? prev : shown));
     })();
     return () => {
       dead = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sizes, onFillPage, canFill]);
+  }, [sizes, hasFill]);
 
   /** Double click on content: find the PDF line under the pointer and hand it to the editor. */
   const handleDoubleClick = async (e: React.MouseEvent<HTMLDivElement>) => {

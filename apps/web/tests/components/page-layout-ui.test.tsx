@@ -44,26 +44,12 @@ const eqSection = (extra: Partial<PaperSection> = {}): PaperSection => ({
   ...extra,
 });
 
-describe('EquationSectionItem column span', () => {
-  it('defaults to 1 column and switches to 2 columns', () => {
-    const onUpdate = vi.fn();
-    render(<EquationSectionItem sec={eqSection()} idx={3} onUpdateSection={onUpdate} />);
-    expect(screen.getByTestId('equation-span-1').getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByTestId('equation-span-2'));
-    expect(onUpdate).toHaveBeenCalledTimes(1);
-    const [idx, updated] = onUpdate.mock.calls[0];
-    expect(idx).toBe(3);
-    expect(updated.equation.columnSpan).toBe('2-column');
-    expect(updated.equation.latex).toBe('a=b');
-  });
-
-  it('reflects an existing 2-column span and can go back', () => {
-    const onUpdate = vi.fn();
-    const sec = eqSection({ equation: { latex: 'a=b', numbered: true, columnSpan: '2-column' } });
-    render(<EquationSectionItem sec={sec} idx={0} onUpdateSection={onUpdate} />);
-    expect(screen.getByTestId('equation-span-2').getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByTestId('equation-span-1'));
-    expect(onUpdate.mock.calls[0][1].equation.columnSpan).toBe('1-column');
+describe('EquationSectionItem', () => {
+  it('has no column setting: a formula follows the layout of the paper', () => {
+    render(<EquationSectionItem sec={eqSection()} idx={3} onUpdateSection={vi.fn()} />);
+    expect(screen.queryByTestId('equation-span')).toBeNull();
+    expect(screen.queryByTestId('equation-span-1')).toBeNull();
+    expect(screen.queryByTestId('equation-span-2')).toBeNull();
   });
 });
 
@@ -129,7 +115,8 @@ describe('SectionCardHeader page layout badge', () => {
   it('shows no badge without a marker', () => {
     render(<SectionCardHeader {...baseProps} sec={{ id: 'a', type: 'paragraph', content: '' }} />);
     expect(screen.queryByTestId('page-layout-badge')).toBeNull();
-    expect(screen.getByTestId('page-layout-button')).toBeTruthy();
+    // the page layout is not set from a block's card any more (no button on any kind of block)
+    expect(screen.queryByTestId('page-layout-button')).toBeNull();
   });
 
   it('shows the badge summary when a marker is set', () => {
@@ -163,5 +150,13 @@ describe('LayoutSettingsDrawer orientation', () => {
     const applied = onApply.mock.calls[0][0];
     expect(applied.orientation).toBe('landscape');
     expect(applied.columnLayout).toBe('2-column');
+  });
+
+  it('keeps the choice when the editor re-renders and hands over an equal copy of the settings', () => {
+    const el = (s: typeof DEFAULT_LAYOUT_SETTINGS) => <LayoutSettingsDrawer isOpen onClose={vi.fn()} settings={s} onApplySettings={vi.fn()} />;
+    const { rerender } = render(el({ ...DEFAULT_LAYOUT_SETTINGS }));
+    fireEvent.click(screen.getByTestId('orientation-landscape'));
+    rerender(el({ ...DEFAULT_LAYOUT_SETTINGS }));
+    expect(screen.getByTestId('orientation-landscape').getAttribute('aria-checked')).toBe('true');
   });
 });

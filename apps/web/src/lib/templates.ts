@@ -28,6 +28,8 @@ export const JOURNAL_TEMPLATES: Record<string, JournalTemplate> = {
   },
   'VNUHCM-STD': {
     id: 'VNUHCM-STD',
+    // its published sample prints a reference's DOI as a bare link, the other journals put "Available from:" before it
+    referenceDoiLabel: '',
     name: 'Tạp chí Phát triển Khoa học & Công nghệ – Tự nhiên & Đời sống',
     shortName: 'Sci. Tech. Dev. J.',
     publisher: 'ĐHQG TP.HCM / VNU-HCM Press',
@@ -150,7 +152,17 @@ function templateFromTier(key: string, tier: JournalTierProfile, fallback?: Jour
     officialNameEn: p.officialNameEn ?? fallback?.officialNameEn,
     officialAbbvEn: p.officialAbbvEn ?? fallback?.officialAbbvEn,
     doiPrefix: p.doiPrefix ?? fallback?.doiPrefix,
+    referenceDoiLabel: fallback?.referenceDoiLabel,
   };
+}
+
+/**
+ * The template a journal profile that is still being edited would give: its names, colour and print details
+ * (what the Template editor's preview is typeset with, before anything is saved or published).
+ */
+export function templateFromProfile(profile: JournalTierProfile): JournalTemplate {
+  const key = journalKeyOf(profile.id || '');
+  return templateFromTier(key, profile, builtInTemplate(key));
 }
 
 /** The journal's template, or undefined for a journal nobody knows. The server's published rules win over the built-ins. */

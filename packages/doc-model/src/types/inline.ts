@@ -1,6 +1,6 @@
 export type Id = string;
 
-export type InlineMark = 'b' | 'i' | 'sup' | 'sub' | 'code';
+export type InlineMark = 'b' | 'i' | 'u' | 'sup' | 'sub' | 'code';
 
 export interface TextInline {
   t: 'text';

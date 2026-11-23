@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useCallback } from 'react';
+import { isInView } from '@/lib/history/focus';
 import {
   useVirtualizer,
   observeElementRect,
@@ -260,6 +261,9 @@ export function useSectionVirtualizer<T extends VirtualizableSectionItem>({
         (item) => item.secId === id || item.sec.id === id
       );
       if (index === -1) return false;
+      // a block already in front of the author stays where it is (undo while typing must not make the page jump)
+      const card = typeof document !== 'undefined' ? document.getElementById(`section-card-${id}`) : null;
+      if (card && isInView(card)) return true;
       virtualizer.scrollToIndex(index, { align: 'center', behavior: 'auto' });
       return true;
     },

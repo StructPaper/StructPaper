@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { journalSchemas, journalPaths } from './openapi-journals';
 import { revisionSchemas, revisionPaths } from './openapi-revisions';
+import { trashSchemas, trashPaths } from './openapi-trash';
 
 /**
  * Generates an OpenAPI 3.1 JSON document containing all StructPaper API endpoints,
@@ -132,11 +133,15 @@ export function buildOpenApiSpec() {
             'Result of issuing an invitation link. The raw token/link is only ever returned here (never stored).',
           properties: {
             user: { $ref: '#/components/schemas/UserSummary' },
+            activationPath: {
+              type: 'string',
+              description: 'Where the invited person activates the account, without a domain ("/activate#token=..."). Screens put their own domain in front.',
+            },
             activationUrl: { type: 'string' },
             token: { type: 'string' },
             expiresAt: { type: 'string', format: 'date-time' },
           },
-          required: ['user', 'activationUrl', 'token', 'expiresAt'],
+          required: ['user', 'activationPath', 'activationUrl', 'token', 'expiresAt'],
         },
         ManagedUser: {
           type: 'object',
@@ -1254,6 +1259,8 @@ export function buildOpenApiSpec() {
   Object.assign(spec.paths, journalPaths);
   Object.assign(spec.components.schemas, revisionSchemas);
   Object.assign(spec.paths, revisionPaths);
+  Object.assign(spec.components.schemas, trashSchemas);
+  Object.assign(spec.paths, trashPaths);
 
   return spec;
 }

@@ -34,6 +34,7 @@ import type {
   FindManuscriptDuplicatesParams,
   ListManuscriptRevisionsParams,
   ListManuscriptsParams,
+  ListTrashParams,
   Manuscript,
   ManuscriptMember,
   ManuscriptSharing,
@@ -41,13 +42,19 @@ import type {
   ProblemDetails,
   ProblemResponseResponse,
   ProfileUpgradeResult,
+  PurgeManuscriptResult,
   RestoreRevisionResult,
+  RestoredManuscript,
   Revision,
   RevisionList,
   RevisionSummary,
   SearchManuscriptPeopleParams,
   SuccessMessageResponse,
   TitleDuplicate,
+  TrashBulkRequest,
+  TrashBulkResult,
+  TrashList,
+  TrashPreview,
   UpdateGeneralAccessRequest,
   UpdateManuscriptRequest,
   UpdateRevisionRequest
@@ -1543,6 +1550,378 @@ export const useDuplicateManuscriptRevision = <TError = ProblemDetails,
       > => {
 
       const mutationOptions = getDuplicateManuscriptRevisionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Deleted manuscripts the caller can still restore (their own; journal managers: those of their journals)
+ */
+export const listTrash = (
+    params?: ListTrashParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TrashList>(
+      {url: `/api/v1/manuscripts/trash`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getListTrashQueryKey = (params?: ListTrashParams,) => {
+    return [
+    `/api/v1/manuscripts/trash`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getListTrashQueryOptions = <TData = Awaited<ReturnType<typeof listTrash>>, TError = ProblemDetails>(params?: ListTrashParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTrashQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTrash>>> = ({ signal }) => listTrash(params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTrashQueryResult = NonNullable<Awaited<ReturnType<typeof listTrash>>>
+export type ListTrashQueryError = ProblemDetails
+
+
+export function useListTrash<TData = Awaited<ReturnType<typeof listTrash>>, TError = ProblemDetails>(
+ params: undefined |  ListTrashParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTrash>>,
+          TError,
+          Awaited<ReturnType<typeof listTrash>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTrash<TData = Awaited<ReturnType<typeof listTrash>>, TError = ProblemDetails>(
+ params?: ListTrashParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTrash>>,
+          TError,
+          Awaited<ReturnType<typeof listTrash>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTrash<TData = Awaited<ReturnType<typeof listTrash>>, TError = ProblemDetails>(
+ params?: ListTrashParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Deleted manuscripts the caller can still restore (their own; journal managers: those of their journals)
+ */
+
+export function useListTrash<TData = Awaited<ReturnType<typeof listTrash>>, TError = ProblemDetails>(
+ params?: ListTrashParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTrash>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTrashQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Restore or delete for good many trashed manuscripts at once (all of them when ids is left out); what the caller may not touch is skipped
+ */
+export const bulkTrash = (
+    trashBulkRequest: TrashBulkRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TrashBulkResult>(
+      {url: `/api/v1/manuscripts/trash/bulk`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: trashBulkRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getBulkTrashMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkTrash>>, TError,{data: TrashBulkRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkTrash>>, TError,{data: TrashBulkRequest}, TContext> => {
+
+const mutationKey = ['bulkTrash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkTrash>>, {data: TrashBulkRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkTrash(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkTrashMutationResult = NonNullable<Awaited<ReturnType<typeof bulkTrash>>>
+    export type BulkTrashMutationBody = TrashBulkRequest
+    export type BulkTrashMutationError = ProblemDetails
+
+    /**
+ * @summary Restore or delete for good many trashed manuscripts at once (all of them when ids is left out); what the caller may not touch is skipped
+ */
+export const useBulkTrash = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkTrash>>, TError,{data: TrashBulkRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof bulkTrash>>,
+        TError,
+        {data: TrashBulkRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getBulkTrashMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Bring a deleted manuscript back
+ */
+export const restoreFromTrash = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<RestoredManuscript>(
+      {url: `/api/v1/manuscripts/trash/${id}/restore`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getRestoreFromTrashMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreFromTrash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreFromTrash>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['restoreFromTrash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreFromTrash>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  restoreFromTrash(id,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreFromTrashMutationResult = NonNullable<Awaited<ReturnType<typeof restoreFromTrash>>>
+    
+    export type RestoreFromTrashMutationError = ProblemDetails
+
+    /**
+ * @summary Bring a deleted manuscript back
+ */
+export const useRestoreFromTrash = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreFromTrash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreFromTrash>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+
+      const mutationOptions = getRestoreFromTrashMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Read a deleted manuscript (who deleted it, or a manager of its journal)
+ */
+export const getTrashedManuscript = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TrashPreview>(
+      {url: `/api/v1/manuscripts/trash/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetTrashedManuscriptQueryKey = (id?: string,) => {
+    return [
+    `/api/v1/manuscripts/trash/${id}`
+    ] as const;
+    }
+
+    
+export const getGetTrashedManuscriptQueryOptions = <TData = Awaited<ReturnType<typeof getTrashedManuscript>>, TError = ProblemDetails>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTrashedManuscriptQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrashedManuscript>>> = ({ signal }) => getTrashedManuscript(id, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTrashedManuscriptQueryResult = NonNullable<Awaited<ReturnType<typeof getTrashedManuscript>>>
+export type GetTrashedManuscriptQueryError = ProblemDetails
+
+
+export function useGetTrashedManuscript<TData = Awaited<ReturnType<typeof getTrashedManuscript>>, TError = ProblemDetails>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTrashedManuscript>>,
+          TError,
+          Awaited<ReturnType<typeof getTrashedManuscript>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTrashedManuscript<TData = Awaited<ReturnType<typeof getTrashedManuscript>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTrashedManuscript>>,
+          TError,
+          Awaited<ReturnType<typeof getTrashedManuscript>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTrashedManuscript<TData = Awaited<ReturnType<typeof getTrashedManuscript>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read a deleted manuscript (who deleted it, or a manager of its journal)
+ */
+
+export function useGetTrashedManuscript<TData = Awaited<ReturnType<typeof getTrashedManuscript>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTrashedManuscript>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTrashedManuscriptQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Delete a manuscript in the trash for good
+ */
+export const purgeFromTrash = (
+    id: string,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<PurgeManuscriptResult>(
+      {url: `/api/v1/manuscripts/trash/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getPurgeFromTrashMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purgeFromTrash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof purgeFromTrash>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['purgeFromTrash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof purgeFromTrash>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  purgeFromTrash(id,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PurgeFromTrashMutationResult = NonNullable<Awaited<ReturnType<typeof purgeFromTrash>>>
+    
+    export type PurgeFromTrashMutationError = ProblemDetails
+
+    /**
+ * @summary Delete a manuscript in the trash for good
+ */
+export const usePurgeFromTrash = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purgeFromTrash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof purgeFromTrash>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+
+      const mutationOptions = getPurgeFromTrashMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

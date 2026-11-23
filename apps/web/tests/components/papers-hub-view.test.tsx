@@ -320,7 +320,7 @@ describe('Task 4: Quản lý Bài báo UI & Top Recent Papers Row', () => {
       // Verify modal and heading
       expect(screen.getByTestId('paper-delete-modal')).toBeDefined();
       expect(screen.getByText('Xóa bài báo này?')).toBeDefined();
-      expect(screen.getByText(/bị xóa khỏi máy của bạn/i)).toBeDefined();
+      expect(screen.getByText(/chuyển vào Thùng rác/i)).toBeDefined();
 
       // Click cancel
       const cancelBtn = screen.getByRole('button', { name: 'Hủy' });

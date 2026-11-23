@@ -52,9 +52,12 @@ describe('Publication info shows blanks, not "?"', () => {
   it('never-entered fields are empty and there is no explanation about "?"', () => {
     render(<PublicationInfoFields metadata={metadata} onChange={vi.fn()} />);
 
-    for (const id of ['volume', 'issue', 'firstPage', 'lastPage', 'published', 'doi']) {
+    for (const id of ['volume', 'issue', 'firstPage', 'lastPage', 'doi']) {
       expect((document.getElementById(`pub-${id}`) as HTMLInputElement).value).toBe('');
     }
+    // the publication date is picked from a calendar like the other dates, not typed into a box
+    expect(document.getElementById('pub-published')).toBeNull();
+    expect(screen.getByTestId('publication-info').textContent).toContain('Ngày đăng');
     expect(screen.getByTestId('publication-info').textContent).not.toContain('?');
   });
 

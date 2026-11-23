@@ -24,6 +24,7 @@ import {
 } from '@structpaper/api-client';
 import { sileo } from '@/components/toast';
 import { useInvalidateMembers } from '../hooks/useInvalidateMembers';
+import { activationLinkOf } from '@/lib/absolute-link';
 import { InvitationRowsShimmer } from './MemberTableShimmers';
 import {
   apiErrorMessage,
@@ -94,7 +95,7 @@ export const InvitationsTab: React.FC<InvitationsTabProps> = ({
     setBusyId(inv.id);
     try {
       const result: any = await resendMutation.mutateAsync({ id: inv.id });
-      const url: string = result.activationUrl;
+      const url: string = activationLinkOf(result) ?? '';
       const copied = await copyToClipboard(url);
 
       setGeneratedLink({

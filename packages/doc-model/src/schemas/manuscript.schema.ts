@@ -35,6 +35,7 @@ import type {
 export const InlineMarkSchema: z.ZodType<InlineMark> = z.enum([
   'b',
   'i',
+  'u',
   'sup',
   'sub',
   'code',

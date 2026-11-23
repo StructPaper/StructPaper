@@ -159,7 +159,7 @@ describe('Task 4.3: Editor Tabs Refactoring to CommandBus', () => {
   // 1. MetadataTab Tests
   // ---------------------------------------------------------------------------
   describe('MetadataTab', () => {
-    it('edits title, abstract, keywords, and received date and dispatches commands via CommandBus', () => {
+    it('edits title, abstract, keywords, and received date and dispatches commands via CommandBus', async () => {
       const paper = createMockPaper();
       const bus = createPaperCommandBus(paper);
       const dispatchSpy = vi.spyOn(bus, 'dispatch');
@@ -176,7 +176,10 @@ describe('Task 4.3: Editor Tabs Refactoring to CommandBus', () => {
 
       // 1. Edit Title (Tiếng Việt)
       const titleInput = screen.getByPlaceholderText('Nhập tựa đề bài báo tiếng Việt...');
-      fireEvent.change(titleInput, { target: { value: 'Tiêu đề bài báo đã cập nhật mới' } });
+      // the title is a rich line: it is written into through its editor
+      await act(async () => {
+        (titleInput as any).editor.chain().focus().selectAll().insertContent('Tiêu đề bài báo đã cập nhật mới').run();
+      });
 
       expect(onChangeMock).toHaveBeenCalled();
       const lastMeta = onChangeMock.mock.calls[onChangeMock.mock.calls.length - 1][0] as PaperMetadata;

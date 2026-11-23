@@ -7,15 +7,21 @@ import { findEnglishBackMatter, splitKeywords } from './docx-english-backmatter'
 import { identifyJournal } from './journal-identify';
 import { detectPrimaryLanguage, findVietnameseBackMatter, foldVietnamese } from './docx-language';
 import { findArticleTypePreset } from './article-types';
-import { enrichScriptRuns } from './docx-richtext';
+import { emphasiseText, enrichScriptRuns } from './docx-richtext';
+import { parseMarkup, serializeMarkup, stripMarkup } from './inline-markup';
 import { loadFigureImages } from './docx-figure-images';
+import { figureCaptionNumber, APPENDIX_KEY } from './docx-figures';
 import { figureTableInfo, figureTableAsCaptionParagraph, stripGuideParagraphs } from './docx-figure-tables';
-import { extractListHeadings, isNoneMark } from './docx-headings';
+import { extractListHeadings, extractListItems, isNoneMark } from './docx-headings';
 import { articleIdFromFileName } from './publication';
 import { normalizeImportedTitle } from './title-case';
+import { prepareDocx } from './docx-prepare';
+import { splitReferenceDoi } from './reference-format';
 import JSZip from 'jszip';
 import { Author, Affiliation, PaperSection, PaperReference, PreflightCheck, StructuralIssue, CompletePaper, PaperMetadata, TableCell } from '@/types/paper';
 import { findJournalTemplate, getJournalTemplate } from './templates';
+import { datesInLine } from './editorial-dates';
+import { APPENDIX_BLOCK_DEFAULTS } from './appendix';
 
 /**
  * Decode XML entities
@@ -44,15 +50,16 @@ export function cleanEndNoteText(str: string): string {
 }
 
 /**
- * Normalize Vietnamese spaced letters (e.g. "Nguy ễ n" -> "Nguyễn", "H ù ng" -> "Hùng")
+ * Normalize Vietnamese spaced letters in a NAME (e.g. "Nguy ễ n" -> "Nguyễn", "H ù ng" -> "Hùng").
+ * Only a lone accented letter that sits between word fragments is joined; whole words such as "mức độ" or "KCN ở TPHCM" are left alone.
  */
 export function normalizeVietnameseWordSpacing(name: string): string {
   if (!name) return '';
   let s = name;
-  // Repeat to catch consecutive spaced syllables
-  for (let k = 0; k < 3; k++) {
-    s = s.replace(/([A-ZÀ-Ỹa-zà-ỹ])\s+([à-ỹ])/g, '$1$2');
-  }
+  // "Nguy ễ n": fragment, lone accented letter, then a 1-2 letter fragment: one word
+  s = s.replace(/(\p{L}+)\s+([à-ỹ])\s+(\p{L}{1,2})(?!\p{L})/gu, '$1$2$3');
+  // "Hu ể" at the end of the name
+  s = s.replace(/(\p{L}+)\s+([à-ỹ])(?!\p{L})\s*$/u, '$1$2');
   return s.replace(/\s+/g, ' ').trim();
 }
 
@@ -70,6 +77,33 @@ export function detectJournalFromContent(
   const id = identifyJournal(textSnippet, fileName) ?? 'VNUHCM-STDJ';
   const template = findJournalTemplate(id) ?? getJournalTemplate('VNUHCM-STDJ');
   return { journalId: id, journalName: template.name, journalAbbv: template.shortName };
+}
+
+/**
+ * The text of a table cell with <b>/<i> around its bold and italic runs; undefined when nothing in it is emphasised (or when the
+ * tags would change what the cell says, as with reference-manager codes that are cleaned elsewhere).
+ */
+function cellEmphasis(paragraphXml: string[], plain: string): string | undefined {
+  const lines: string[] = [];
+  let any = false;
+  for (const p of paragraphXml) {
+    let line = '';
+    for (const m of p.matchAll(/<w:r\b[\s>]([\s\S]*?)<\/w:r>/gi)) {
+      const rXml = m[1];
+      const t = (rXml.match(/<w:t\b[^>]*>[\s\S]*?<\/w:t>/gi) || []).map((x) => x.replace(/<[^>]+>/g, '')).join('');
+      if (!t) continue;
+      const text = decodeXml(t);
+      const own = rXml.replace(/<w:rPrChange\b[\s\S]*?<\/w:rPrChange>/gi, '');
+      const bold = /<w:b[\s\/>]/i.test(own) && !/<w:b\s+w:val="(?:0|false)"/i.test(own);
+      const italic = /<w:i[\s\/>]/i.test(own) && !/<w:i\s+w:val="(?:0|false)"/i.test(own);
+      if ((bold || italic) && text.trim()) any = true;
+      line += bold || italic ? (bold ? '<b>' : '') + (italic ? '<i>' : '') + text + (italic ? '</i>' : '') + (bold ? '</b>' : '') : text;
+    }
+    if (line) lines.push(line);
+  }
+  if (!any) return undefined;
+  const joined = serializeMarkup(parseMarkup(lines.join('\n').trim()));
+  return stripMarkup(joined).replace(/\s+/g, ' ') === cleanEndNoteText(plain).replace(/\s+/g, ' ') ? joined : undefined;
 }
 
 export interface XmlRun {
@@ -130,8 +164,10 @@ export async function extractOpenXmlParagraphs(zip: JSZip): Promise<XmlParagraph
         /<w:position\s+w:val="[1-9]\d*"/i.test(rXml);
       const isSub =
         /<w:vertAlign\s+w:val="subscript"/i.test(rXml) || /<w:position\s+w:val="-\d+"/i.test(rXml);
-      const isBold = /<w:b[\s\/>]/i.test(rXml) && !/<w:b\s+w:val="(?:0|false)"/i.test(rXml);
-      const isItalic = /<w:i[\s\/>]/i.test(rXml) && !/<w:i\s+w:val="(?:0|false)"/i.test(rXml);
+      // the formatting the run has now (what a tracked formatting change replaced is in <w:rPrChange>, and is not it)
+      const own = rXml.replace(/<w:rPrChange\b[\s\S]*?<\/w:rPrChange>/gi, '');
+      const isBold = /<w:b[\s\/>]/i.test(own) && !/<w:b\s+w:val="(?:0|false)"/i.test(own);
+      const isItalic = /<w:i[\s\/>]/i.test(own) && !/<w:i\s+w:val="(?:0|false)"/i.test(own);
 
       const tMatch = rXml.match(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g);
       let text = '';
@@ -198,6 +234,10 @@ export function parseOpenXmlTable(tblXml: string): {
   interface MatrixCell {
     text: string;
     rawText: string;
+    /** The cell's text with <b>/<i> where the Word runs are bold or italic (only when something in it is). */
+    markup?: string;
+    /** Where Word centres or right-aligns the cell's text (left is what every cell is without a choice). */
+    align?: 'center' | 'right';
     isContinuation: boolean;
     isVContinue: boolean;
     vMerge: 'restart' | 'continue' | 'none';
@@ -249,6 +289,8 @@ export function parseOpenXmlTable(tblXml: string): {
         .filter((t) => t.length > 0);
       // one line per paragraph: multi-line cells (e.g. 4 value lines) must stay aligned across columns
       const cellText = pTexts.join('\n').trim();
+      const cellMarkup = cellEmphasis(pMatches, cellText);
+      const cellAlign = cellAlignment(pMatches);
 
       if (vMerge === 'continue') {
         let parentRow = r - 1;
@@ -279,6 +321,8 @@ export function parseOpenXmlTable(tblXml: string): {
           matrix[r][col + s] = {
             text: cellText,
             rawText: s === 0 ? cellText : '',
+            ...(s === 0 && cellMarkup ? { markup: cellMarkup } : {}),
+            ...(s === 0 && cellAlign ? { align: cellAlign } : {}),
             isContinuation: s > 0,
             isVContinue: false,
             vMerge: vMerge === 'restart' ? 'restart' : 'none',
@@ -388,10 +432,12 @@ export function parseOpenXmlTable(tblXml: string): {
         }
 
         rowCells.push({
-          text: cell.rawText || cell.text,
+          // body cells keep the bold and italic of the Word file; header cells are bold by the table's style anyway
+          text: (r >= headerRowCount && cell.markup) || cell.rawText || cell.text,
           colSpan: cell.gridSpan > 1 ? cell.gridSpan : undefined,
           rowSpan: rowSpan > 1 ? rowSpan : undefined,
           isHeader: r < headerRowCount,
+          ...(cell.align ? { align: cell.align } : {}),
         });
       }
       if (rowCells.length > 0) rows.push(rowCells);
@@ -412,6 +458,22 @@ export function parseOpenXmlTable(tblXml: string): {
     totalRowCount: matrix.length,
     allCellTexts: matrix.flatMap((row) => row.map((cell) => cell.text).filter(Boolean)),
   };
+}
+
+/** The alignment Word gives the text of a cell (<w:jc> of the paragraphs that hold text): centre or right when most of them have it. */
+function cellAlignment(paragraphs: string[]): 'center' | 'right' | undefined {
+  const votes = { center: 0, right: 0, other: 0 };
+  for (const p of paragraphs) {
+    if (!/<w:t\b[^>]*>[^<]+<\/w:t>/i.test(p)) continue;
+    const pPr = p.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/i)?.[1] ?? '';
+    const v = pPr.match(/<w:jc\b[^>]*w:val="(\w+)"/i)?.[1];
+    if (v === 'center') votes.center++;
+    else if (v === 'right' || v === 'end') votes.right++;
+    else votes.other++;
+  }
+  if (votes.center > votes.right && votes.center >= votes.other) return 'center';
+  if (votes.right > votes.center && votes.right >= votes.other) return 'right';
+  return undefined;
 }
 
 export async function extractOpenXmlTables(
@@ -440,7 +502,7 @@ export async function extractOpenXmlTables(
     for (let pI = pMatches.length - 1; pI >= Math.max(0, pMatches.length - 3); pI--) {
       // Text runs only: field codes (" SEQ Bảng \* ARABIC ") live in <w:instrText> and must not leak into the caption
       const pText = (pMatches[pI].match(/<w:t\b[^>]*>[\s\S]*?<\/w:t>/gi) || []).map((t) => t.replace(/<[^>]+>/g, '')).join('').replace(/\s+/g, ' ').trim();
-      const cleanP = normalizeVietnameseWordSpacing(cleanEndNoteText(decodeXml(pText)));
+      const cleanP = cleanEndNoteText(decodeXml(pText));
 
       const tableCapMatch = cleanP.match(/^(?:b\s*ảng|bảng|table|b\.)\s*(\d*)\s*[:.-]?\s*(.*)/i);
       if (
@@ -559,7 +621,7 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
     const text = p.text;
 
     // Stop frontmatter extraction if we hit a body section header
-    if (/^(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|vật liệu và phương pháp)/i.test(text.trim())) {
+    if (/^(?:\d+(?:\.\d+)*\.?\s+)?(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|vật liệu và phương pháp)/i.test(text.trim())) {
       break;
     }
 
@@ -764,7 +826,8 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
 
   // Filter out any affiliation that is accidentally a keyword or table caption
   const cleanedAffiliations = affiliations.filter(
-    (a) => !/^(từ khóa|keywords|bảng|table|hình|figure)/i.test(a.name)
+    // (the correspondence line "*Tác giả liên hệ: Name, Faculty…" is not an institution of its own)
+    (a) => !/^(từ khóa|keywords|bảng|table|hình|figure)/i.test(a.name) && !/^\*?\s*(tác\s+gi[aả]\s+liên\s+hệ|corresponding\s+author)\s*:/i.test(a.name)
   );
 
   authors.forEach((a) => {
@@ -785,7 +848,10 @@ export function extractAuthorsAndAffiliationsFromRuns(paragraphs: XmlParagraph[]
   return { authors, affiliations: cleanedAffiliations, corresponding, authorLineIndex };
 }
 
-export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string): Promise<CompletePaper> {
+export async function parseDocxFile(originalBuffer: ArrayBuffer, fileName?: string): Promise<CompletePaper> {
+  // not a .docx: say so plainly. Track Changes are resolved and footnotes placed in the text before anything is read
+  const prepared = await prepareDocx(originalBuffer);
+  const fileBuffer = prepared.buffer;
   const mammothOpts: any = { arrayBuffer: fileBuffer };
   if (typeof Buffer !== 'undefined') {
     mammothOpts.buffer = Buffer.isBuffer(fileBuffer) ? fileBuffer : Buffer.from(fileBuffer);
@@ -829,7 +895,9 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     }
   }
 
-  const listHeadings = extractListHeadings((await zip.file('word/document.xml')?.async('text')) || '');
+  const listHeadings = extractListHeadings((await zip.file('word/document.xml')?.async('text')) || '', await zip.file('word/styles.xml')?.async('text'));
+  // the bullets and numbers Word draws by itself are not in the text: they are written in front of their paragraphs
+  const listItems = extractListItems((await zip.file('word/document.xml')?.async('text')) || '', await zip.file('word/numbering.xml')?.async('text'), listHeadings);
   const rawTextResult = await mammoth.extractRawText(cleanMammothOpts);
   const rawLines = rawTextResult.value
     .split(/\r?\n/)
@@ -963,22 +1031,16 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
       continue;
     }
 
-    // Dates & History
-    if (/ngày nhận( bài)?:/i.test(line)) {
-      dates.received = line.replace(/.*ngày nhận( bài)?:\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày (nhận )?chỉnh sửa|ngày sửa (đổi|bài):/i.test(line)) {
-      dates.revised = line.replace(/.*(ngày (nhận )?chỉnh sửa|ngày sửa (đổi|bài)):\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày chấp nhận:/i.test(line)) {
-      dates.accepted = line.replace(/.*ngày chấp nhận:\s*/i, '').replace(/;$/, '').trim();
-      continue;
-    }
-    if (/ngày (đăng|xuất bản)( trực tuyến)?:/i.test(line)) {
-      dates.published = line.replace(/.*ngày (đăng|xuất bản)( trực tuyến)?:\s*/i, '').replace(/;$/, '').trim();
-      continue;
+    // Dates & History: one label per line, or every label on one line ("Ngày nhận bài: …Ngày chỉnh sửa: …Ngày chấp nhận: …")
+    {
+      const lineDates = line.length < 300 && (/ngày/i.test(line) || (!isFrontMatterDone && !isReadingReferences)) ? datesInLine(line) : {};
+      const keys = Object.keys(lineDates) as Array<keyof typeof dates>;
+      if (keys.length > 0) {
+        keys.forEach((k) => {
+          dates[k] = lineDates[k] ?? '';
+        });
+        continue;
+      }
     }
 
     // Article DOI: only the labelled line in the front matter / side box. References and body text
@@ -1104,7 +1166,8 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
         /^(abstract|tóm tắt|keywords|từ khóa|từ khoá|danh mục từ viết tắt|phụ lục|appendix|lời cảm ơn|acknowledgements)$/i.test(
           line
         ) ||
-        /^(abstract|keywords|từ khóa):/i.test(line)
+        /^(abstract|keywords|từ khóa):/i.test(line) ||
+        /^(?:phụ\s*lục|appendix)\s*\d+\s*[:.\-–]/i.test(line)
       ) {
         isReadingReferences = false;
         i--;
@@ -1170,7 +1233,7 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
 
     // Headings H1
     if (
-      /^(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|phương pháp nghiên cứu|vật liệu và phương pháp|kết quả|results|kết quả và thảo luận|bàn luận|thảo luận|discussion|kết luận|conclusion|conclusions|lời cảm ơn|acknowledgements|danh mục từ viết tắt|tuyên bố đóng góp của tác giả|tuyên bố xung đột lợi ích|đóng góp của các tác giả|xung đột lợi ích|tính khả dụng của dữ liệu|chấp thuận về đạo đức nghiên cứu|nguồn kinh phí|kinh phí|tài trợ|funding|author contributions|conflicts? of interest|data availability|ethics approval):?$/i.test(
+      /^(?:\d+(?:\.\d+)*\.?\s+)?(giới thiệu|đặt vấn đề|mở đầu|introduction|phương pháp|methods|phương pháp nghiên cứu|vật liệu và phương pháp|kết quả|results|kết quả và thảo luận|bàn luận|thảo luận|discussion|kết luận|conclusion|conclusions|lời cảm ơn|acknowledgements|danh mục từ viết tắt|tuyên bố đóng góp của tác giả|tuyên bố xung đột lợi ích|đóng góp của các tác giả|xung đột lợi ích|tính khả dụng của dữ liệu|chấp thuận về đạo đức nghiên cứu|nguồn kinh phí|kinh phí|tài trợ|funding|author contributions|conflicts? of interest|data availability|ethics approval):?$/i.test(
         line
       ) ||
       /^(\d+)\.\s+([A-ZÀ-Ỹa-z\s:]{3,60})$/i.test(line) ||
@@ -1200,9 +1263,11 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     }
 
     // Figure captions
-    if (/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]/i.test(line)) {
+    const bareFigNum = figureCaptionNumber(line);
+    if (/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]/i.test(line) || (bareFigNum && xmlCaptionNumbers.has(bareFigNum))) {
       isFrontMatterDone = true;
-      const figNumMatch = line.match(/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]\s*(.*)/i);
+      const figNumMatch =
+        line.match(/^(?:h\s*ình|hình|figure|fig\.|h\.)\s*(\d*)[:.]\s*(.*)/i) ?? line.match(/^(?:h\s*ình|hình|figure|fig\.?)\s*(\d+)\s+(.*)/i);
       const explicitNum = figNumMatch && figNumMatch[1] ? parseInt(figNumMatch[1], 10) : 0;
       const figNum = explicitNum || (sections.filter((s) => s.type === 'figure').length + 1);
       const rawCap = figNumMatch && figNumMatch[2] ? figNumMatch[2].trim() : line;
@@ -1253,7 +1318,13 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     }
 
     // Table / Appendix captions
+    // "Bảng 1 Tên bảng" (a Word caption with no colon) is a caption when a table of that number carries the same text
+    const lettersOnly = (s: string) => s.replace(/[^\p{L}]/gu, '').toLowerCase();
+    const bareNum = line.length <= 250 ? line.match(/^(?:b\s*ảng|bảng|table)\s*(\d+)\s+\S/i)?.[1] : undefined;
+    const isBareTableCaption =
+      !!bareNum && openXmlTables.some((t) => !t.placed && t.type === 'table' && t.num === Number(bareNum) && lettersOnly(t.caption) === lettersOnly(line));
     const isTableCaption =
+      isBareTableCaption ||
       line.length <= 250 &&
       !/^(?:b\s*ảng|bảng|table|b\.)\s*\d*[:.]?\s*(cho thấy|chỉ ra|biểu thị|được thể hiện|minh họa|mô tả|tóm tắt|được trình bày|shows|presents|indicates|illustrates|summarizes|phản ánh|cho biết|thể hiện)/i.test(
         line
@@ -1261,6 +1332,11 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
       !/\b(p\s*[<=]|β\s*=|t\s*=|VIF|H\d+[:)])/i.test(line) &&
       /^(?:b\s*ảng|bảng|table|b\.)\s*(\d*)\s*[:.-]/i.test(line);
 
+    // where an appendix stands in the Word file: after the references, or after the last block of the text before it
+    const appendixOrigin = () => ({
+      after: [...sections].reverse().find((s) => !(s.table?.appendix || s.figure?.appendix))?.id,
+      afterReferences: references.length > 0,
+    });
     const isAppendixCaption =
       line.length <= 250 &&
       /^(?:p\s*hụ\s*lục|phụ\s*lục|appendix)\s*(\d*)\s*[:.-]/i.test(line);
@@ -1310,7 +1386,8 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
       let targetApp = appNum
         ? openXmlTables.find((t) => !t.placed && t.type === 'appendix' && t.num === appNum)
         : null;
-      if (!targetApp) {
+      // (a numbered appendix with no table of its number is not given another one's table: it may be a picture)
+      if (!targetApp && !appNum) {
         targetApp = openXmlTables.find((t) => !t.placed && t.type === 'appendix');
       }
 
@@ -1320,6 +1397,7 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
           id: `s_${sections.length + 1}`,
           type: 'table',
           content: targetApp.caption,
+          appendixOrigin: appendixOrigin(),
           table: {
             id: targetApp.id,
             num: targetApp.num,
@@ -1328,7 +1406,27 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
             rows: targetApp.rows,
             headerRows: targetApp.headerRows,
             bodyRows: targetApp.bodyRows,
-            isFullWidth: true,
+            ...APPENDIX_BLOCK_DEFAULTS,
+            appendix: true,
+          },
+        });
+        continue;
+      }
+      // no table of that number: the appendix is a picture ("Phụ lục 4. Đánh giá nguy cơ sai lệch …")
+      if (appNum) {
+        const caption = line.trim();
+        sections.push({
+          id: `s_${sections.length + 1}`,
+          type: 'figure',
+          content: caption,
+          appendixOrigin: appendixOrigin(),
+          figure: {
+            id: `app_fig_${appNum}`,
+            num: appNum,
+            caption,
+            src: figureImageMap.get(APPENDIX_KEY + appNum) || '',
+            ...APPENDIX_BLOCK_DEFAULTS,
+            appendix: true,
           },
         });
         continue;
@@ -1339,6 +1437,12 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     if (attachTableFooterLine(sections, line)) continue;
 
     // Paragraph (short "n là số lượng mẫu" lines after "Trong đó:" are kept too)
+    // an item of a list keeps its mark, however short it is
+    const listMark = isFrontMatterDone ? listItems.get(line.trim())?.shift() : undefined;
+    if (listMark) {
+      sections.push({ id: `s_${sections.length + 1}`, type: 'paragraph', content: `${listMark}${line}` });
+      continue;
+    }
     if (line.length > 20 || (isFrontMatterDone && (isWhereDefinitionLine(line, sections[sections.length - 1]) || isNoneMark(line, sections[sections.length - 1])))) {
       if (!isFrontMatterDone) {
         continue;
@@ -1354,7 +1458,16 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
   // Any remaining real tables that were not matched by text captions
   // (e.g. caption was embedded in table banner or had non-standard formatting)
   for (const t of openXmlTables) {
-    if (!t.placed && (t.type === 'table' || t.type === 'appendix')) {
+    if (!t.placed && t.type === 'appendix') {
+      t.placed = true;
+      sections.push({
+        id: `s_tab_${t.id}`,
+        type: 'table',
+        content: t.caption,
+        appendixOrigin: { after: undefined, afterReferences: true },
+        table: { id: t.id, num: t.num, caption: t.caption, headers: t.headers, rows: t.rows, headerRows: t.headerRows, bodyRows: t.bodyRows, ...APPENDIX_BLOCK_DEFAULTS, appendix: true },
+      });
+    } else if (!t.placed && t.type === 'table') {
       t.placed = true;
       placeLeftoverTable(sections, {
         id: `s_tab_${t.id}`,
@@ -1391,7 +1504,7 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
   }
 
   // Keep superscripts / subscripts (f², R², CO₂ …) that plain-text extraction flattens
-  enrichScriptRuns(sections, openXmlParagraphs);
+  enrichScriptRuns(sections, openXmlParagraphs, references.length);
   applyTableLayoutHints(sections, Object.fromEntries(openXmlTables.map((t) => [t.id, !!t.landscape])));
 
   if (primaryLanguage === 'en') {
@@ -1462,10 +1575,13 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
 
   // ALL-CAPS titles become sentence case (acronyms found elsewhere in the paper stay capital); original kept for undo
   const normalizedTitle = normalizeImportedTitle(title, [abstract, keywords.join(' '), ...sections.map((s) => s.content)]);
+  // the English title too: a title typed in CAPITALS becomes sentence case (acronyms found elsewhere in the paper stay capital)
+  const normalizedTitleEn = normalizeImportedTitle(titleEn, [abstractEn, keywordsEn.join(' '), abstract, ...sections.map((s) => s.content)]);
   const metadata: PaperMetadata = {
     title: normalizedTitle.title,
     titleOriginal: normalizedTitle.original,
-    titleEn,
+    titleEn: normalizedTitleEn.title,
+    ...(normalizedTitleEn.original ? { titleEnOriginal: normalizedTitleEn.original } : {}),
     articleType,
     ...(articleTypeEn ? { articleTypeEn } : {}),
     journalId: journalInfo.journalId,
@@ -1474,8 +1590,8 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     authors,
     affiliations,
     corresponding,
-    abstract: abstract || 'Chưa phát hiện phần tóm tắt trong tài liệu.',
-    abstractEn,
+    abstract: abstract ? emphasiseText(abstract, openXmlParagraphs) : 'Chưa phát hiện phần tóm tắt trong tài liệu.',
+    abstractEn: abstractEn ? emphasiseText(abstractEn, openXmlParagraphs) : abstractEn,
     keywords: keywords.length > 0 ? keywords : ['Báo cáo khoa học', 'VNUHCM'],
     keywordsEn,
     dates,
@@ -1488,13 +1604,22 @@ export async function parseDocxFile(fileBuffer: ArrayBuffer, fileName?: string):
     lastPage,
     // only the article id is knowable from the file name; the rest stays "?" until the editor enters it
     publication: articleIdFromFileName(fileName) ? { articleId: articleIdFromFileName(fileName) } : undefined,
+    // what the import did and what it could not carry over (Track Changes, footnotes, comments, EMF/WMF, MathType)
+    ...(prepared.notes.length ? { importNotes: prepared.notes } : {}),
+    // the language the first page is written in: the title bar's language picker starts on it
+    primaryLanguage,
   };
 
   const paper: CompletePaper = {
     id: `paper_${Date.now()}`,
     metadata,
     sections,
-    references,
+    // a DOI at the end of a reference ("Available from: https://doi.org/..." / "DOI: ...") is kept in its own field
+    references: references.map((r) => {
+      if (r.doi) return r;
+      const split = splitReferenceDoi(r.raw);
+      return split.doi ? { ...r, raw: split.raw, doi: split.doi } : r;
+    }),
   };
 
   return paper;

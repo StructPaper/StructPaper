@@ -34,6 +34,7 @@ import { JournalLayoutTab } from './tabs/JournalLayoutTab';
 import { JournalPublicationTab } from './tabs/JournalPublicationTab';
 import { ResizableSplitLayout, LivePreviewPane, useEditorCompilation } from '@/features/editor';
 import { generateSamplePaperForJournal } from '@/lib/templates/sample-template-paper';
+import { templateFromProfile } from '@/lib/templates';
 import { CompletePaper } from '@/types/paper';
 
 interface JournalDetailEditorProps {
@@ -93,6 +94,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     [shown.profile]
   );
   const [livePaper, setLivePaper] = useState<CompletePaper>(samplePaper);
+  const shownTemplate = useMemo(() => templateFromProfile(shown.profile as any), [shown.profile]);
 
   const {
     compiledPdfUrl,
@@ -106,6 +108,8 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
     paper: livePaper,
     formData: livePaper,
     onUpdatePaper: setLivePaper,
+    // the preview is typeset with the rules on screen (names, colour, print details), saved or not
+    latexTemplate: shownTemplate,
   });
 
   // Tách biệt logic quản lý lưu, xác nhận và khôi phục template sang custom hook
@@ -315,7 +319,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         isDirty={isDirty}
         saveSuccess={saveSuccess}
         readOnly={!canEdit || isViewingOld}
-        onBack={() => guard.guardedPush('/templates')}
+        onBack={() => guard.guardedBack('/templates')}
       />
 
       {/* Main Workspace Area */}
@@ -324,7 +328,7 @@ export const JournalDetailEditor: React.FC<JournalDetailEditorProps> = ({
         <div className="flex sm:hidden flex-shrink-0 items-center justify-between p-1.5 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200">
           <button
             type="button"
-            onClick={() => guard.guardedPush('/templates')}
+            onClick={() => guard.guardedBack('/templates')}
             aria-label="Quay lại danh mục tạp chí"
             className="p-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 font-bold text-xs flex items-center gap-1 shadow-2xs"
             title="Quay lại danh mục tạp chí"

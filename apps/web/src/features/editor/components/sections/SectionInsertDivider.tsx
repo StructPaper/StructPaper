@@ -35,6 +35,8 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
             Thêm bên dưới:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
+            {(
+              <>
             <button
               type="button"
               onClick={() => onAddHeading('h1', idx)}
@@ -53,6 +55,8 @@ const SectionInsertDividerBase: React.FC<SectionInsertDividerProps> = ({
               <AlignLeft className="w-2.5 h-2.5 text-zinc-500" />
               <span>+ Đoạn văn</span>
             </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => onAddTable(idx)}

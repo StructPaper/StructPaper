@@ -63,6 +63,25 @@ export function findField(target: FocusTarget): HTMLElement | null {
   return fields[Math.min(target.nth ?? 0, fields.length - 1)];
 }
 
+/** Whether the field can be seen as it is: inside the window and inside every scrolling box around it. */
+export function isInView(el: HTMLElement): boolean {
+  if (typeof window === 'undefined' || !el.getBoundingClientRect) return false;
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return false;
+  let top = 0;
+  let bottom = window.innerHeight || document.documentElement.clientHeight;
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const o = getComputedStyle(p);
+    if (/(auto|scroll|hidden|clip)/.test(o.overflowY)) {
+      const pr = p.getBoundingClientRect();
+      top = Math.max(top, pr.top);
+      bottom = Math.min(bottom, pr.bottom);
+    }
+  }
+  // (a field that fills the view, taller than the box, counts as seen when its start is)
+  return r.top >= top && (r.bottom <= bottom || (r.height > bottom - top && r.top < bottom - 24));
+}
+
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -76,7 +95,8 @@ export async function focusTarget(target: FocusTarget | null, timeoutMs = 1200):
   while (Date.now() - started < timeoutMs) {
     const el = findField(target);
     if (el) {
-      el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      // a field already in front of the author stays where it is: no scrolling while they type
+      if (!isInView(el)) el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
       el.focus?.({ preventScroll: true });
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
         try {

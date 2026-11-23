@@ -7,6 +7,7 @@ import { FileText, Calendar, BookOpen, Tag } from 'lucide-react';
 import { PublicationInfoFields } from './PublicationInfoFields';
 import { ArticleTypeField } from './ArticleTypeField';
 import { KeywordsInput } from './KeywordsInput';
+import { RichLineInput } from './sections/RichLineInput';
 import { useTabScrollRestoration } from '../hooks';
 import {
   useEditorCommandBus,
@@ -95,19 +96,13 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
         <label className="text-xs font-bold text-zinc-700 block mb-1.5">
           Tựa đề bài báo (Tiếng Việt):
         </label>
-        <textarea
-          ref={titleViRef}
+        <RichLineInput
           value={metadata.title}
-          onChange={(e) => {
-            dispatchTitleChange(activeBus, e.target.value, onChange, metadata);
-            autoResize(e.target);
-          }}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-          style={{ resize: 'none', overflow: 'hidden' }}
-          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm font-semibold text-zinc-900 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all leading-snug shadow-2xs"
+          onChange={(val) => dispatchTitleChange(activeBus, val, onChange, metadata)}
           placeholder="Nhập tựa đề bài báo tiếng Việt..."
+          ariaLabel="Tựa đề bài báo tiếng Việt"
+          textClassName="font-semibold"
+          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm text-zinc-900 bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all leading-snug shadow-2xs cursor-text"
         />
       </div>
 
@@ -116,19 +111,14 @@ export const MetadataTab: React.FC<MetadataTabProps> = ({
         <label className="text-xs font-bold text-zinc-700 block mb-1.5">
           Tựa đề bài báo (Tiếng Anh - nếu có):
         </label>
-        <textarea
-          ref={titleEnRef}
+        {/* the title as it prints: its bold or italic words are shown as such, never as tags, and the field itself is upright */}
+        <RichLineInput
           value={metadata.titleEn || ''}
-          onChange={(e) => {
-            dispatchTitleEnChange(activeBus, e.target.value, onChange, metadata);
-            autoResize(e.target);
-          }}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-          style={{ resize: 'none', overflow: 'hidden' }}
-          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm font-semibold italic text-zinc-900 bg-white focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-300 transition-all leading-snug shadow-2xs"
+          onChange={(val) => dispatchTitleEnChange(activeBus, val, onChange, metadata)}
           placeholder="Article Title in English..."
+          ariaLabel="Tựa đề bài báo tiếng Anh"
+          textClassName="font-semibold"
+          className="w-full min-h-[56px] p-3 rounded-2xl border border-zinc-200 text-sm text-zinc-900 bg-white focus-within:ring-4 focus-within:ring-blue-200 focus-within:border-blue-300 transition-all leading-snug shadow-2xs cursor-text"
         />
       </div>
 

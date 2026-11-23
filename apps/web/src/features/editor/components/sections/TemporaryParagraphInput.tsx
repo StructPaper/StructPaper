@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Inline } from '@structpaper/doc-model';
+import type { Inline, InlineMark } from '@structpaper/doc-model';
 import { parseCitationNumbers } from '@structpaper/doc-model';
+import { hasMarkup, parseMarkup, wrapInlineMarks } from '@/lib/inline-markup';
+import { MarkerText } from './markers';
+import { MathFormula } from '@/features/preview/components/MathText';
 
 /**
  * Converts Inline nodes into text for display and editing.
@@ -15,14 +18,7 @@ export function inlinesToDisplayText(inlines?: Inline[]): string {
   for (const inline of inlines) {
     switch (inline.t) {
       case 'text': {
-        let v = inline.v;
-        if (inline.marks?.includes('i')) {
-          v = `*${v}*`;
-        }
-        if (inline.marks?.includes('b')) {
-          v = `**${v}**`;
-        }
-        result += v;
+        result += wrapInlineMarks(inline.v, inline.marks);
         break;
       }
       case 'cite': {
@@ -60,11 +56,40 @@ export function inlinesToDisplayText(inlines?: Inline[]): string {
  * Converts text containing [n] citations, $latex$ math, and *italic* markdown
  * into an array of doc-model Inline nodes.
  */
-export function displayTextToInlines(text: string): Inline[] {
+export function displayTextToInlines(text: string, options: { legacyStars?: boolean } = {}): Inline[] {
+  if (!text) return [{ t: 'text', v: '' }];
+  const stars = options.legacyStars !== false;
+  // <b>, <i>, <u> runs: each run is read on its own and its marks are added to the text inside it
+  if (hasMarkup(text)) {
+    const out: Inline[] = [];
+    for (const seg of parseMarkup(text)) {
+      for (const il of plainDisplayTextToInlines(seg.text, stars)) {
+        if (il.t !== 'text') {
+          out.push(il);
+          continue;
+        }
+        const marks = new Set<InlineMark>(il.marks ?? []);
+        if (seg.b) marks.add('b');
+        if (seg.i) marks.add('i');
+        if (seg.u) marks.add('u');
+        out.push({ ...il, ...(marks.size > 0 ? { marks: [...marks] } : {}) });
+      }
+    }
+    return out.length > 0 ? out : [{ t: 'text', v: '' }];
+  }
+  return plainDisplayTextToInlines(text, stars);
+}
+
+/** Citations, formulas and (unless `legacyStars` is off) the older *italic* / **bold** markers. */
+const TOKENS_WITH_STARS = /(\[(\d+(?:\s*[,-–—]\s*\d+)*)\])|(\$([^$]+)\$)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)/g;
+/** The same without the star markers: where asterisks are only asterisks (the stars of "Chú thích: *, **, *** là mức ý nghĩa" under a table). */
+const TOKENS_NO_STARS = /(\[(\d+(?:\s*[,-–—]\s*\d+)*)\])|(\$([^$]+)\$)/g;
+
+function plainDisplayTextToInlines(text: string, stars = true): Inline[] {
   if (!text) return [{ t: 'text', v: '' }];
 
-  // Matches citations like [1] or [1, 2], math like $...$, and italic like *...*
-  const tokenRegex = /(\[(\d+(?:\s*[,-–—]\s*\d+)*)\])|(\$([^$]+)\$)|(\*([^*]+)\*)/g;
+  // Matches citations like [1] or [1, 2], math like $...$, and the older *italic* / **bold** markers
+  const tokenRegex = new RegExp(stars ? TOKENS_WITH_STARS : TOKENS_NO_STARS);
   const inlines: Inline[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -95,12 +120,11 @@ export function displayTextToInlines(text: string): Inline[] {
         latex: match[4],
       });
     } else if (match[5]) {
-      // Italic: *...*
-      inlines.push({
-        t: 'text',
-        v: match[6],
-        marks: ['i'],
-      });
+      // Bold: **...** (older documents)
+      inlines.push({ t: 'text', v: match[6], marks: ['b'] });
+    } else if (match[7]) {
+      // Italic: *...* (older documents)
+      inlines.push({ t: 'text', v: match[8], marks: ['i'] });
     }
 
     lastIndex = matchEnd;
@@ -126,30 +150,12 @@ export function renderInlineNodes(
   return inlines.map((node, i) => {
     switch (node.t) {
       case 'text': {
-        const isItalic = node.marks?.includes('i');
-        const isBold = node.marks?.includes('b');
-        if (isItalic && isBold) {
-          return (
-            <strong key={`inline_t_${i}`} className="font-bold italic">
-              {node.v}
-            </strong>
-          );
-        }
-        if (isItalic) {
-          return (
-            <em key={`inline_t_${i}`} className="italic">
-              {node.v}
-            </em>
-          );
-        }
-        if (isBold) {
-          return (
-            <strong key={`inline_t_${i}`} className="font-bold">
-              {node.v}
-            </strong>
-          );
-        }
-        return <span key={`inline_t_${i}`}>{node.v}</span>;
+        // bold, italic and underline nest as <strong>, <em> and <u> around the text
+        let el: React.ReactNode = <MarkerText text={node.v} />;
+        if (node.marks?.includes('u')) el = <u>{el}</u>;
+        if (node.marks?.includes('i')) el = <em className="italic">{el}</em>;
+        if (node.marks?.includes('b')) el = <strong className="font-bold">{el}</strong>;
+        return <React.Fragment key={`inline_t_${i}`}>{el}</React.Fragment>;
       }
       case 'cite': {
         const numbers = node.refIds.map((id) => {
@@ -173,12 +179,8 @@ export function renderInlineNodes(
       }
       case 'math': {
         return (
-          <span
-            key={`inline_math_${i}`}
-            className="font-mono bg-zinc-100 px-1 py-0.5 rounded text-zinc-800 text-xs mx-0.5 border border-zinc-200/60"
-            title="Công thức toán học"
-          >
-            ${node.latex}$
+          <span key={`inline_math_${i}`} className="mx-0.5" title="Công thức toán học: bấm vào đoạn để sửa">
+            <MathFormula latex={node.latex} />
           </span>
         );
       }

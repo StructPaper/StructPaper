@@ -14,10 +14,9 @@ export function generateSamplePaperForJournal(
   const shortCode = merged.names?.short || merged.id?.toUpperCase() || 'JOURNAL';
   const nameVi = merged.names?.vi || 'Tạp chí Phát triển Khoa học và Công nghệ';
   const nameEn = merged.names?.en || 'Science and Technology Development Journal';
-  const brandColor = merged.color || '#000099';
 
   // the preview is typeset with the layout the journal's rules ask for (columns, paper, type size, spacing)
-  const layoutSettings: LayoutSettings & { color?: string } = layoutFromProfile(merged as LayoutProfile);
+  const layoutSettings: LayoutSettings & { color?: string } = { ...layoutFromProfile(merged as LayoutProfile), color: merged.color || '#000099' };
 
   // Select article type
   const firstArticleType =
@@ -96,7 +95,9 @@ export function generateSamplePaperForJournal(
         accepted: '20-01-2026',
         published: '10-03-2026',
       },
-      doi: `https://doi.org/10.32508/${(merged.id || 'std').toLowerCase()}.${year}.1018`,
+      doi: merged.publication?.doiPrefix
+        ? `https://doi.org/${merged.publication.doiPrefix}.v8i1.1018`
+        : `https://doi.org/10.32508/${(merged.id || 'std').toLowerCase()}.${year}.1018`,
       volume: '8',
       issue: '1',
       year,

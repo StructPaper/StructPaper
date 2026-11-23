@@ -22,6 +22,10 @@ export interface ModalCardProps {
   maxWidthClass?: string;
   zIndex?: number;
   testId?: string;
+  /** Leave with the same soft spring as it arrives (instead of the quick fade). */
+  springExit?: boolean;
+  /** The card eases to its new size (a spring) when its content grows or shrinks, instead of jumping. */
+  animateLayout?: boolean;
 }
 
 /**
@@ -40,13 +44,16 @@ export const ModalCard: React.FC<ModalCardProps> = ({
   maxWidthClass = 'max-w-[640px]',
   zIndex = 110,
   testId = 'modal-card',
+  springExit = false,
+  animateLayout = false,
 }) => (
   <ModalPortal isOpen={isOpen} onClose={onClose} zIndex={zIndex}>
     <motion.div
       data-testid={testId}
+      layout={animateLayout && !isTest ? true : undefined}
       initial={isTest ? undefined : { opacity: 0, scale: 0.92, y: 28 }}
       animate={isTest ? undefined : { opacity: 1, scale: 1, y: 0 }}
-      exit={isTest ? undefined : { opacity: 0, scale: 0.92, y: 28, transition: { duration: 0.2, ease: [0.32, 0, 0.67, 0] } }}
+      exit={isTest ? undefined : { opacity: 0, scale: 0.92, y: 28, transition: springExit ? { type: 'spring', damping: 28, stiffness: 240 } : { duration: 0.2, ease: [0.32, 0, 0.67, 0] } }}
       transition={isTest ? { duration: 0 } : { type: 'spring', damping: 26, stiffness: 220 }}
       className={`bg-white w-full ${maxWidthClass} max-h-[86vh] rounded-[36px] p-6 sm:p-7 shadow-2xl border border-slate-100 flex flex-col relative overflow-hidden select-none`}
     >

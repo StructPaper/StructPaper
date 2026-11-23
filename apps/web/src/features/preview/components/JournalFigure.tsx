@@ -34,7 +34,7 @@ export const JournalFigure: React.FC<JournalFigureProps> = ({ figure, isFullWidt
           className="text-[8.5pt] text-gray-900 leading-snug"
           style={{ fontFamily: "'Source Sans 3', Calibri, Arial, sans-serif" }}
         >
-          <strong className="text-[#2B74B7] font-bold">Hình {figure.num}: </strong>
+          <strong className="text-[#2B74B7] font-bold">{figure.appendix ? `Phụ lục ${figure.num}` : `Hình ${figure.num}`}: </strong>
           <span>{stripCaptionLabel(figure.caption)}</span>
         </p>
       </div>

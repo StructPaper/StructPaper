@@ -1,10 +1,12 @@
 'use client';
 
+import { BlockSettingChips, tableSettingChips } from './BlockSettingChips';
 import React, { useMemo, useCallback } from 'react';
 import { PaperSection, PaperTable, normalizePaperTable } from '@/types/paper';
-import { AutoResizeTextarea } from './AutoResizeTextarea';
+import { RichLineInput } from './RichLineInput';
 import { TablePreviewGrid, resolveTablePreviewRows } from './TablePreviewGrid';
-import { Maximize2, ClipboardPaste, Table as TableIcon } from 'lucide-react';
+import { Maximize2, ClipboardPaste, Table as TableIcon, Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { cleanSourceStyle, sourceLinesOf, sourceLook, type TableSourceStyle } from '@/lib/table-source';
 
 interface TableSectionItemProps {
   sec: PaperSection;
@@ -14,6 +16,65 @@ interface TableSectionItemProps {
   onPasteTableData: (index: number, e: React.ClipboardEvent) => void;
   onPasteTableFromClipboardButton: (index: number) => void;
 }
+
+const StyleToggle: React.FC<{ on: boolean; label: string; testId: string; onClick: () => void; children: React.ReactNode }> = ({ on, label, testId, onClick, children }) => (
+  <button
+    type="button"
+    data-edit-only
+    title={label}
+    aria-label={label}
+    aria-pressed={on}
+    data-testid={testId}
+    onClick={onClick}
+    className={`h-7 w-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${on ? 'bg-[#ECFCCB] text-[#14532D]' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'}`}
+  >
+    {children}
+  </button>
+);
+
+/** The source and notes under a table: lines typed one under another, with bold, italic and alignment for the block. */
+export const TableSourceField: React.FC<{ source: string; style?: TableSourceStyle; onChange: (source: string, style: TableSourceStyle | undefined) => void }> = ({ source, style, onChange }) => {
+  const first = sourceLinesOf(source)[0] ?? '';
+  const look = sourceLook(style, first);
+  const set = (patch: TableSourceStyle) => onChange(source, cleanSourceStyle({ ...style, ...patch }));
+  return (
+    <div data-testid="table-source-field">
+      <div className="flex items-center justify-between mb-1 gap-2">
+        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Nguồn / Chú thích dưới bảng (Source):</label>
+        <div className="flex items-center gap-1">
+          <StyleToggle on={look.bold} label="In đậm phần nguồn" testId="table-source-bold" onClick={() => set({ bold: !look.bold })}>
+            <Bold className="w-3.5 h-3.5" />
+          </StyleToggle>
+          <StyleToggle on={look.italic} label="In nghiêng phần nguồn" testId="table-source-italic" onClick={() => set({ italic: !look.italic })}>
+            <Italic className="w-3.5 h-3.5" />
+          </StyleToggle>
+          <span className="w-px h-4 bg-zinc-200 mx-0.5" />
+          <StyleToggle on={look.align === 'left'} label="Căn trái" testId="table-source-left" onClick={() => set({ align: 'left' })}>
+            <AlignLeft className="w-3.5 h-3.5" />
+          </StyleToggle>
+          <StyleToggle on={look.align === 'center'} label="Căn giữa" testId="table-source-center" onClick={() => set({ align: 'center' })}>
+            <AlignCenter className="w-3.5 h-3.5" />
+          </StyleToggle>
+          <StyleToggle on={look.align === 'right'} label="Căn phải" testId="table-source-right" onClick={() => set({ align: 'right' })}>
+            <AlignRight className="w-3.5 h-3.5" />
+          </StyleToggle>
+        </div>
+      </div>
+      {/* Enter starts a new line: every line typed is a line printed under the table */}
+      <RichLineInput
+          lazy
+        multiline
+        value={source}
+        onChange={(val) => onChange(val, style)}
+        ariaLabel="Nguồn và chú thích dưới bảng"
+        placeholder="vd: Nguồn: Tác giả"
+        textClassName={`${look.italic ? 'italic' : ''} ${look.bold ? 'font-bold' : ''} ${look.align === 'center' ? 'text-center' : look.align === 'right' ? 'text-right' : 'text-left'}`}
+        className="w-full p-2.5 rounded-xl text-xs text-zinc-800 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-lime-200 focus-within:border-lime-400 transition-all shadow-2xs cursor-text"
+      />
+      <p className="mt-1 text-[10px] text-zinc-400">Mỗi dòng gõ ở đây là một dòng in dưới bảng. Dòng bắt đầu bằng &quot;Chú thích:&quot; tự in nghiêng.</p>
+    </div>
+  );
+};
 
 const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
   sec,
@@ -78,7 +139,8 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
             <span>Phóng to</span>
           </button>
         </div>
-        <AutoResizeTextarea
+        <RichLineInput
+          lazy
           value={table.caption || ''}
           onChange={(val) =>
             onUpdateSection(idx, {
@@ -88,7 +150,9 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
             })
           }
           placeholder="Nhập tiêu đề bảng (ví dụ: Bảng 1: Kết quả khảo sát...)"
-          className="w-full p-2.5 rounded-xl text-xs font-bold text-zinc-900 bg-zinc-50 border border-zinc-200/80 focus:bg-white focus:outline-none focus:ring-4 focus:ring-lime-200 focus:border-lime-400 transition-all shadow-2xs"
+          ariaLabel="Tiêu đề bảng"
+          textClassName="font-bold"
+          className="w-full p-2.5 rounded-xl text-xs text-zinc-900 bg-zinc-50 border border-zinc-200/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-lime-200 focus-within:border-lime-400 transition-all shadow-2xs cursor-text"
         />
       </div>
 
@@ -142,37 +206,19 @@ const TableSectionItemBase: React.FC<TableSectionItemProps> = ({
         />
       )}
 
-      {/* Table Footer Controls */}
-      <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
-        <button data-edit-only
-          type="button"
-          onClick={() => onOpenTableZoom(idx, table)}
-          className="px-2.5 py-1 rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-800 font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-lime-200 shadow-2xs hover:scale-105 active:scale-95"
-          title="Phóng to bảng số liệu toàn màn hình & soạn thảo"
-        >
-          <Maximize2 className="w-3 h-3 text-lime-600" />
-          <span>Soạn thảo</span>
-        </button>
+      {/* what is printed under the table: any number of lines, set bold, italic and aligned as the PDF and the overview page show it */}
+      <TableSourceField
+        source={table.source ?? ''}
+        style={table.sourceStyle}
+        onChange={(source, sourceStyle) => onUpdateSection(idx, { ...sec, table: { ...table, source: source || undefined, sourceStyle } })}
+      />
 
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              table.columnSpan === '2-column' || table.isFullWidth !== false
-                ? 'bg-[#EEF2FF] text-[#3730A3]'
-                : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
-            {table.columnSpan === '2-column' || table.isFullWidth !== false ? '2 Cột' : '1 Cột'}
-          </span>
-          {table.isRotated && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-              Xoay 90°
-            </span>
-          )}
-          <span className="text-zinc-400 text-[10px] font-medium ml-1">
-            {totalRows} hàng × {colCount} cột
-          </span>
-        </div>
+      {/* the settings that matter at a glance (read-only; changed in the block's settings) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <BlockSettingChips chips={tableSettingChips(table)} testId="table-settings-chips" />
+        <span className="text-zinc-400 text-[10px] font-medium">
+          {totalRows} hàng × {colCount} cột
+        </span>
       </div>
     </div>
   );

@@ -1,7 +1,16 @@
+import { hasMarkup, markupToLatex } from './inline-markup';
+
 /**
  * Escapes characters that have special meaning in LaTeX, while safely preserving math equations
  */
 export function escapeLatex(text: string): string {
+  if (!text) return '';
+  // <b>…</b>, <i>…</i>, <u>…</u>, <color=#rrggbb>…</color> become real formatting; each run is escaped on its own
+  if (hasMarkup(text)) return markupToLatex(text, escapePlainLatex);
+  return escapePlainLatex(text);
+}
+
+function escapePlainLatex(text: string): string {
   if (!text) return '';
 
   // Strip zero-width and invisible unicode characters

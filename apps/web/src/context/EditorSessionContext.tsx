@@ -10,6 +10,8 @@ import type { DocumentSaveState } from '@/lib/editor/save-status';
 import type { SaveState } from '@/lib/documents/autosave-controller';
 import type { ExportFormat } from '@/features/editor';
 import type { PageLanguage } from '@/lib/page-labels';
+import type { SourceInfo } from '@/lib/documents/document-api';
+import type { Analysis } from '@/lib/documents/word-source';
 
 export interface EditorDocumentSession {
   paperId?: string;
@@ -56,6 +58,31 @@ export interface PaperProfileInfo {
   onUpgrade: () => void;
 }
 
+/** The Word file the open paper was imported from, and reading it again (the dialog of the title bar's "?"). */
+export interface WordSourceState {
+  paperId: string;
+  loading: boolean;
+  /** The stored file, or null when the paper has none (an older paper). */
+  info: SourceInfo | null;
+  /** Version of the importer now; the file was read with `info.importerVersion`. */
+  currentImporterVersion: number;
+  busy: 'idle' | 'analyzing' | 'applying' | 'replanning';
+  error: string | null;
+  /** The comparison waiting for the author's decisions, if any. */
+  review: Analysis | null;
+  /** Read the stored file again with the current importer. */
+  reanalyze: () => void;
+  /** Read a new file in place of the stored one (or the first file of an older paper). */
+  replaceWith: (file: File) => void;
+  /** Take the accepted proposals (ids) into the paper. */
+  apply: (accepted: ReadonlySet<string>) => Promise<void>;
+  cancelReview: () => void;
+  /** Save the stored Word file to the computer. */
+  download: () => Promise<void>;
+  /** Redo the comparison listing (or not) the places where the paper differs from a file that did not change. */
+  showEdits: (on: boolean) => Promise<void>;
+}
+
 /** The paper's undo/redo, for the title bar's two buttons. */
 export interface EditorHistoryState {
   canUndo: boolean;
@@ -66,13 +93,31 @@ export interface EditorHistoryState {
   redo: () => void;
 }
 
+/** The title bar on a deleted paper's page in the trash: when it was deleted, how long it stays, and what can be done with it. */
+export interface TrashBarState {
+  deletedAt: string;
+  deletedBy?: string;
+  daysLeft: number;
+  busy: boolean;
+  /** The restore is running (its icon spins). */
+  restoring?: boolean;
+  /** Absent when the server does not allow the action for this person. */
+  onRestore?: () => void;
+  onPurge?: () => void;
+}
+
 /** The title bar on a paper's history page: the paper's title and the way back to the editor. */
 export interface PaperHistoryBarState {
   title: string;
   onBack: () => void;
   /** Keeps the paper under a name; absent for someone who may not change the paper. */
   onSaveVersion?: () => void;
+  /** The detailed way of reading a version (tabs like the editor's, with settings) is on. */
+  detailed?: boolean;
+  onToggleDetailed?: () => void;
 }
+
+export type EditorViewMode = 'form' | 'overview';
 
 export interface EditorSessionContextValue {
   autoSaveEnabled: boolean;
@@ -86,14 +131,21 @@ export interface EditorSessionContextValue {
   /** Language the PDF preview is laid out in (its closing page is the other language). */
   pdfLanguage: PageLanguage;
   setPdfLanguage: (language: PageLanguage) => void;
+  /** The editor shows the form tabs, or the whole paper as one page (the overview). */
+  editorView: EditorViewMode;
+  setEditorView: (view: EditorViewMode) => void;
   journalBar: JournalBarState | null;
   setJournalBar: (state: JournalBarState | null) => void;
   paperProfile: PaperProfileInfo | null;
   setPaperProfile: (info: PaperProfileInfo | null) => void;
+  wordSource: WordSourceState | null;
+  setWordSource: (state: WordSourceState | null) => void;
   history: EditorHistoryState | null;
   setHistory: (state: EditorHistoryState | null) => void;
   paperHistoryBar: PaperHistoryBarState | null;
   setPaperHistoryBar: (state: PaperHistoryBarState | null) => void;
+  trashBar: TrashBarState | null;
+  setTrashBar: (state: TrashBarState | null) => void;
 }
 
 const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
@@ -107,14 +159,20 @@ const DEFAULT_FALLBACK_SESSION: EditorSessionContextValue = {
   togglePdfFocusMode: () => {},
   pdfLanguage: 'vi',
   setPdfLanguage: () => {},
+  editorView: 'form',
+  setEditorView: () => {},
   journalBar: null,
   setJournalBar: () => {},
   paperProfile: null,
   setPaperProfile: () => {},
+  wordSource: null,
+  setWordSource: () => {},
   history: null,
   setHistory: () => {},
   paperHistoryBar: null,
   setPaperHistoryBar: () => {},
+  trashBar: null,
+  setTrashBar: () => {},
 };
 
 const EditorSessionContext = createContext<EditorSessionContextValue | null>(null);
@@ -129,17 +187,29 @@ export function EditorSessionProvider({
   const [documentSession, setDocumentSession] = useState<EditorDocumentSession | null>(null);
   const [pdfFocusMode, setPdfFocusModeState] = useState<boolean>(false);
   const [pdfLanguage, setPdfLanguageState] = useState<PageLanguage>('vi');
+  const [editorView, setEditorViewState] = useState<EditorViewMode>('form');
   const [journalBar, setJournalBar] = useState<JournalBarState | null>(null);
   const [paperProfile, setPaperProfile] = useState<PaperProfileInfo | null>(null);
+  const [wordSource, setWordSource] = useState<WordSourceState | null>(null);
   const [history, setHistory] = useState<EditorHistoryState | null>(null);
   const [paperHistoryBar, setPaperHistoryBar] = useState<PaperHistoryBarState | null>(null);
+  const [trashBar, setTrashBar] = useState<TrashBarState | null>(null);
 
   useEffect(() => {
     try {
       setPdfFocusModeState(localStorage.getItem('structpaper_pdf_interactive_mode') === 'true');
       setPdfLanguageState(localStorage.getItem('structpaper_pdf_language') === 'en' ? 'en' : 'vi');
+      // (the view is not restored: a paper always opens in the form, see UnifiedEditorView)
     } catch {
       // storage unavailable: keep the defaults
+    }
+  }, []);
+  const setEditorView = useCallback((view: EditorViewMode) => {
+    setEditorViewState(view);
+    try {
+      localStorage.setItem('structpaper_editor_view', view);
+    } catch {
+      // ignore
     }
   }, []);
   const setPdfLanguage = useCallback((language: PageLanguage) => {
@@ -204,16 +274,22 @@ export function EditorSessionProvider({
       togglePdfFocusMode,
       pdfLanguage,
       setPdfLanguage,
+      editorView,
+      setEditorView,
       journalBar,
       setJournalBar,
       paperProfile,
       setPaperProfile,
+      wordSource,
+      setWordSource,
       history,
       setHistory,
       paperHistoryBar,
       setPaperHistoryBar,
+      trashBar,
+      setTrashBar,
     }),
-    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, journalBar, paperProfile, history, paperHistoryBar]
+    [autoSaveEnabled, setAutoSaveEnabled, toggleAutoSave, documentSession, pdfFocusMode, setPdfFocusMode, togglePdfFocusMode, pdfLanguage, setPdfLanguage, editorView, setEditorView, journalBar, paperProfile, wordSource, history, paperHistoryBar, trashBar]
   );
 
   return (

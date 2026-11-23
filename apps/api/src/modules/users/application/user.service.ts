@@ -57,6 +57,34 @@ export interface UpdateUserDto {
 export interface InviteActor {
   user?: { id?: string } | null;
   ability?: AppAbility | null;
+  /** Origin of the page the request came from ("https://app.example.com"): the domain the invited person should be sent to. */
+  origin?: string | null;
+}
+
+/** "https://app.example.com/path?x" -> "https://app.example.com"; anything that is not an http(s) origin -> null. */
+export function normalizeOrigin(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The domain the app is served from, for links that leave it (the invitation mail). The page the admin is using right now
+ * wins, so changing the domain needs no configuration; it is only trusted when it is one of the allowed web origins
+ * (CORS_ORIGIN, comma separated; unset or "*" allows any). APP_URL is the fallback; with neither there is no domain to name.
+ */
+export function resolveAppOrigin(requestOrigin?: string | null, env: NodeJS.ProcessEnv = process.env): string | null {
+  const hint = normalizeOrigin(requestOrigin);
+  if (hint) {
+    const allowed = (env.CORS_ORIGIN ?? '').split(',').map((o) => normalizeOrigin(o.trim())).filter(Boolean);
+    const open = !env.CORS_ORIGIN || env.CORS_ORIGIN.trim() === '*' || env.CORS_ORIGIN.trim() === 'true';
+    if (open || allowed.includes(hint)) return hint;
+  }
+  return normalizeOrigin(env.APP_URL);
 }
 
 /** Why a user's roles/status can not be edited by the current viewer (null = editable). */
@@ -66,6 +94,9 @@ export type { UserRoleView };
 
 export interface InviteResult {
   user: Record<string, any>;
+  /** Where the invited person activates the account, without a domain ("/activate#token=..."): the screens put their own domain in front. */
+  activationPath: string;
+  /** The same with the domain when one is known, else the path alone. */
   activationUrl: string;
   token: string;
   expiresAt: string;
@@ -254,7 +285,7 @@ export class UserService {
       return { user, token };
     });
 
-    return this.deliverInvitation(user, token);
+    return this.deliverInvitation(user, token, actor);
   }
 
   /**
@@ -273,7 +304,7 @@ export class UserService {
     await this.assertCanManageUserRoles(actor, userId);
 
     const token = await db.transaction((tx: any) => this.issueInvitationToken(tx, user.id));
-    return this.deliverInvitation(user, token);
+    return this.deliverInvitation(user, token, actor);
   }
 
   /**
@@ -382,11 +413,9 @@ export class UserService {
     return this.db;
   }
 
-  private activationUrlFor(rawToken: string): string {
-    const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
-    // Token goes in the URL fragment: it is never sent to servers, proxies or access logs,
-    // and never leaks through the Referer header.
-    return `${appUrl}/activate#token=${rawToken}`;
+  /** Token goes in the URL fragment: it is never sent to servers, proxies or access logs, and never leaks through the Referer header. */
+  private activationPathFor(rawToken: string): string {
+    return `/activate#token=${rawToken}`;
   }
 
   /** Revokes every unused invitation token of the user, then issues a new one. */
@@ -415,21 +444,30 @@ export class UserService {
   private async deliverInvitation(
     user: any,
     token: { rawToken: string; expiresAt: Date },
+    actor?: InviteActor,
   ): Promise<InviteResult> {
-    const activationUrl = this.activationUrlFor(token.rawToken);
+    const activationPath = this.activationPathFor(token.rawToken);
+    const origin = resolveAppOrigin(actor?.origin);
+    const activationUrl = origin ? `${origin}${activationPath}` : activationPath;
 
     if (this.mailService) {
-      try {
-        await this.mailService.sendInvitation(user.email, token.rawToken, activationUrl);
-      } catch (err: any) {
-        // The link is still returned to the inviter, so a mail failure must not fail the invite.
-        this.logger.warn(`Could not send invitation mail to ${user.email}: ${err?.message}`);
+      if (!origin) {
+        // A mail needs a full address: say what is missing instead of mailing a link that goes nowhere.
+        this.logger.warn(`No mail sent to ${user.email}: the app's domain is unknown (set APP_URL); the link is still returned to the inviter.`);
+      } else {
+        try {
+          await this.mailService.sendInvitation(user.email, token.rawToken, activationUrl);
+        } catch (err: any) {
+          // The link is still returned to the inviter, so a mail failure must not fail the invite.
+          this.logger.warn(`Could not send invitation mail to ${user.email}: ${err?.message}`);
+        }
       }
     }
 
     const { passwordHash, ...userSummary } = user;
     return {
       user: userSummary,
+      activationPath,
       activationUrl,
       token: token.rawToken,
       expiresAt: token.expiresAt.toISOString(),

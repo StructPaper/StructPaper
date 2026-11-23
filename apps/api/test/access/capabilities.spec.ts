@@ -20,15 +20,15 @@ import { AccessController } from '../../src/modules/access/presentation/access.c
 const PERSONAS: Record<string, { roles: Array<{ roleName: string; scopeJournalId: string | null; scopeJournalName: string | null }>; expected: Capability[] }> = {
   'SuperAdmin': {
     roles: [{ roleName: 'SuperAdmin', scopeJournalId: null, scopeJournalName: null }],
-    expected: ['member:manage', 'role:assign', 'role:grant_superadmin', 'journal:manage', 'manuscript:read_all'],
+    expected: ['member:manage', 'role:assign', 'role:grant_superadmin', 'journal:manage', 'manuscript:read_all', 'trash:manage'],
   },
   'JournalManager (whole system)': {
     roles: [{ roleName: 'JournalManager', scopeJournalId: null, scopeJournalName: null }],
-    expected: ['member:manage', 'role:assign', 'journal:manage', 'manuscript:read_all'],
+    expected: ['member:manage', 'role:assign', 'journal:manage', 'manuscript:read_all', 'trash:manage'],
   },
   'JournalManager (one journal)': {
     roles: [{ roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'STD' }],
-    expected: ['member:manage', 'role:assign'],
+    expected: ['member:manage', 'role:assign', 'trash:manage'],
   },
   'Editor': { roles: [{ roleName: 'Editor', scopeJournalId: 'j-std', scopeJournalName: 'STD' }], expected: [] },
   'Reviewer': { roles: [{ roleName: 'Reviewer', scopeJournalId: null, scopeJournalName: null }], expected: [] },
@@ -39,7 +39,7 @@ const PERSONAS: Record<string, { roles: Array<{ roleName: string; scopeJournalId
       { roleName: 'Editor', scopeJournalId: 'j-ssh', scopeJournalName: 'SSH' },
       { roleName: 'JournalManager', scopeJournalId: 'j-std', scopeJournalName: 'STD' },
     ],
-    expected: ['member:manage', 'role:assign'],
+    expected: ['member:manage', 'role:assign', 'trash:manage'],
   },
 };
 

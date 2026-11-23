@@ -83,3 +83,38 @@ describe('batch import: choosing templates', () => {
     expect(result[1]).toEqual(expect.objectContaining({ id: second }));
   });
 });
+
+describe('Continue while the paper is being checked and created', () => {
+  it('spins, says it is working, and cannot be pressed twice (one paper)', () => {
+    const onConfirm = vi.fn();
+    render(<StepSelectTemplate onConfirm={onConfirm} onBack={vi.fn()} busy />);
+    const btn = screen.getByTestId('continue-to-editor-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute('aria-busy')).toBe('true');
+    expect(btn.textContent).toContain('Đang xử lý');
+    expect(btn.querySelector('.animate-spin')).toBeTruthy();
+    fireEvent.click(btn);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('looks as usual when nothing is running', () => {
+    render(<StepSelectTemplate onConfirm={vi.fn()} onBack={vi.fn()} />);
+    const btn = screen.getByTestId('continue-to-editor-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.textContent).toContain('Tiếp tục');
+    expect(btn.querySelector('.animate-spin')).toBeNull();
+  });
+
+  it('the same for several papers, and going back is locked too', () => {
+    const onConfirm = vi.fn();
+    const onBack = vi.fn();
+    render(<StepBatchTemplates files={files} onConfirm={onConfirm} onBack={onBack} busy />);
+    const btn = screen.getByTestId('continue-to-editor-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toContain('Đang xử lý');
+    fireEvent.click(btn);
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Quay lại tải file'));
+    expect(onBack).not.toHaveBeenCalled();
+  });
+});

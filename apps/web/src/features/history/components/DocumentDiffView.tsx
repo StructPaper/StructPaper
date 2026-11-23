@@ -27,8 +27,8 @@ interface DocumentDiffViewProps {
   onInsertBlock?: (section: Json) => void;
 }
 
-const KIND_LABEL: Record<string, string> = { added: 'Mới', removed: 'Đã xóa', modified: 'Đã sửa', moved: 'Đã di chuyển' };
-const KIND_BOX: Record<string, string> = {
+export const KIND_LABEL: Record<string, string> = { added: 'Mới', removed: 'Đã xóa', modified: 'Đã sửa', moved: 'Đã di chuyển' };
+export const KIND_BOX: Record<string, string> = {
   added: 'border-l-4 border-emerald-400 bg-emerald-50/60',
   removed: 'border-l-4 border-rose-400 bg-rose-50/60',
   modified: 'border-l-4 border-amber-400 bg-amber-50/50',
@@ -42,7 +42,7 @@ const KIND_BADGE: Record<string, string> = {
 };
 
 /** Text with the added words green and the removed words red and struck through. */
-const Marked: React.FC<{ segments: InlineSegment[] }> = ({ segments }) => (
+export const Marked: React.FC<{ segments: InlineSegment[] }> = ({ segments }) => (
   <>
     {segments.map((s, i) =>
       s.type === 'same' ? (
@@ -56,24 +56,24 @@ const Marked: React.FC<{ segments: InlineSegment[] }> = ({ segments }) => (
   </>
 );
 
-const Badge: React.FC<{ kind: string }> = ({ kind }) => (
+export const Badge: React.FC<{ kind: string }> = ({ kind }) => (
   <span className={`inline-block mb-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${KIND_BADGE[kind]}`}>{KIND_LABEL[kind]}</span>
 );
 
-const personName = (a: Json) => String(a.name || a.fullName || a.nameEn || a.id || '');
-const text = (v: unknown): string => (v === undefined || v === null ? '' : Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v));
+export const personName = (a: Json) => String(a.name || a.fullName || a.nameEn || a.id || '');
+export const text = (v: unknown): string => (v === undefined || v === null ? '' : Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
 /** A table cell's text, from either shape the paper keeps. */
 const cellText = (c: unknown): string => (typeof c === 'string' ? c : c && typeof c === 'object' ? String((c as Json).text ?? '') : '');
 
-function tableRows(t: Json | undefined): { header: string[]; body: string[][] } {
+export function tableRows(t: Json | undefined): { header: string[]; body: string[][] } {
   if (!t) return { header: [], body: [] };
   const header = Array.isArray(t.headers) && t.headers.length ? t.headers.map(cellText) : (t.headerRows?.[0] ?? []).map(cellText);
   const body = Array.isArray(t.rows) && t.rows.length ? t.rows.map((r: unknown[]) => r.map(cellText)) : (t.bodyRows ?? []).map((r: unknown[]) => r.map(cellText));
   return { header, body };
 }
 
-const TableBlock: React.FC<{ table: Json; before?: Json; compare: boolean }> = ({ table, before, compare }) => {
+export const TableBlock: React.FC<{ table: Json; before?: Json; compare: boolean }> = ({ table, before, compare }) => {
   const now = tableRows(table);
   const was = tableRows(before);
   const changed = (r: number, c: number) => compare && !!before && (was.body[r]?.[c] ?? null) !== (now.body[r]?.[c] ?? null);
@@ -106,7 +106,7 @@ const TableBlock: React.FC<{ table: Json; before?: Json; compare: boolean }> = (
 };
 
 /** The body of one block, in the way it reads on the page. */
-const BlockBody: React.FC<{ section: Json; before?: Json; change?: BlockChange; compare: boolean }> = ({ section, before, change, compare }) => {
+export const BlockBody: React.FC<{ section: Json; before?: Json; change?: BlockChange; compare: boolean }> = ({ section, before, change, compare }) => {
   const marks = compare && change?.inline && change.kind !== 'moved' ? change.inline : null;
   const body = (plain: string) => (marks ? <Marked segments={marks} /> : <>{plain}</>);
   switch (section.type) {
@@ -140,14 +140,14 @@ const BlockBody: React.FC<{ section: Json; before?: Json; change?: BlockChange; 
   }
 };
 
-interface Row {
+export interface Row {
   section: Json;
   before?: Json;
   change?: BlockChange;
 }
 
 /** The new blocks in order, with the removed ones put back after the block that used to come before them. */
-function buildRows(doc: Json, compareTo: Json | null | undefined, diff: DocDiff | null): Row[] {
+export function buildRows(doc: Json, compareTo: Json | null | undefined, diff: DocDiff | null): Row[] {
   const sections = (doc.sections ?? []).filter((s: Json) => s.type !== 'citation');
   const byId = new Map<string, BlockChange>((diff?.blocks ?? []).map((b) => [b.id, b]));
   const rows: Row[] = sections.map((section: Json) => ({ section, change: byId.get(String(section.id)), before: byId.get(String(section.id))?.before }));
@@ -170,7 +170,7 @@ function buildRows(doc: Json, compareTo: Json | null | undefined, diff: DocDiff 
 }
 
 /** What differs between two versions of one author, in words. */
-function authorChanges(a: Json | undefined, b: Json | undefined): string[] {
+export function authorChanges(a: Json | undefined, b: Json | undefined): string[] {
   if (!a || !b) return [];
   const out: string[] = [];
   if (a.name !== b.name) out.push(`tên: ${a.name} → ${b.name}`);
@@ -182,11 +182,36 @@ function authorChanges(a: Json | undefined, b: Json | undefined): string[] {
 }
 
 /** A labelled line of the paper's information. */
-interface InfoRow {
+export interface InfoRow {
   label: string;
   /** Path(s) of the diff field(s) this row shows. */
   paths: string[];
   value: string;
+}
+
+/** The article's information as labelled lines, in the order the metadata tab asks for it. */
+export function infoRowsOf(meta: Json): InfoRow[] {
+  const pub = (meta.publication ?? {}) as Json;
+  return [
+    { label: 'Loại bài', paths: ['metadata.articleType'], value: text(meta.articleType) },
+    { label: 'Loại bài (tiếng Anh)', paths: ['metadata.articleTypeEn'], value: text(meta.articleTypeEn) },
+    { label: 'Tạp chí', paths: ['metadata.journalName', 'metadata.journalId'], value: [meta.journalName, meta.journalId].filter(Boolean).join(' · ') },
+    { label: 'Tên viết tắt tạp chí', paths: ['metadata.journalAbbv'], value: text(meta.journalAbbv) },
+    { label: 'Tập', paths: ['metadata.publication.volume', 'metadata.volume'], value: text(pub.volume ?? meta.volume) },
+    { label: 'Số', paths: ['metadata.publication.issue', 'metadata.issue'], value: text(pub.issue ?? meta.issue) },
+    { label: 'Năm', paths: ['metadata.year'], value: text(meta.year) },
+    { label: 'Trang đầu', paths: ['metadata.publication.firstPage', 'metadata.firstPage'], value: text(pub.firstPage ?? meta.firstPage) },
+    { label: 'Trang cuối', paths: ['metadata.publication.lastPage', 'metadata.lastPage'], value: text(pub.lastPage ?? meta.lastPage) },
+    { label: 'DOI', paths: ['metadata.publication.doi', 'metadata.doi'], value: text(pub.doi ?? meta.doi) },
+    { label: 'Mã bài trên nền tảng tạp chí', paths: ['metadata.publication.articleId'], value: text(pub.articleId) },
+    { label: 'Ngày nhận', paths: ['metadata.dates.received'], value: text(meta.dates?.received) },
+    { label: 'Ngày sửa đổi', paths: ['metadata.dates.revised'], value: text(meta.dates?.revised) },
+    { label: 'Ngày chấp nhận', paths: ['metadata.dates.accepted'], value: text(meta.dates?.accepted) },
+    { label: 'Ngày xuất bản', paths: ['metadata.publication.published', 'metadata.dates.published'], value: text(pub.published ?? meta.dates?.published) },
+    { label: 'Tác giả liên hệ', paths: ['metadata.corresponding.name'], value: text(meta.corresponding?.name) },
+    { label: 'Email liên hệ', paths: ['metadata.corresponding.email'], value: text(meta.corresponding?.email) },
+    { label: 'Đơn vị tác giả liên hệ', paths: ['metadata.corresponding.affiliation'], value: text(meta.corresponding?.affiliation) },
+  ];
 }
 
 /**
@@ -217,26 +242,7 @@ export const DocumentDiffView: React.FC<DocumentDiffViewProps> = ({ doc, compare
   const changedAt = (...paths: string[]) => compare && paths.some((p) => !!field(p));
 
   // the article's information, in the order the metadata tab asks for it
-  const info: InfoRow[] = [
-    { label: 'Loại bài', paths: ['metadata.articleType'], value: text(meta.articleType) },
-    { label: 'Loại bài (tiếng Anh)', paths: ['metadata.articleTypeEn'], value: text(meta.articleTypeEn) },
-    { label: 'Tạp chí', paths: ['metadata.journalName', 'metadata.journalId'], value: [meta.journalName, meta.journalId].filter(Boolean).join(' · ') },
-    { label: 'Tên viết tắt tạp chí', paths: ['metadata.journalAbbv'], value: text(meta.journalAbbv) },
-    { label: 'Tập', paths: ['metadata.publication.volume', 'metadata.volume'], value: text(pub.volume ?? meta.volume) },
-    { label: 'Số', paths: ['metadata.publication.issue', 'metadata.issue'], value: text(pub.issue ?? meta.issue) },
-    { label: 'Năm', paths: ['metadata.year'], value: text(meta.year) },
-    { label: 'Trang đầu', paths: ['metadata.publication.firstPage', 'metadata.firstPage'], value: text(pub.firstPage ?? meta.firstPage) },
-    { label: 'Trang cuối', paths: ['metadata.publication.lastPage', 'metadata.lastPage'], value: text(pub.lastPage ?? meta.lastPage) },
-    { label: 'DOI', paths: ['metadata.publication.doi', 'metadata.doi'], value: text(pub.doi ?? meta.doi) },
-    { label: 'Mã bài trên nền tảng tạp chí', paths: ['metadata.publication.articleId'], value: text(pub.articleId) },
-    { label: 'Ngày nhận', paths: ['metadata.dates.received'], value: text(meta.dates?.received) },
-    { label: 'Ngày sửa đổi', paths: ['metadata.dates.revised'], value: text(meta.dates?.revised) },
-    { label: 'Ngày chấp nhận', paths: ['metadata.dates.accepted'], value: text(meta.dates?.accepted) },
-    { label: 'Ngày xuất bản', paths: ['metadata.publication.published', 'metadata.dates.published'], value: text(pub.published ?? meta.dates?.published) },
-    { label: 'Tác giả liên hệ', paths: ['metadata.corresponding.name'], value: text(meta.corresponding?.name) },
-    { label: 'Email liên hệ', paths: ['metadata.corresponding.email'], value: text(meta.corresponding?.email) },
-    { label: 'Đơn vị tác giả liên hệ', paths: ['metadata.corresponding.affiliation'], value: text(meta.corresponding?.affiliation) },
-  ];
+  const info = infoRowsOf(meta);
   const shownInfo = info.filter((r) => r.value !== '' || changedAt(...r.paths));
   const shownPaths = new Set(['metadata.title', 'metadata.titleEn', 'metadata.abstract', 'metadata.abstractEn', 'metadata.keywords', 'metadata.keywordsEn', 'citation', ...info.flatMap((r) => r.paths)]);
   const otherFields = (diff?.fields ?? []).filter((f) => !shownPaths.has(f.path));

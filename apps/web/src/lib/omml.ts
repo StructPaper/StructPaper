@@ -62,7 +62,10 @@ function propChr(props: OrderedNode[] | undefined, tag: string): string | undefi
 /** Wrap in braces only when needed so output stays readable: x_{1} -> x_1. */
 function group(latex: string): string {
   const t = latex.trim();
-  return /^(?:[A-Za-z0-9]|\\[A-Za-z]+)$/.test(t) ? t : `{${t}}`;
+  // a lone command is braced: "X_\min" is not valid (the operator cannot follow _ directly) and "\nu z" would otherwise join as \nuz
+  if (/^\\(?:min|max|lim|limsup|liminf|sup|inf|log|ln|exp|sin|cos|tan|cot|det|gcd|arg|deg|dim|ker|Pr|sum|prod|int)$/.test(t)) return `{${t}}`;
+  if (/^\\[A-Za-z]+$/.test(t)) return `${t} `;
+  return /^[A-Za-z0-9]$/.test(t) ? t : `{${t}}`;
 }
 
 function convertRun(children: OrderedNode[]): string {

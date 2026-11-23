@@ -33,6 +33,12 @@ export function identifyJournal(text: string, fileName?: string): string | null 
     if (findJournalTemplate(id)) found.add(canonical(id));
   }
 
+  // The journal's code written in the name of the file or in the text: "VNUHCM-HS", "VNUHCM - EES ID850", "VNUHCMJ-ET", "[SSH]"
+  for (const m of raw.matchAll(/\bvnuhcmj?[\s_-]*([a-z]{2,5})\b|\[([a-z]{2,5})\]/g)) {
+    const id = `VNUHCM-${(m[1] ?? m[2]).toUpperCase()}`;
+    if (findJournalTemplate(id)) found.add(canonical(id));
+  }
+
   // DOI prefix a journal declares for itself (a journal an admin added has no fixed pattern)
   for (const t of listJournalTemplates()) {
     if (t.doiPrefix && raw.includes(t.doiPrefix.toLowerCase())) found.add(canonical(t.id));

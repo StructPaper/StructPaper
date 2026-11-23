@@ -28,6 +28,9 @@ import {
   dispatchReorderSections,
 } from './dispatchers/sections-dispatchers';
 import { matchesSectionFilter } from '@/lib/editor/section-filter';
+import { lookOfText, setWholeLook } from '@/lib/inline-markup';
+import { SectionScopeContext } from './sections/section-scope';
+import { nextAppendixNumber, APPENDIX_BLOCK_DEFAULTS } from '@/lib/appendix';
 
 
 const useIsomorphicLayoutEffect =
@@ -39,6 +42,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   references,
   commandBus: propCommandBus,
   focusRequest,
+  scope = 'content',
 }) => {
   const contextCommandBus = useEditorCommandBus().commandBus;
   const activeBus = propCommandBus || contextCommandBus;
@@ -56,9 +60,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   const [initialSnapshot, setInitialSnapshot] = useState<SectionsTabViewState>(() =>
     peekInitialSectionsState()
   );
-  const [filterType, setFilterType] = useState<SectionFilterType>(
+  const [filterTypeState, setFilterType] = useState<SectionFilterType>(
     initialSnapshot.filterType
   );
+  const filterType: SectionFilterType = scope === 'appendix' ? 'all' : filterTypeState;
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -283,7 +288,8 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   useEffect(() => {
     if (!focusRequest) return;
     jumpToSection(focusRequest.id);
-    setNewlyAddedId(focusRequest.id);
+    // (an undo or redo only goes back to the block: no highlight flash, the author is already looking at it)
+    if (typeof (focusRequest as { edit?: boolean }).edit !== 'boolean') setNewlyAddedId(focusRequest.id);
     // an undo puts the cursor back in the paragraph it was typed in
     if ((focusRequest as { edit?: boolean }).edit) setActiveEditingParaId(focusRequest.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -321,6 +327,16 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
       onChangeRef.current,
       sectionsRef.current
     );
+  }, []);
+
+  // every heading of one level takes the look (bold, italic, underline, colour) of one of them; the text stays
+  const handleApplyHeadingLook = useCallback((fromIndex: number, mode: 'copy' | 'reset') => {
+    const list = sectionsRef.current;
+    const from = list[fromIndex];
+    if (!from || !(from.type === 'h1' || from.type === 'h2' || from.type === 'h3')) return;
+    const look = mode === 'copy' ? lookOfText(from.title || '') : { b: false, i: false, u: false };
+    const next = list.map((s) => (s.type === from.type && s.title ? { ...s, title: setWholeLook(s.title, look) } : s));
+    onChangeRef.current(next);
   }, []);
 
   const handleRemoveSection = useCallback((index: number) => {
@@ -372,7 +388,9 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   }, []);
 
   const handleInsertSection = useCallback(
-    (insertAfterIndex: number | undefined, newSection: PaperSection) => {
+    (insertAfterIndex: number | undefined, added: PaperSection) => {
+      // a block added in the appendix list belongs to the appendices (a table or a figure carries the flag in itself)
+      const newSection: PaperSection = scope === 'appendix' && added.type !== 'table' && added.type !== 'figure' ? { ...added, appendix: true } : added;
       dispatchAddSection(
         activeBusRef.current,
         newSection,
@@ -387,7 +405,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         updateSectionsFilter('all');
       }
     },
-    [updateSectionsFilter]
+    [updateSectionsFilter, scope]
   );
 
   // Inspector and Media hooks
@@ -422,14 +440,18 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
 
   const handleAddTable = useCallback(
     (insertAfterIndex?: number) => {
-      const tableCount = sectionCountsRef.current.table + 1;
+      const appendix = scope === 'appendix';
+      const tableCount = appendix ? nextAppendixNumber(sectionsRef.current) : sectionCountsRef.current.table + 1;
       const newTable: PaperTable = {
         id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: tableCount,
-        caption: `Bảng ${tableCount}: Tiêu đề bảng số liệu mới`,
+        caption: appendix ? `Phụ lục ${tableCount}: Tiêu đề bảng phụ lục mới` : `Bảng ${tableCount}: Tiêu đề bảng số liệu mới`,
+        ...(appendix ? { appendix: true, ...APPENDIX_BLOCK_DEFAULTS } : {}),
         headers: [],
         rows: [],
         isFullWidth: true,
+        // the published journals print every body row on the pale blue tint
+        bodyFill: 'shaded',
       };
       const newSection: PaperSection = {
         id: `s_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -444,11 +466,13 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
 
   const handleAddFigure = useCallback(
     (insertAfterIndex?: number) => {
-      const figCount = sectionCountsRef.current.figure + 1;
+      const appendix = scope === 'appendix';
+      const figCount = appendix ? nextAppendixNumber(sectionsRef.current) : sectionCountsRef.current.figure + 1;
       const newFigure: PaperFigure = {
         id: `fig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         num: figCount,
-        caption: `Hình ${figCount}: Chú thích hình ảnh minh họa mới`,
+        caption: appendix ? `Phụ lục ${figCount}: Chú thích hình phụ lục mới` : `Hình ${figCount}: Chú thích hình ảnh minh họa mới`,
+        ...(appendix ? { appendix: true, ...APPENDIX_BLOCK_DEFAULTS } : {}),
         src: '',
         isFullWidth: true,
       };
@@ -570,9 +594,10 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
   }, [inspectors.setZoomTableInfo]);
 
   return (
+    <SectionScopeContext.Provider value={scope}>
     <div className="h-full flex flex-col min-h-0 min-w-0 w-full max-w-full overflow-hidden space-y-4 p-4 sm:p-5 sm:pt-3 sm:pb-1">
       {/* Top Header & Filter Toolbar */}
-      <SectionActionToolbar
+      {scope === 'content' && <SectionActionToolbar
         totalSections={sectionCounts.all}
         filterType={filterType}
         onFilterChange={handleFilterChange}
@@ -582,7 +607,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         onAddFigure={handleAddFigure}
         onAddEquation={() => handleAddEquation()}
         counts={toolbarCounts}
-      />
+      />}
 
       {/* Main Scrollable Sections & Blocks List */}
       <SectionBlockList
@@ -612,6 +637,7 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         onMoveDown={handleMoveDown}
         onConvertToHeading={handleConvertToHeading}
         onConvertToParagraph={handleConvertToParagraph}
+        onApplyHeadingLook={handleApplyHeadingLook}
         onOpenTableZoom={inspectors.handleOpenTableZoom}
         onOpenFigureSettings={inspectors.handleOpenFigureSettings}
         onOpenTableSettings={inspectors.handleOpenTableSettings}
@@ -656,5 +682,6 @@ export const SectionsTab: React.FC<SectionsTabProps> = ({
         />
       )}
     </div>
+    </SectionScopeContext.Provider>
   );
 };

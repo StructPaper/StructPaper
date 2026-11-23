@@ -25,6 +25,10 @@ import {
   AlignRight,
   Bold,
   Italic,
+  Underline,
+  Baseline,
+  PaintBucket,
+  RemoveFormatting,
   Combine,
   Split,
   Table as TableIcon,
@@ -52,7 +56,9 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
   // Unified 2D Sheet Grid: All cells are treated equally from Row 0 to Row N-1
   const [matrix, setMatrix] = useState<SheetCell[][]>(() => {
     if (grid && grid.length > 0) return initMatrixFromDocModelGrid(grid);
-    if (table.grid && table.grid.length > 0) return initMatrixFromDocModelGrid(table.grid);
+    // the cells of the table are what is typeset; the doc-model grid is only a fallback for tables that have none
+    const hasCells = (table.bodyRows?.length ?? 0) > 0 || (table.rows?.length ?? 0) > 0;
+    if (!hasCells && table.grid && table.grid.length > 0) return initMatrixFromDocModelGrid(table.grid);
     return initMatrixFromTable(table);
   });
   const [history, setHistory] = useState<SheetCell[][][]>([]);
@@ -150,6 +156,9 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         handleToggleItalic();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        handleToggleUnderline();
       } else if (e.key === 'Delete' && !isAnyInputFocused()) {
         e.preventDefault();
         handleClearSelection();
@@ -343,25 +352,30 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
     setMatrix(newMatrix);
   };
 
-  const handleToggleBold = () => {
+  /** Sets one formatting flag on every selected cell (on when the active cell does not have it yet, off when it does). */
+  const toggleFlag = (key: 'strong' | 'italic' | 'underline') => {
     pushHistory(matrix);
     const newMatrix = cloneMatrix(matrix);
-    const targetBold = !matrix[anchorR]?.[anchorC]?.bold;
+    const target = !matrix[anchorR]?.[anchorC]?.[key];
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
-        newMatrix[r][c].bold = targetBold;
+        newMatrix[r][c][key] = target;
       }
     }
     setMatrix(newMatrix);
   };
+  const handleToggleBold = () => toggleFlag('strong');
+  const handleToggleItalic = () => toggleFlag('italic');
+  const handleToggleUnderline = () => toggleFlag('underline');
 
-  const handleToggleItalic = () => {
+  /** Colour of the text or the background of every selected cell (null clears it). */
+  const setCellColor = (key: 'color' | 'fill', value: string | null) => {
     pushHistory(matrix);
     const newMatrix = cloneMatrix(matrix);
-    const targetItalic = !matrix[anchorR]?.[anchorC]?.italic;
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
-        newMatrix[r][c].italic = targetItalic;
+        if (value) newMatrix[r][c][key] = value.toUpperCase();
+        else delete newMatrix[r][c][key];
       }
     }
     setMatrix(newMatrix);
@@ -640,9 +654,10 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
                   <button
                     type="button"
                     onClick={handleToggleBold}
-                    className={`p-1.5 rounded hover:bg-zinc-100 transition-colors cursor-pointer ${activeCellData?.bold ? 'bg-zinc-200 text-zinc-950 font-black' : 'text-zinc-600'
+                    className={`p-1.5 rounded hover:bg-zinc-100 transition-colors cursor-pointer ${activeCellData?.strong ? 'bg-zinc-200 text-zinc-950 font-black' : 'text-zinc-600'
                       }`}
                     title="In đậm (Ctrl+B)"
+                    aria-pressed={!!activeCellData?.strong}
                   >
                     <Bold className="w-3.5 h-3.5" />
                   </button>
@@ -652,8 +667,55 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
                     className={`p-1.5 rounded hover:bg-zinc-100 transition-colors cursor-pointer ${activeCellData?.italic ? 'bg-zinc-200 text-zinc-950 font-black' : 'text-zinc-600'
                       }`}
                     title="In nghiêng (Ctrl+I)"
+                    aria-pressed={!!activeCellData?.italic}
                   >
                     <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleToggleUnderline}
+                    className={`p-1.5 rounded hover:bg-zinc-100 transition-colors cursor-pointer ${activeCellData?.underline ? 'bg-zinc-200 text-zinc-950 font-black' : 'text-zinc-600'
+                      }`}
+                    title="Gạch chân (Ctrl+U)"
+                    aria-pressed={!!activeCellData?.underline}
+                  >
+                    <Underline className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Colours: text and cell background */}
+                <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-lg p-1 shadow-2xs">
+                  <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold text-zinc-600" title="Màu chữ của ô đang chọn">
+                    <Baseline className="w-3.5 h-3.5" style={{ color: activeCellData?.color || undefined }} />
+                    <input
+                      type="color"
+                      aria-label="Màu chữ"
+                      value={activeCellData?.color || '#000000'}
+                      onChange={(e) => setCellColor('color', e.target.value)}
+                      className="w-5 h-5 p-0 border border-zinc-200 rounded cursor-pointer bg-white"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold text-zinc-600" title="Màu nền của ô đang chọn">
+                    <PaintBucket className="w-3.5 h-3.5" />
+                    <input
+                      type="color"
+                      aria-label="Màu nền ô"
+                      value={activeCellData?.fill || '#FFFFFF'}
+                      onChange={(e) => setCellColor('fill', e.target.value)}
+                      className="w-5 h-5 p-0 border border-zinc-200 rounded cursor-pointer bg-white"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCellColor('color', null);
+                      setCellColor('fill', null);
+                    }}
+                    className="p-1 rounded hover:bg-zinc-100 text-zinc-500 cursor-pointer"
+                    title="Xóa màu chữ và màu nền của ô đang chọn"
+                    aria-label="Xóa màu"
+                  >
+                    <RemoveFormatting className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -877,6 +939,7 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
                                   }
                                 }}
                                 onContextMenu={(e) => handleCellContextMenu(e, rIdx, cIdx)}
+                                style={cell.fill ? { backgroundColor: cell.fill } : undefined}
                                 className={`p-1 border-r last:border-r-0 border-zinc-300 relative transition-all min-w-[110px] ${selected
                                   ? 'bg-blue-500/15 ring-2 ring-blue-600 z-10'
                                   : ''
@@ -899,7 +962,8 @@ export const TableSpreadsheetModal: React.FC<TableSpreadsheetModalProps> = ({
                                   onPaste={(e) => handlePasteSpreadsheetData(e, rIdx, cIdx)}
                                   onContextMenu={(e) => handleCellContextMenu(e, rIdx, cIdx)}
                                   spellCheck={false}
-                                  className={`w-full px-2 py-1 text-xs text-zinc-900 bg-transparent border-none outline-none focus:outline-none ${cell.bold ? 'font-bold' : ''
+                                  style={{ color: cell.color || undefined, textDecoration: cell.underline ? 'underline' : undefined }}
+                                  className={`w-full px-2 py-1 text-xs text-zinc-900 bg-transparent border-none outline-none focus:outline-none ${cell.bold || cell.strong ? 'font-bold' : ''
                                     } ${cell.italic ? 'italic' : ''} ${cell.align === 'center'
                                       ? 'text-center'
                                       : cell.align === 'right'

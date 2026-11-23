@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import type { ManagedJournalProfile } from '@/lib/templates/journal-storage';
 import { useJournalTemplates } from '@/features/journals';
 import { Shimmer } from '@/components/ui/Shimmer';
@@ -11,11 +11,14 @@ interface StepSelectTemplateProps {
   /** null = no template chosen: the journal is detected from the file. */
   onConfirm: (managed: ManagedJournalProfile | null) => void;
   onBack: () => void;
+  /** The paper is being checked and created: Continue spins and nothing can be pressed twice. */
+  busy?: boolean;
 }
 
 export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
   onConfirm,
   onBack,
+  busy = false,
 }) => {
   const { templates: journals, isLoading } = useJournalTemplates();
   // Nothing is chosen up front. A card chosen again is un-chosen; without a choice it is automatic.
@@ -25,7 +28,9 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
     setSelectedManaged((current) => (current?.id === managed.id ? null : managed));
   };
 
-  const handleContinue = () => onConfirm(selectedManaged);
+  const handleContinue = () => {
+    if (!busy) onConfirm(selectedManaged);
+  };
 
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3">
@@ -34,7 +39,8 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại tải file</span>
@@ -78,10 +84,13 @@ export const StepSelectTemplate: React.FC<StepSelectTemplateProps> = ({
           type="button"
           data-testid="continue-to-editor-btn"
           onClick={handleContinue}
-          className="px-6 py-2.5 rounded-full bg-[#78C841] hover:bg-[#6cb43a] text-zinc-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-md shadow-[#78C841]/20 hover:scale-102 active:scale-98 transition-all cursor-pointer"
+          disabled={busy}
+          aria-busy={busy}
+          className="px-6 py-2.5 rounded-full bg-[#78C841] hover:bg-[#6cb43a] text-zinc-950 font-extrabold text-xs inline-flex items-center gap-2 shadow-md shadow-[#78C841]/20 hover:scale-102 active:scale-98 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100"
         >
-          <span>Tiếp tục</span>
-          <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          <span>{busy ? 'Đang xử lý...' : 'Tiếp tục'}</span>
+          {busy ? null : <ArrowRight className="w-4 h-4 stroke-[2.5]" />}
         </button>
       </div>
     </div>

@@ -93,6 +93,7 @@ export function analyzeNumbering(paper: CompletePaper): NumberingAnalysis {
     const kind: ObjectKind | null =
       sec.type === 'table' ? 'table' : sec.type === 'figure' ? 'figure' : sec.type === 'equation' && sec.equation?.numbered ? 'equation' : null;
     if (!kind) return;
+    if ((sec.type === 'table' && sec.table?.appendix) || (sec.type === 'figure' && sec.figure?.appendix)) return; // an appendix has numbers of its own
     counters[kind] += 1;
     const num = objectNum(sec);
     let firstMentionIndex: number | null = null;

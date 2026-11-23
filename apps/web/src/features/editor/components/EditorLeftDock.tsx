@@ -34,6 +34,8 @@ interface EditorLeftDockProps {
   saveSuccess: boolean;
   isDirty?: boolean;
   onRecompile: () => void;
+  /** Nothing has changed since the PDF on screen was made: the button is dimmed. */
+  recompileDisabled?: boolean;
   isCompiling: boolean;
   onDownloadDocx: () => void;
   isExportingDocx: boolean;
@@ -72,6 +74,7 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
   saveSuccess,
   isDirty,
   onRecompile,
+  recompileDisabled,
   isCompiling,
   onDownloadDocx,
   isExportingDocx,
@@ -291,8 +294,8 @@ export const EditorLeftDock: React.FC<EditorLeftDockProps> = ({
             {/* Action 2: Recompile */}
             <DockIconButton
               onClick={onRecompile}
-              disabled={isCompiling}
-              label={isCompiling ? 'Đang biên dịch LaTeX...' : 'Biên dịch lại PDF'}
+              disabled={isCompiling || recompileDisabled}
+              label={isCompiling ? 'Đang biên dịch LaTeX...' : recompileDisabled ? 'Chưa có thay đổi để biên dịch lại' : 'Biên dịch lại PDF'}
               icon={
                 <RefreshCw
                   className={`w-4 h-4 text-zinc-700 ${isCompiling ? 'animate-spin text-[#78C841]' : ''}`}

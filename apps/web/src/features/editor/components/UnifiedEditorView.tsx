@@ -1,15 +1,22 @@
 'use client';
 
+import { repairDates } from '@/lib/editorial-dates';
+import { appendixSettingsOf, mergeScopedSections, scopedSections, type AppendixSettings, type SectionScope } from '@/lib/appendix';
+import { AppendixTab } from './AppendixTab';
 import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useGoBack, isHistoryPage } from '@/lib/app-history';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
 import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
+import { resolveTheme } from '@/lib/theme-config';
 import { usePaperProfile, usePaperProfileSession, useArticleTypeSync } from '@/features/journals';
 import { useEditorHistory } from '../hooks/useEditorHistory';
 import { isUuid } from '@/features/papers/components/types';
 import { PANEL_ATTR } from '@/lib/history/focus';
+import { PaperOverview, type OverviewPatch } from '../overview/PaperOverview';
+import { XrefProvider } from '../xref-context';
 import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
 import { getJournalTemplate } from '@/lib/templates';
@@ -37,6 +44,7 @@ import { EditorDocumentMenuBarSlot } from './EditorDocumentMenuBarSlot';
 import { notifyManualSaveOutcome } from '@/lib/editor/save-feedback';
 import { OpenDocumentDialog, type OpenListItem } from './OpenDocumentDialog';
 import { ExportGateModal } from './ValidationModals';
+import { PdfExportOptionsModal, type PdfExportOptions } from './PdfExportOptionsModal';
 import {
   CreatePaperModal,
   useEditorQuickEdit,
@@ -61,6 +69,7 @@ import {
   useCreateEditorTabStateStore,
 } from '../hooks';
 import { useEditorSession } from '@/context/EditorSessionContext';
+import { useWordSourceSession } from '@/features/import-merge/hooks/useWordSourceSession';
 import { useStorage } from '@/context/StorageContext';
 import { usePaperStorage } from '../hooks/usePaperStorage';
 import { ActionConfirmModal } from '@/components/modals/ActionConfirmModal';
@@ -75,6 +84,7 @@ interface UnifiedEditorViewProps {
 export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onUpdatePaper }) => {
   const { currentJournal, setCurrentJournal, setPaper } = usePaper();
   const router = useRouter();
+  const goBack = useGoBack();
   const storage = useStorage();
   const { savePaper, loadPaper } = usePaperStorage();
   const [formData, setFormData] = useState<CompletePaper>(() => JSON.parse(JSON.stringify(paper)));
@@ -119,14 +129,51 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   );
   useHydrateDisplayName(formData.id, formData.displayName, handleHydrateDisplayName);
 
-  const { autoSaveEnabled } = useEditorSession();
+  const { autoSaveEnabled, pdfLanguage, setPdfLanguage, editorView, setEditorView } = useEditorSession();
+  // The title bar's language picker follows the paper: opening a paper selects the language it was written in (found when its Word
+  // file was imported), and a later choice in the picker is kept with the paper. Papers with no stored language are left untouched.
+  // A paper is always opened in the form; the overview page is a choice made while working on it.
+  useEffect(() => {
+    setEditorView('form');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id]);
+  // Editorial dates glued into one field (or written another way) are put right when the paper opens, so nobody has to retype them.
+  useEffect(() => {
+    const fixed = repairDates(paper.metadata?.dates, false);
+    if (fixed && fixed !== paper.metadata?.dates) {
+      setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, dates: repairDates(prev.metadata?.dates, false) ?? prev.metadata.dates } }));
+      setIsDirty(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id]);
+  const langPaperRef = useRef<string | null>(null);
+  const langSeenRef = useRef<string>(pdfLanguage);
+  useEffect(() => {
+    if (langPaperRef.current !== paper.id) {
+      langPaperRef.current = paper.id;
+      const stored = paper.metadata?.primaryLanguage;
+      if (stored && stored !== pdfLanguage) {
+        langSeenRef.current = stored;
+        setPdfLanguage(stored);
+        return;
+      }
+    }
+    if (langSeenRef.current === pdfLanguage) return;
+    langSeenRef.current = pdfLanguage;
+    setFormData((prev) => (prev.metadata?.primaryLanguage === pdfLanguage ? prev : { ...prev, metadata: { ...prev.metadata, primaryLanguage: pdfLanguage } }));
+    setIsDirty(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paper.id, pdfLanguage]);
+  // Recompiling saves the paper first. That save goes through the autosave controller (one save at a time, one revision number), not a
+  // second parallel save: two saves sent with the same revision made the server answer "your version is older".
+  const saveBeforeCompileRef = useRef<((p: CompletePaper) => Promise<unknown>) | null>(null);
 
-  const { compiledPdfUrl, isCompilingPdf, compileStartedAt, lastOutcomeRef, compileStats, compileErrorInfo, setCompileErrorInfo, compileLatexToPdf, handleRecompile } =
+  const { compiledPdfUrl, isCompilingPdf, compileStartedAt, lastOutcomeRef, compileStats, compileErrorInfo, setCompileErrorInfo, compileLatexToPdf, handleRecompile, hasChangesSinceCompile } =
     useEditorCompilation({
       paper,
       formData,
       onUpdatePaper,
-      onSavePaper: savePaper,
+      onSavePaper: (p) => (saveBeforeCompileRef.current ? saveBeforeCompileRef.current(p) : savePaper(p)) as Promise<boolean | void>,
       setIsDirty,
     });
   // the rules this paper is pinned to; when they lay the page out differently from the latest ones, typeset again
@@ -139,7 +186,11 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     latestPin: profile.latestPin,
     onUpgraded: (pin, version) => setFormData((prev) => ({ ...prev, profilePin: pin, version })),
   });
+  // the Word file this paper was imported from: read again (on request) and compared before anything changes
+  useWordSourceSession(formData, setFormData, () => setIsDirty(true));
   /** Export in progress (covers the save + compile phase before the download starts). */
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const pdfOptionsRef = useRef<PdfExportOptions | undefined>(undefined);
   const [pendingExport, setPendingExport] = useState<ExportFormat | null>(null);
 
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -166,6 +217,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   });
 
   // The dock / title bar speak the simple idle|saving|saved|error vocabulary.
+  saveBeforeCompileRef.current = (p) => saveNow(p);
   const autosaveStatus = autosaveStatusFromSaveState(saveState);
 
   useEffect(() => {
@@ -201,8 +253,18 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       if (format === 'xml') return handleDownloadXml();
       toast.loading('Đang xuất PDF…', 'Đang dàn trang bằng XeLaTeX, thường mất 15–40 giây.', { id: 'export-pdf' });
       // Retry once when the compile was only superseded (e.g. by the automatic preview compile).
-      let url = await compileLatexToPdf(formData);
-      if (!url && lastOutcomeRef.current === 'cancelled') url = await compileLatexToPdf(formData);
+      // the sheets are turned or not as asked in the download popup; when that differs from the paper's own setting (the same one the
+      // layout settings have, "Xoay cả tờ giấy khi bảng xoay ngang") the file is made apart from the preview: the paper and the preview stay as they are.
+      // Only the sheet changes: each table and figure keeps its own settings.
+      const asked = pdfOptionsRef.current?.rotateSheets;
+      const ownLayout = resolvePaperLayout(formData);
+      const own = resolveTheme(ownLayout).turnSheets;
+      const aside = asked !== undefined && asked !== own;
+      const target: CompletePaper = aside
+        ? { ...formData, layoutSettings: { ...(formData.layoutSettings ?? {}), theme: { ...(ownLayout.theme ?? {}), turnSheets: asked } } }
+        : formData;
+      let url = await compileLatexToPdf(target, { aside });
+      if (!url && lastOutcomeRef.current === 'cancelled') url = await compileLatexToPdf(target, { aside });
       if (!url) {
         toast.error('Xuất PDF thất bại', 'Xem chi tiết lỗi biên dịch ở khung xem trước.', { id: 'export-pdf' });
         setExportGate({ format, report: validateForExport(formData, { format, pdfCompiled: false }) });
@@ -215,8 +277,13 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   );
 
   const requestExport = useCallback(
-    async (format: ExportFormat) => {
+    async (format: ExportFormat, options?: PdfExportOptions) => {
       if (pendingExport) return;
+      if (format === 'pdf' && !options) {
+        setPdfOptionsOpen(true);
+        return;
+      }
+      pdfOptionsRef.current = format === 'pdf' ? options : undefined;
       setPendingExport(format);
       try {
         await flush();
@@ -308,20 +375,20 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     if (isDirty) {
       setIsExitWarningOpen(true);
     } else {
-      router.push('/papers');
+      goBack('/papers', isHistoryPage);
     }
-  }, [isDirty, router]);
+  }, [isDirty, goBack]);
 
   const handleConfirmSaveAndExit = useCallback(async () => {
     if (!(await handleSave())) return;
     setIsExitWarningOpen(false);
-    router.push('/papers');
-  }, [handleSave, router]);
+    goBack('/papers', isHistoryPage);
+  }, [handleSave, goBack]);
 
   const handleDiscardAndExit = useCallback(() => {
     setIsExitWarningOpen(false);
-    router.push('/papers');
-  }, [router]);
+    goBack('/papers', isHistoryPage);
+  }, [goBack]);
 
   // Handler for updating paper workflow status
   const handleUpdateWorkflowStatus = useCallback(
@@ -415,8 +482,25 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   }, [editorHistory.canUndo, editorHistory.canRedo, editorHistory.undoLabel, editorHistory.redoLabel, editorHistory.undo, editorHistory.redo, setHistory]);
   useEffect(() => () => setHistory(null), [setHistory]);
 
+  const handleOverviewChange = useCallback((patch: OverviewPatch) => {
+    setFormData((prev) => ({ ...prev, ...patch }));
+    setIsDirty(true);
+  }, []);
+
   const handleSectionsChange = useCallback((sections: PaperSection[]) => {
     setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(sections) }));
+    setIsDirty(true);
+  }, []);
+  // the text list and the appendix list each show part of the blocks: a change in one is merged into the whole
+  const appendixSettings = useMemo(() => appendixSettingsOf(formData), [formData.metadata?.appendix]);
+  const scopedChange = useCallback((scope: SectionScope) => (next: PaperSection[]) => {
+    setFormData((prev) => ({ ...prev, sections: assignEquationNumbers(mergeScopedSections(prev.sections, next, scope, appendixSettingsOf(prev).placement)) }));
+    setIsDirty(true);
+  }, []);
+  const contentSections = useMemo(() => scopedSections(formData.sections, 'content', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
+  const appendixSections = useMemo(() => scopedSections(formData.sections, 'appendix', appendixSettings.placement), [formData.sections, appendixSettings.placement]);
+  const handleAppendixSettings = useCallback((next: AppendixSettings) => {
+    setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, appendix: { ...(prev.metadata.appendix ?? {}), ...next } } }));
     setIsDirty(true);
   }, []);
 
@@ -427,7 +511,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     const journalChanged = journalIdToUse !== (formData.metadata.journalId || currentJournal);
     const target: CompletePaper = {
       ...formData,
-      metadata: { ...formData.metadata, journalId: journalIdToUse, journalName: tmpl.name, journalAbbv: tmpl.shortName },
+      metadata: {
+        ...formData.metadata,
+        journalId: journalIdToUse,
+        journalName: tmpl.name,
+        journalAbbv: tmpl.shortName,
+              },
       ...(journalChanged ? { profilePin: undefined, articleTypeCode: undefined } : {}),
     };
     const updated: CompletePaper = { ...target, layoutSettings: layoutOverrides(journalLayoutOf(target), newSettings) };
@@ -453,14 +542,34 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     setIsDirty(true);
   };
 
-  const leftEditorContent = (
+  const overviewContent = (
+    <div className="h-full min-h-0 min-w-0 w-full overflow-hidden">
+      <PaperOverview
+        paper={formData}
+        lang={pdfLanguage}
+        citationText={citationText}
+        onChange={handleOverviewChange}
+        normalizeSections={assignEquationNumbers}
+        compiledPdfUrl={compiledPdfUrl}
+        focusRequest={focusRequest}
+        openTab={(tab) => {
+          // the page only shows these (authors, citation): the form tab that edits them opens in the form view
+          setEditorView('form');
+          setActiveSubTab(tab as typeof activeSubTab);
+        }}
+      />
+    </div>
+  );
+
+  const leftEditorContent = editorView === 'overview' ? overviewContent : (
     <div className="h-full flex flex-col min-h-0 min-w-0 w-full overflow-hidden space-y-2">
       <div className="flex-shrink-0">
         <EditorTabNav
           activeTab={activeSubTab}
           onTabChange={setActiveSubTab}
           authorsCount={formData.metadata.authors.length}
-          sectionsCount={formData.sections.filter((s) => s.type !== 'citation').length}
+          sectionsCount={contentSections.filter((s) => s.type !== 'citation').length}
+          appendixCount={appendixSections.length}
           referencesCount={formData.references.length}
           preflight={preflight}
         />
@@ -480,10 +589,21 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         {activeSubTab === 'abstract' && <AbstractTab metadata={formData.metadata} onChange={(m) => { setFormData((p) => ({ ...p, metadata: m })); setIsDirty(true); }} />}
         {activeSubTab === 'sections' && (
           <SectionsTab
-            sections={formData.sections}
-            onChange={handleSectionsChange}
+            sections={contentSections}
+            onChange={scopedChange('content')}
             metadata={formData.metadata}
             references={formData.references} focusRequest={historyFocus ?? focusRequest}
+          />
+        )}
+        {activeSubTab === 'appendix' && (
+          <AppendixTab
+            sections={appendixSections}
+            onChange={scopedChange('appendix')}
+            metadata={formData.metadata}
+            references={formData.references}
+            settings={appendixSettings}
+            onSettings={handleAppendixSettings}
+            focusRequest={historyFocus ?? focusRequest}
           />
         )}
         {activeSubTab === 'refs' && <ReferencesTab references={formData.references} onChange={(r) => { setFormData((p) => ({ ...p, references: r })); setIsDirty(true); }} />}
@@ -512,6 +632,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
 
   return (
     <EditorTabStateProvider paperId={formData.id} store={tabStateStore}>
+     <XrefProvider paper={formData} lang={pdfLanguage === 'en' ? 'en' : 'vi'}>
       <div className="h-full w-full flex flex-row p-3 min-h-0 gap-2 sm:gap-3 overflow-hidden">
       <EditorLeftDock
         homeHref="/papers"
@@ -528,6 +649,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         saveSuccess={saveSuccess}
         isDirty={isDirty}
         onRecompile={() => handleRecompile(formData)}
+        recompileDisabled={!hasChangesSinceCompile}
         isCompiling={isCompilingPdf}
         onDownloadDocx={() => requestExport('docx')}
         isExportingDocx={isExportingDocx || pendingExport === 'docx'}
@@ -592,6 +714,16 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       <ExtractedContentDrawer isOpen={isExtractedDrawerOpen} onClose={() => setIsExtractedDrawerOpen(false)} paper={formData} />
       <LayoutSettingsDrawer isOpen={isSettingsDrawerOpen} onClose={() => setIsSettingsDrawerOpen(false)} settings={resolvePaperLayout(formData)} journalId={formData.metadata.journalId || currentJournal} onApplySettings={handleApplyLayoutSettings} isCompiling={isCompilingPdf} />
       <OpenDocumentDialog isOpen={isOpenDialog} onClose={() => setIsOpenDialog(false)} onOpen={handleOpenItem} />
+      {pdfOptionsOpen && (
+        <PdfExportOptionsModal
+          initial={{ rotateSheets: false }}
+          onClose={() => setPdfOptionsOpen(false)}
+          onContinue={(options) => {
+            setPdfOptionsOpen(false);
+            void requestExport('pdf', options);
+          }}
+        />
+      )}
       <ExportGateModal
         isOpen={exportGate !== null}
         report={exportGate?.report ?? null}
@@ -628,6 +760,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         confirmTestId="editor-save-and-exit-btn"
       />
       </div>
+     </XrefProvider>
     </EditorTabStateProvider>
   );
 };

@@ -11,18 +11,12 @@ export function notifyManualSaveOutcome(
   error?: unknown
 ): boolean {
   if (state === 'saved') {
-    sileo.success({
-      title: 'Đã lưu tài liệu',
-      description: 'Nội dung đã được lưu vào máy chủ và tạo phiên bản mới',
-    });
+    sileo.success({ title: 'Đã lưu bài báo', mode: 'inline' });
     return true;
   }
   if (state === 'saved-local') {
     if (isLocalAvailable === false) {
-      sileo.success({
-        title: 'Đã lưu tài liệu',
-        description: 'Nội dung đã được lưu lên máy chủ thành công',
-      });
+      sileo.success({ title: 'Đã lưu bài báo', mode: 'inline' });
       return true;
     }
     sileo.success({

@@ -9,6 +9,7 @@ interface EditorTabNavProps {
   onTabChange: (tab: EditorTabKey) => void;
   authorsCount: number;
   sectionsCount?: number;
+  appendixCount?: number;
   referencesCount: number;
   preflight: PreflightCheck;
 }
@@ -18,6 +19,7 @@ export const EditorTabNav: React.FC<EditorTabNavProps> = ({
   onTabChange,
   authorsCount,
   sectionsCount = 0,
+  appendixCount = 0,
   referencesCount,
   preflight,
 }) => {
@@ -53,6 +55,15 @@ export const EditorTabNav: React.FC<EditorTabNavProps> = ({
         badge: (
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-300 text-zinc-700 font-bold">
             {sectionsCount}
+          </span>
+        ),
+      },
+      {
+        key: 'appendix',
+        label: 'Phụ lục',
+        badge: (
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-300 text-zinc-700 font-bold">
+            {appendixCount}
           </span>
         ),
       },

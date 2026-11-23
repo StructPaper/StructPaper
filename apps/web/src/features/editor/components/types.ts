@@ -21,7 +21,7 @@ export interface AuthoringEditorState {
   activeTab: AuthoringTabKey;
 }
 
-export type EditorTabKey = 'metadata' | 'authors' | 'abstract' | 'sections' | 'refs' | 'citation' | 'preflight';
+export type EditorTabKey = 'metadata' | 'authors' | 'abstract' | 'sections' | 'appendix' | 'refs' | 'citation' | 'preflight';
 
 export interface CitationTabProps {
   citationText: string;
@@ -77,6 +77,8 @@ export interface SectionsTabProps {
   references?: PaperReference[];
   commandBus?: CommandBus;
   onDispatch?: (command: unknown) => void;
+  /** Which list this is: the text of the paper (default) or its appendices (only tables and figures can be added). */
+  scope?: 'content' | 'appendix';
   /** Open and highlight this section (a click in the PDF preview); a new `n` repeats it for the same id. */
   focusRequest?: { id: string; n: number; /** open the block for typing (an undo puts the cursor back in it) */ edit?: boolean } | null;
 }

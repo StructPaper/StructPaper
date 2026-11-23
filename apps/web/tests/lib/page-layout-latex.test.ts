@@ -20,20 +20,19 @@ describe('equationToLatex', () => {
     expect(tex).not.toContain('figure*');
   });
 
-  it('keeps it on one line across both columns when asked (figure* float, no line break)', () => {
-    const tex = equationToLatex(eq('e', '2-column'), 0, false);
-    expect(tex).toContain('\\begin{figure*}');
-    expect(tex).toContain('\\tag{1}');
-    expect(tex).not.toContain('\\begin{aligned}');
+  it('has no column setting of its own: an old 2-column value changes nothing', () => {
+    const withSpan = equationToLatex(eq('e', '2-column'), 0, false);
+    expect(withSpan).toBe(equationToLatex(eq('e'), 0, false));
+    expect(withSpan).not.toContain('figure*');
+    expect(withSpan).toContain(String.raw`\tag{1}`);
   });
 
-  it('ignores the span in a one-column layout', () => {
-    expect(equationToLatex(eq('e', '2-column'), 0, true)).not.toContain('figure*');
-  });
-
-  it('still breaks a formula that is wider than even the full page width', () => {
-    const huge = Array.from({ length: 40 }, (_, i) => `x_{${i}}`).join('+');
-    expect(equationToLatex(eq('e', '2-column', huge), 0, false)).toContain('\\begin{aligned}');
+  it('follows the paper: a one-column paper gives the formula the whole page text, so it is broken less', () => {
+    const inColumn = equationToLatex(eq('e'), 0, false);
+    const onPage = equationToLatex(eq('e'), 0, true);
+    expect(inColumn).toContain(String.raw`\begin{aligned}`);
+    // each line break of a formula is a `\\`
+    expect(onPage.split('\\\\').length).toBeLessThan(inColumn.split('\\\\').length);
   });
 });
 

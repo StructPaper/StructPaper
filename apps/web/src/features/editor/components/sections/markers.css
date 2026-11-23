@@ -1,0 +1,75 @@
+/* a footnote and a reference to a table or figure, as small labels (see markers.tsx) */
+.marker-chip {
+  display: inline-block;
+  padding: 0 6px;
+  margin: 0 1px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+.marker-xref-chip {
+  background: #f3e8ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+  font-weight: 600;
+}
+.marker-fn-chip {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.marker-edit {
+  border-radius: 8px;
+}
+.marker-fn-edit {
+  background: #fef3c7;
+  color: #92400e;
+}
+.marker-xref-edit {
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-weight: 600;
+  font-size: 0;
+}
+.marker-xref-edit::before {
+  content: attr(data-label);
+  font-size: 12px;
+}
+.marker-fn-open {
+  font-size: 0;
+}
+.marker-fn-open::before {
+  counter-increment: ov-fn;
+  content: '[' counter(ov-fn, lower-alpha) '] ';
+  font-size: 11px;
+  font-weight: 700;
+}
+/* at rest: the mark is a letter in brackets in the text, and the note stands at the end of the block */
+.marker-fn-mark {
+  vertical-align: super;
+  font-size: 0.72em;
+  font-weight: 700;
+  color: #2b74b7;
+}
+.marker-fn-mark::after {
+  counter-increment: ov-fn;
+  content: '[' counter(ov-fn, lower-alpha) ']';
+}
+.marker-notes {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid #d4d4d8;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #3f3f46;
+}
+.marker-note::before {
+  counter-increment: ov-fnn;
+  content: '[' counter(ov-fnn, lower-alpha) '] ';
+  font-weight: 700;
+  color: #2b74b7;
+}
+.marker-hide {
+  font-size: 0;
+}

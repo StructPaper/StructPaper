@@ -1,8 +1,9 @@
+import { choosePlacement, JOURNAL_GEOMETRY } from './table-placement';
 import type { PaperSection } from '@/types/paper';
 
 /** Helpers used while importing tables from Word (kept apart from the large docx-parser). */
 
-const FOOTER_RE = /^\(?\s*(Chú thích|Ghi chú|Notes?|Nguồn|Source)\s*:\s*\S/i;
+const FOOTER_RE = /^[(\[]?\s*(Chú thích|Ghi chú|Notes?|Nguồn|Source)\s*:\s*\S/i;
 
 /**
  * "Chú thích: …" and "Nguồn: …" lines that follow a table belong to the table
@@ -12,7 +13,7 @@ export function attachTableFooterLine(sections: PaperSection[], line: string): b
   const last = sections[sections.length - 1];
   const text = line.trim();
   if (!last || last.type !== 'table' || !last.table || !FOOTER_RE.test(text)) return false;
-  let clean = text;
+  let clean = text.replace(/^\[\s*([\s\S]*?)\s*\]$/, '$1'); // "[Nguồn: …]" -> "Nguồn: …"
   if (clean.startsWith('(')) {
     // "(Nguồn: …)" wrapped in parentheses: drop the wrapper only when it is unbalanced
     clean = clean.slice(1).trim();
@@ -76,15 +77,37 @@ export function landscapeResolver(docXml: string): (position: number) => boolean
  * Layout defaults for imported tables: landscape section -> rotated; otherwise narrow tables
  * (<= 4 columns) go in one column and wide ones span both columns. The user can change both.
  */
+/**
+ * One column or both? Read off the journals' PDFs: a table with more than four columns, in a landscape section, or whose rows hold
+ * a lot of text (about 110 characters or more per row, like the research summaries) is set across both columns; a short table of
+ * numbers stays in one column.
+ */
+export function wantsFullWidth(t: { headers?: string[]; rows?: string[][] }, landscape: boolean, cols: number): boolean {
+  if (landscape || cols > 4) return true;
+  const rowLength = (r: string[]) => r.reduce((n, c) => n + String(c ?? '').length, 0);
+  const lengths = (t.rows || []).map(rowLength).sort((a, b) => a - b);
+  if (lengths.length === 0) return false;
+  const typical = lengths[Math.floor(lengths.length / 2)];
+  return typical >= 110;
+}
+
 export function applyTableLayoutHints(sections: PaperSection[], landscapeById: Record<string, boolean>): void {
   for (const s of sections) {
     const t = s.table;
     if (s.type !== 'table' || !t) continue;
     const landscape = landscapeById[t.id] === true;
     const cols = Math.max(t.headers?.length ?? 0, ...(t.rows || []).map((r) => r.length), 1);
-    if (landscape && t.isRotated === undefined) t.isRotated = true;
-    if (t.columnSpan === undefined) {
-      t.columnSpan = landscape || cols > 4 ? '2-column' : '1-column';
+    // the journals print the body of a table on the pale blue tint; a Word table that explicitly had stripes keeps them
+    if (t.bodyFill === undefined && t.hasZebraStripes === undefined) t.bodyFill = 'shaded';
+    // where it goes is worked out from its size: one column, both columns, or turned on its side (see table-placement.ts)
+    if (t.columnSpan === undefined && t.isRotated === undefined) {
+      const place = choosePlacement(t, JOURNAL_GEOMETRY, { landscapeInWord: landscape && cols > 6 });
+      t.columnSpan = place.columnSpan;
+      t.isFullWidth = place.columnSpan === '2-column';
+      t.isRotated = place.rotated;
+      if (place.fontSize && !t.fontSize) t.fontSize = place.fontSize;
+    } else if (t.columnSpan === undefined) {
+      t.columnSpan = wantsFullWidth(t, landscape, cols) ? '2-column' : '1-column';
       t.isFullWidth = t.columnSpan === '2-column';
     }
   }
@@ -92,7 +115,13 @@ export function applyTableLayoutHints(sections: PaperSection[], landscapeById: R
 
 /** "Bảng 2: Mô hình đo lường" -> "Mô hình đo lường" (the label is printed by the template). */
 export function stripCaptionLabel(caption: string): string {
-  return (caption || '').replace(/^\s*(?:b\s*ảng|bảng|table|hình|figure|fig\.?|phụ\s*lục)\s*\d*\s*[:.\-–]\s*/i, '').trim() || caption;
+  const label = /^\s*(?:b\s*ảng|bảng|table|hình|figure|fig\.?|phụ\s*lục)/i;
+  // "Bảng 6 Kết quả…" (number, no colon) and "Bảng 6: Kết quả…" both lose the label; a bare "Bảng: …" too
+  const text = (caption || '')
+    .replace(new RegExp(`${label.source}\\s*\\d+\\s*[:.\\-–]?\\s+(?=\\S)`, 'i'), '')
+    .replace(new RegExp(`${label.source}\\s*\\d*\\s*[:.\\-–]\\s*`, 'i'), '')
+    .trim();
+  return text || caption;
 }
 
 const ABBREV_LABEL_RE =

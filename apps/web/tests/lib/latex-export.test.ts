@@ -27,9 +27,9 @@ function paperWithTable(rows: number, extra: Record<string, unknown> = {}): Comp
 }
 
 describe('LaTeX table export', () => {
-  it('keeps short tables as floating tabulary', () => {
+  it('keeps short tables as floating tabular', () => {
     const tex = generateFullJournalLatex(paperWithTable(3));
-    expect(tex).toContain('\\begin{tabulary}');
+    expect(tex).toContain('\\begin{tabular}');
     expect(tex).not.toContain('\\begin{supertabular}');
   });
 
@@ -38,7 +38,7 @@ describe('LaTeX table export', () => {
     expect(tex).toContain('\\begin{supertabular}');
     expect(tex).toContain('\\tablehead{');
     expect(tex).toContain('\\tablefirsthead{');
-    expect(tex).not.toContain('\\begin{tabulary}');
+    expect(tex).not.toContain('\\begin{table}');
     expect(tex).toContain('Nguồn: Kết quả của nhóm tác giả');
   });
 
@@ -74,15 +74,15 @@ describe('LaTeX long table layouts (1 column / 2 columns / landscape)', () => {
     expect(tex).toContain('\\end{landscape}');
   });
 
-  it('short rotated table stays a sidewaystable float', () => {
-    const tex = generateFullJournalLatex(paperWithTable(3, { isRotated: true }));
+  it('short rotated table stays a sidewaystable float (sheets staying upright)', () => {
+    const tex = generateFullJournalLatex(paperWithTable(3, { isRotated: true }), { ...DEFAULT_LAYOUT_SETTINGS, theme: { turnSheets: false } });
     expect(tex).toContain('\\begin{sidewaystable');
     expect(tex).not.toContain('\\begin{longtable}');
   });
 
   it('breakAcrossPages "never" keeps a long table whole, "always" breaks a short one', () => {
     expect(generateFullJournalLatex(paperWithTable(40, { breakAcrossPages: 'never' }))).not.toContain('\\begin{longtable}');
-    expect(generateFullJournalLatex(paperWithTable(3, { breakAcrossPages: 'always' }))).toContain('\\begin{longtable}');
+    expect(generateFullJournalLatex(paperWithTable(3, { breakAcrossPages: 'always', columnSpan: '2-column' }))).toContain('\\begin{longtable}');
   });
 
   it('continuation wording is configurable', () => {

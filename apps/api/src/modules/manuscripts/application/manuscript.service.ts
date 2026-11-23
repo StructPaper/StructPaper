@@ -17,11 +17,13 @@ import {
   articleTypes,
   manuscriptProfileSnapshots,
   outboxEvents,
+  auditLogs,
   eq,
   and,
   or,
   ilike,
   inArray,
+  isNull,
   desc,
   asc,
   gt,
@@ -284,7 +286,8 @@ export class ManuscriptService {
     const page = query.page ?? 1;
     const offset = Math.max((page - 1) * limit, 0);
 
-    const whereConditions: any[] = [];
+    // a paper in the trash is not in anybody's list
+    const whereConditions: any[] = [isNull(manuscripts.deletedAt)];
 
     // 0. Library scopes: every paper shared with anyone ("public"), or the public ones I opened
     //    through a link ("shared"). Everything else is limited by what the user's rules allow.
@@ -594,7 +597,7 @@ export class ManuscriptService {
   /**
    * Deletes manuscript and all cascaded child records.
    */
-  async deleteManuscript(id: string, userAbility?: AppAbility): Promise<{ success: boolean }> {
+  async deleteManuscript(id: string, userAbility?: AppAbility, userId?: string): Promise<{ success: boolean; movedToTrash: boolean }> {
     const manuscript = await this.findManuscriptById(id);
     if (!manuscript) {
       throw new NotFoundException(`Manuscript with ID ${id} not found`);
@@ -613,11 +616,17 @@ export class ManuscriptService {
       );
     }
 
+    // Not deleted for good: the paper goes to the trash (with its history, members and sharing), where a journal manager
+    // can bring it back until the retention period ends. It is already invisible everywhere else.
     if (this.db) {
-      await this.db.delete(manuscripts).where(eq(manuscripts.id, id));
+      await this.db
+        .update(manuscripts)
+        .set({ deletedAt: new Date(), deletedBy: userId ?? null })
+        .where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt)));
+      await this.audit(userId, 'manuscript.trash', id, { title: manuscript.title, journalId: manuscript.journalId });
     }
 
-    return { success: true };
+    return { success: true, movedToTrash: true };
   }
 
   /**
@@ -820,7 +829,7 @@ export class ManuscriptService {
         .from(manuscripts)
         .leftJoin(journals, eq(manuscripts.journalId, journals.id))
         .leftJoin(articleTypes, eq(manuscripts.articleTypeId, articleTypes.id))
-        .where(eq(manuscripts.id, id))
+        .where(and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt)))
         .limit(1);
 
       if (rows && rows.length > 0) {
@@ -839,11 +848,19 @@ export class ManuscriptService {
 
     if (this.db.query?.manuscripts?.findFirst) {
       return this.db.query.manuscripts.findFirst({
-        where: eq(manuscripts.id, id),
+        where: and(eq(manuscripts.id, id), isNull(manuscripts.deletedAt)),
       });
     }
 
     return null;
+  }
+
+  private async audit(userId: string | undefined, action: string, resourceId: string, payload: Record<string, unknown>) {
+    try {
+      await this.db.insert(auditLogs).values({ userId: userId ?? null, action, resourceType: 'manuscript', resourceId, payload });
+    } catch {
+      // the audit trail must never block the change it describes
+    }
   }
 
   private async findMembersByManuscriptId(manuscriptId: string): Promise<any[]> {

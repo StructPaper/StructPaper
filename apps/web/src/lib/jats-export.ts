@@ -1,3 +1,5 @@
+import { arrangeForOutput, appendixLabel, appendixSettingsOf, isNumberedAppendix } from './appendix';
+import { hasMarkup, parseMarkup } from './inline-markup';
 import type { CompletePaper, PaperSection } from '@/types/paper';
 import { splitMathSegments, xmlEscape } from '@/lib/math-text';
 
@@ -6,6 +8,7 @@ import { resolvePublication, hasPublicationValue } from './publication';
 import { displayHeading } from './headings';
 import { resolveTheme } from './theme-config';
 import { articleTypeJats } from './article-types';
+import { hasFootnotes, splitFootnotes } from './footnotes';
 /**
  * JATS 1.2 XML export for the VNUHCM journal platform.
  *
@@ -89,6 +92,24 @@ const CITE_RE = /\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g;
 
 /** Text -> JATS inline XML: formulas become <inline-formula>, [n] becomes <xref ref-type="bibr">. */
 export function inlineToJats(text: string): string {
+  // <b>, <i>, <u> become JATS emphasis (colour has no JATS equivalent and is dropped)
+  if (hasMarkup(text)) {
+    return parseMarkup(text)
+      .map((s) => {
+        let t = inlineToJats(s.text);
+        if (s.u) t = `<underline>${t}</underline>`;
+        if (s.i) t = `<italic>${t}</italic>`;
+        if (s.b) t = `<bold>${t}</bold>`;
+        return t;
+      })
+      .join('');
+  }
+  // footnotes ([[fn: ...]]) become inline <fn> elements, right where they are cited
+  if (hasFootnotes(text || '')) {
+    return splitFootnotes(text)
+      .map((p) => (p.kind === 'note' ? `<fn><p>${inlineToJats(p.text)}</p></fn>` : inlineToJats(p.text)))
+      .join('');
+  }
   return splitMathSegments(text || '')
     .map((seg) => {
       if (seg.kind === 'text') {
@@ -133,7 +154,7 @@ interface OpenSec {
   level: number;
 }
 
-function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
+function bodyToJats(paper: CompletePaper, opts: JatsOptions, sectionList: PaperSection[] = paper.sections as PaperSection[]): string {
   const keepNumbers = resolveTheme(paper.layoutSettings).keepSectionNumbers;
   const out: string[] = [];
   const stack: OpenSec[] = [];
@@ -147,7 +168,7 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
   let figId = 0;
   let eqId = 0;
 
-  (paper.sections as PaperSection[]).forEach((s) => {
+  sectionList.forEach((s) => {
     const heading = s.type === 'h1' ? 1 : s.type === 'h2' ? 2 : s.type === 'h3' ? 3 : 0;
     if (heading) {
       closeTo(heading);
@@ -170,7 +191,7 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
       figId += 1;
       const n = s.figure.num || figId;
       out.push(
-        `<fig id="${uniqueId(`fig${n}`)}"><label>Hình ${n}</label><caption><p>${inlineToJats(stripCaptionLabel(s.figure.caption))}</p></caption>` +
+        `<fig id="${uniqueId(`fig${n}`)}"><label>${s.figure.appendix ? appendixLabel(n, appendixSettingsOf(paper).numbering) : `Hình ${n}`}</label><caption><p>${inlineToJats(stripCaptionLabel(s.figure.caption))}</p></caption>` +
           `<graphic xlink:href="${xmlEscape(figureHref(paper, n, s.figure.src || '', opts))}"/>` +
           (s.figure.source ? `<attrib>${xmlEscape(s.figure.source)}</attrib>` : '') +
           `</fig>`
@@ -184,7 +205,7 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
       const cell = (tag: 'th' | 'td', c: { text: string; colSpan?: number; rowSpan?: number }) =>
         `<${tag}${c.colSpan && c.colSpan > 1 ? ` colspan="${c.colSpan}"` : ''}${c.rowSpan && c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : ''}>${inlineToJats(c.text)}</${tag}>`;
       out.push(
-        `<table-wrap id="${uniqueId(`tbl${n}`)}"><label>Bảng ${n}</label><caption><p>${inlineToJats(stripCaptionLabel(t.caption))}</p></caption>` +
+        `<table-wrap id="${uniqueId(`tbl${n}`)}"><label>${t.appendix ? appendixLabel(n, appendixSettingsOf(paper).numbering) : `Bảng ${n}`}</label><caption><p>${inlineToJats(stripCaptionLabel(t.caption))}</p></caption>` +
           tableXml(headRows, bodyRows, cell) +
           (t.source ? `<table-wrap-foot><p>${xmlEscape(t.source)}</p></table-wrap-foot>` : '') +
           `</table-wrap>`
@@ -195,11 +216,30 @@ function bodyToJats(paper: CompletePaper, opts: JatsOptions): string {
   return out.join('\n');
 }
 
+import { resolveCrossRefs } from './cross-refs';
+
 export function exportToJatsXml(paper: CompletePaper, opts: JatsOptions = {}): string {
+  paper = resolveCrossRefs(paper, 'vi');
   usedIds = new Set<string>();
   knownRefs = new Set((paper.references || []).map((r) => r.id));
   // reserve R<n> first so duplicated numbers cannot steal a citation target
   const refsXmlIds = (paper.references || []).map((r) => ({ r, id: uniqueId(`R${r.id}`) }));
+  // the order the paper is printed in: the appendices where the paper's setting puts them (those after the references go into <app-group>)
+  const arranged = arrangeForOutput(paper, 'vi');
+  // one <app> for each numbered appendix (a table or a figure), and one for each run of text that begins at a heading
+  const appendixApps: Array<{ title: string; blocks: PaperSection[] }> = [];
+  for (const s of arranged.afterReferences) {
+    if (isNumberedAppendix(s)) {
+      appendixApps.push({ title: appendixLabel((s.table ?? s.figure)!.num, appendixSettingsOf(paper).numbering), blocks: [s] });
+    } else if (s.type === 'h1' || s.type === 'h2' || s.type === 'h3' || appendixApps.length === 0) {
+      appendixApps.push({ title: s.title || 'Phụ lục', blocks: s.type === 'h1' || s.type === 'h2' || s.type === 'h3' ? [] : [s] });
+    } else {
+      appendixApps[appendixApps.length - 1].blocks.push(s);
+    }
+  }
+  const appendixXml = appendixApps.length
+    ? `<app-group>\n${appendixApps.map((a, k) => `<app id="${uniqueId(`app${k + 1}`)}"><title>${xmlEscape(a.title)}</title>${bodyToJats(paper, opts, a.blocks)}</app>`).join('\n')}\n</app-group>\n`
+    : '';
   const md = paper.metadata;
   const pubInfo = resolvePublication(md);
   const val = (v: string) => (hasPublicationValue(v) ? v.trim() : '');
@@ -263,15 +303,15 @@ ${val(pubInfo.issue) ? `<issue>${xmlEscape(val(pubInfo.issue))}</issue>` : ''}
 ${val(pubInfo.firstPage) ? `<fpage>${xmlEscape(val(pubInfo.firstPage))}</fpage>` : ''}${val(pubInfo.lastPage) ? `<lpage>${xmlEscape(val(pubInfo.lastPage))}</lpage>` : ''}
 ${history ? `<history>${history}</history>` : ''}
 <abstract><p>${inlineToJats(md.abstract || '')}</p></abstract>
-${md.abstractEn ? `<trans-abstract xml:lang="en"><p>${xmlEscape(md.abstractEn)}</p></trans-abstract>` : ''}
+${md.abstractEn ? `<trans-abstract xml:lang="en"><p>${inlineToJats(md.abstractEn)}</p></trans-abstract>` : ''}
 <kwd-group kwd-group-type="author">${(md.keywords || []).map((k) => `<kwd>${xmlEscape(k)}</kwd>`).join('')}</kwd-group>
 </article-meta>
 </front>
 <body>
-${bodyToJats(paper, opts)}
+${bodyToJats(paper, opts, arranged.body)}
 </body>
 <back>
-<ref-list><title>Tài liệu tham khảo</title>
+${appendixXml}<ref-list><title>Tài liệu tham khảo</title>
 ${refs}
 </ref-list>
 </back>

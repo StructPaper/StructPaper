@@ -16,6 +16,7 @@ import {
 import { CompletePaper, ALL_SAMPLE_PAPERS } from '@/lib/sample-papers';
 import { createEmptyPaper } from '@/types/paper';
 import { parseDocxFile } from '@/lib/docx-parser';
+import { registerPendingSource } from '@/lib/documents/word-source';
 import { getJournalTemplate } from '@/lib/templates';
 import { useJournals } from '@/features/journals';
 import { Shimmer } from '@/components/ui/Shimmer';
@@ -70,6 +71,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ onPaperLoaded, currentPa
       const buffer = await file.arrayBuffer();
       setParsingStatus('Đang phân tích cấu trúc OpenXML...');
       const parsed = await parseDocxFile(buffer, file.name);
+      registerPendingSource(parsed.id, buffer, file.name, parsed);
 
       if (parsed.metadata.journalId) {
         setCurrentJournal(parsed.metadata.journalId);

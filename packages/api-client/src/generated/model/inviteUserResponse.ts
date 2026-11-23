@@ -12,6 +12,8 @@ import type { UserSummary } from './userSummary';
  */
 export interface InviteUserResponse {
   user: UserSummary;
+  /** Where the invited person activates the account, without a domain ("/activate#token=..."). Screens put their own domain in front. */
+  activationPath: string;
   activationUrl: string;
   token: string;
   expiresAt: string;

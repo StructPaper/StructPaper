@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, Bookmark, History } from 'lucide-react';
+import { ArrowLeft, Bookmark, History, ScanSearch } from 'lucide-react';
 import { useEditorSession } from '@/context/EditorSessionContext';
 
 /** The same small pill as the share and rules buttons of the paper's title bar. */
@@ -48,6 +48,32 @@ export const PaperHistorySaveButton: React.FC = () => {
     >
       <Bookmark className="w-3.5 h-3.5" />
       <span>Lưu phiên bản</span>
+    </button>
+  );
+};
+
+/**
+ * Right of the title bar on the history page: turns the detailed way of reading a version on and off. Off (the default) is the
+ * paper as one page with what changed marked; on is laid out like the editor's tabs and also shows settings and page layout.
+ */
+export const PaperHistoryDetailToggle: React.FC = () => {
+  const { paperHistoryBar } = useEditorSession();
+  if (!paperHistoryBar?.onToggleDetailed) return null;
+  const on = !!paperHistoryBar.detailed;
+  return (
+    <button
+      type="button"
+      onClick={paperHistoryBar.onToggleDetailed}
+      aria-pressed={on}
+      data-testid="history-detail-toggle"
+      data-no-drag="true"
+      title={on ? 'Quay về chế độ xem gọn (cả bài trên một trang)' : 'Xem chi tiết: từng tab như trình soạn thảo, kèm cài đặt và dàn trang'}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-200 cursor-pointer select-none active:scale-95 ${
+        on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 hover:bg-[#78C841] hover:text-zinc-950 text-zinc-600'
+      }`}
+    >
+      <ScanSearch className="w-3.5 h-3.5" />
+      <span>{on ? 'Đang xem chi tiết' : 'Xem chi tiết'}</span>
     </button>
   );
 };

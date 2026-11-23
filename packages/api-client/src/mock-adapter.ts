@@ -88,6 +88,7 @@ export async function handleMockRequest(
         displayName: data?.displayName ?? null,
         status: 'INVITED',
       },
+      activationPath: `/activate#token=${mockToken}`,
       activationUrl: `http://localhost:3000/activate#token=${mockToken}`,
       token: mockToken,
       expiresAt: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
@@ -102,6 +103,7 @@ export async function handleMockRequest(
     const mockToken = 'mock-activation-token';
     return {
       user: { id: cleanUrl.split('/').slice(-2)[0], email: 'mock@structpaper.org', status: 'INVITED' },
+      activationPath: `/activate#token=${mockToken}`,
       activationUrl: `http://localhost:3000/activate#token=${mockToken}`,
       token: mockToken,
       expiresAt: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),

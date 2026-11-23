@@ -305,6 +305,7 @@ export function migrateV1toV2(
             hasBorder: fig.hasBorder,
             originalSrc: src,
             figNum: fig.num,
+            extras: extrasOf(fig, FIGURE_KNOWN),
           },
         };
         addBlockToCurrent(figBlock);
@@ -387,6 +388,8 @@ export function migrateV1toV2(
             breakAcrossPages: tbl.breakAcrossPages,
             bodyFill: tbl.bodyFill,
             tblNum: tbl.num,
+            // whatever else the table carries (lines, widths, source look, appendix …) rides along and comes back as it was
+            extras: extrasOf(tbl, TABLE_KNOWN),
           },
         };
         addBlockToCurrent(tableBlock);
@@ -474,6 +477,8 @@ export function migrateV1toV2(
       publication: (v1Paper.metadata as any)?.publication,
       titleOriginal: (v1Paper.metadata as any)?.titleOriginal,
       articleTypeEn: (v1Paper.metadata as any)?.articleTypeEn,
+      // the v1 metadata as it was: a field the v2 document has no slot for (second-language fields, appendix settings …) is restored from it
+      metadataV1: v1Paper.metadata ? JSON.parse(JSON.stringify(v1Paper.metadata)) : undefined,
       templateId: v1Paper.templateId,
       templateName: v1Paper.templateName,
       status: v1Paper.status,
@@ -485,12 +490,23 @@ export function migrateV1toV2(
  * Per-section options the v2 tree has no slot for (page-layout markers, page break, the number and
  * width of a formula). Stored by section id in `layoutOverrides.sectionExtras`, restored by adaptV2toV1.
  */
+const TABLE_KNOWN = new Set(['id', 'num', 'caption', 'source', 'headers', 'rows', 'headerRows', 'bodyRows', 'columnSpan', 'isFullWidth', 'isRotated', 'fontSize', 'rowStretch', 'hasZebraStripes', 'placement', 'breakAcrossPages', 'bodyFill']);
+const FIGURE_KNOWN = new Set(['id', 'num', 'caption', 'src', 'source', 'columnSpan', 'isFullWidth', 'alignment', 'scalePercent', 'placement', 'hasBorder']);
+/** The fields of a v1 table or figure that the v2 block does not map by name (undefined ones left out). */
+function extrasOf(obj: Record<string, unknown>, known: Set<string>): Record<string, unknown> | undefined {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj || {})) if (!known.has(k) && v !== undefined) out[k] = v;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function collectSectionExtras(sections: V1PaperSection[] | undefined): Record<string, Record<string, unknown>> | undefined {
   const out: Record<string, Record<string, unknown>> = {};
   for (const sec of sections || []) {
     const e: Record<string, unknown> = {};
     if (sec.pageLayout) e.pageLayout = sec.pageLayout;
     if (sec.pageBreakAfter) e.pageBreakAfter = true;
+    if ((sec as any).appendixOrigin) e.appendixOrigin = (sec as any).appendixOrigin;
+    if ((sec as any).appendix) e.appendix = true;
     if (sec.equation?.num !== undefined) e.eqNum = sec.equation.num;
     if (sec.equation?.columnSpan) e.eqSpan = sec.equation.columnSpan;
     if (Object.keys(e).length > 0) out[sec.id] = e;

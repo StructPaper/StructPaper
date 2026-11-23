@@ -40,6 +40,7 @@ export default defineWorkspace([
         '**/*.e2e.{test,spec}.{ts,tsx}',
       ],
       environment: 'node',
+      setupFiles: [path.resolve(__dirname, 'apps/web/test/setup/skip-animations.ts')],
     },
   },
 ]);

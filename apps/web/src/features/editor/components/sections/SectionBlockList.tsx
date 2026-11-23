@@ -46,6 +46,7 @@ export interface SectionBlockListProps {
   } | null;
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
   onUpdateSection: (index: number, updated: PaperSection) => void;
+  onApplyHeadingLook?: (fromIndex: number, mode: 'copy' | 'reset') => void;
   onRemoveSection: (index: number) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
@@ -102,6 +103,7 @@ const SectionBlockListBase: React.FC<SectionBlockListProps> = ({
   activeSettings,
   scrollContainerRef: propScrollContainerRef,
   onUpdateSection,
+  onApplyHeadingLook,
   onRemoveSection,
   onMoveUp,
   onMoveDown,
@@ -361,6 +363,7 @@ const SectionBlockListBase: React.FC<SectionBlockListProps> = ({
                     onMoveDown={onMoveDown}
                     onConvertToHeading={onConvertToHeading}
                     onConvertToParagraph={onConvertToParagraph}
+                    onApplyHeadingLook={onApplyHeadingLook}
                     onOpenTableZoom={onOpenTableZoom}
                     onOpenFigureSettings={onOpenFigureSettings}
                     onOpenTableSettings={onOpenTableSettings}
@@ -408,6 +411,8 @@ const SectionBlockListBase: React.FC<SectionBlockListProps> = ({
         <EmptySectionsState
           onAddHeading={onAddHeading}
           onAddParagraph={onAddParagraph}
+          onAddTable={() => onAddTable()}
+          onAddFigure={() => onAddFigure()}
         />
       )}
     </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Markup } from '@/components/ui/Markup';
 import React, { useMemo } from 'react';
 import { PaperTable, synthesizeHeaderRows } from '@/types/paper';
 
@@ -81,6 +82,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                     key={cIdx}
                     colSpan={cell.colSpan || 1}
                     rowSpan={cell.rowSpan || 1}
+                    style={cell.fill ? { backgroundColor: cell.fill } : undefined}
                     className={`px-3 py-2 border-r last:border-r-0 border-zinc-200 min-w-[100px] bg-zinc-100 font-bold text-zinc-900 text-xs ${
                       cell.align === 'center' || (cell.colSpan || 1) > 1
                         ? 'text-center font-extrabold'
@@ -89,7 +91,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                           : 'text-left'
                     }`}
                   >
-                    <span className="break-words">{cell.text}</span>
+                    <Markup className="break-words" text={cell.text} />
                   </th>
                 ))}
               </tr>
@@ -101,7 +103,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                   key={colI}
                   className="px-3 py-2 border-r last:border-r-0 border-zinc-200 min-w-[100px] font-bold text-zinc-900 text-xs"
                 >
-                  <span className="break-words">{h}</span>
+                  <Markup className="break-words" text={h} />
                 </th>
               ))}
             </tr>
@@ -123,6 +125,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                         key={cIdx}
                         colSpan={cell.colSpan || 1}
                         rowSpan={cell.rowSpan || 1}
+                        style={cell.fill ? { backgroundColor: cell.fill } : undefined}
                         className={`px-3 py-2 border-r last:border-r-0 border-zinc-200 min-w-[100px] align-top text-xs text-zinc-800 ${
                           cell.align === 'center' || (cell.colSpan || 1) > 1
                             ? 'text-center font-medium'
@@ -131,7 +134,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                               : 'text-left'
                         }`}
                       >
-                        <span className="break-words">{cell.text}</span>
+                        <Markup className="break-words" text={cell.text} />
                       </td>
                     ))}
                   </tr>
@@ -147,7 +150,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
                       key={cI}
                       className="px-3 py-2 border-r last:border-r-0 border-zinc-200 min-w-[100px] text-xs text-zinc-800"
                     >
-                      <span className="break-words">{cell}</span>
+                      <Markup className="break-words" text={cell} />
                     </td>
                   ))}
                 </tr>

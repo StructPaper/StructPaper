@@ -1,3 +1,4 @@
+import { Markup } from '@/components/ui/Markup';
 import React from 'react';
 import { PaperTable, synthesizeHeaderRows, normalizePaperTable } from '@/types/paper';
 import { DEFAULT_THEME, type ResolvedTheme } from '@/lib/theme-config';
@@ -40,7 +41,7 @@ export const JournalTable: React.FC<JournalTableProps> = ({ table, isFullWidth =
           className="text-[8.5pt] text-gray-900"
           style={{ fontFamily: "'Source Sans 3', Calibri, Arial, sans-serif" }}
         >
-          <strong className="font-bold" style={{ color: theme.titleColor }}>Bảng {table.num}: </strong>
+          <strong className="font-bold" style={{ color: theme.titleColor }}>{table.appendix ? `Phụ lục ${table.num}` : `Bảng ${table.num}`}: </strong>
           <span>{stripCaptionLabel(table.caption)}</span>
         </p>
       </div>
@@ -63,9 +64,9 @@ export const JournalTable: React.FC<JournalTableProps> = ({ table, isFullWidth =
                       className={`p-1.5 border-r last:border-r-0 border-gray-300 ${
                         (cell.colSpan || 1) > 1 ? 'text-center' : 'text-left'
                       }`}
-                      style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                      style={{ fontFamily: "'Source Sans 3', sans-serif", ...(cell.fill ? { backgroundColor: cell.fill } : {}) }}
                     >
-                      {cell.text}
+                      <Markup text={cell.text} />
                     </th>
                   ))}
                 </tr>
@@ -102,9 +103,9 @@ export const JournalTable: React.FC<JournalTableProps> = ({ table, isFullWidth =
                             ? 'text-center italic text-gray-600'
                             : ''
                         }`}
-                        style={{ fontFamily: "'Source Serif 4', serif" }}
+                        style={{ fontFamily: "'Source Serif 4', serif", ...(cell.fill ? { backgroundColor: cell.fill } : {}) }}
                       >
-                        {cell.text}
+                        <Markup text={cell.text} />
                       </td>
                     ))}
                   </tr>

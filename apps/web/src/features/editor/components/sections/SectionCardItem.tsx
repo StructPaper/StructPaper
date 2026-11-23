@@ -36,6 +36,8 @@ export interface SectionCardItemProps {
   onMoveDown: (index: number) => void;
   onConvertToHeading: (index: number, level: 'h1' | 'h2' | 'h3') => void;
   onConvertToParagraph: (index: number) => void;
+  /** Gives every heading of this level the look (bold, italic, colour) of the one at this index, or takes it off all of them. */
+  onApplyHeadingLook?: (fromIndex: number, mode: 'copy' | 'reset') => void;
   onOpenTableZoom: (index: number, table: PaperTable) => void;
   onOpenFigureSettings: (index: number, rect?: DOMRect) => void;
   onOpenTableSettings: (index: number, rect?: DOMRect) => void;
@@ -84,6 +86,7 @@ const SectionCardItemBase: React.FC<SectionCardItemProps> = ({
   onMoveDown,
   onConvertToHeading,
   onConvertToParagraph,
+  onApplyHeadingLook,
   onOpenTableZoom,
   onOpenFigureSettings,
   onOpenTableSettings,
@@ -168,6 +171,7 @@ const SectionCardItemBase: React.FC<SectionCardItemProps> = ({
               sec={sec}
               idx={idx}
               onUpdateSection={onUpdateSection}
+              onApplyHeadingLook={onApplyHeadingLook}
             />
           )}
 

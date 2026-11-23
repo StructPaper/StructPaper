@@ -417,8 +417,8 @@ export function usePapersHub({ libraryRecords = null, libraryLoading = false }: 
   const handleDelete = useCallback(async (id: string) => {
     try {
       await storage.delete(id);
-      toast.info('Đã xóa bài báo', 'Bản thảo đã được gỡ bỏ khỏi kho lưu trữ.');
       await loadRecords();
+      toast.info('Đã chuyển vào thùng rác', 'Bạn có thể khôi phục bài báo này trong Thùng rác trong thời gian lưu giữ.');
     } catch (err: any) {
       toast.error('Lỗi xóa bài báo', err?.message);
     }

@@ -3,20 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  X,
-  Columns,
-  FileSpreadsheet,
-  Check,
-  RotateCcw,
-  Sliders,
-  Type,
-  BookOpen,
-  Hash,
-  Sparkles,
-  FileText,
-  BookmarkCheck,
-} from 'lucide-react';
+import { Columns, FileText, Hash, BookOpen, Sliders, Type, Sparkles, RotateCcw, RotateCw } from 'lucide-react';
 import {
   LayoutSettings,
   DEFAULT_LAYOUT_SETTINGS,
@@ -26,9 +13,29 @@ import {
 import { useJournals } from '@/features/journals';
 import { Shimmer } from '@/components/ui/Shimmer';
 import { Select, SelectOption } from '@/components/ui/Select';
-import { ThemeSettingsSection } from './ThemeSettingsSection';
+import { NumberInput } from '@/components/ui/NumberInput';
+import {
+  ThemeColorsCard,
+  ThemeFontsFields,
+  ThemeMarginsCard,
+  ThemeResetButton,
+  ThemeTablesCard,
+} from './ThemeSettingsSection';
 import { formatSamplePage } from './page-number-format';
-import { PageOrientationSetting } from './PageOrientationSetting';
+import { SegmentedOptions } from './sections/SegmentedOptions';
+import {
+  ChoiceCard,
+  Field,
+  MiniLines,
+  MiniPage,
+  SettingsCard,
+  SettingsFooter,
+  SettingsHeader,
+  sectionListClass,
+  Tag,
+  ToggleRow,
+  textInputClass,
+} from './settings-ui';
 
 interface LayoutSettingsDrawerProps {
   isOpen: boolean;
@@ -39,6 +46,37 @@ interface LayoutSettingsDrawerProps {
   isCompiling?: boolean;
 }
 
+type PositionZone = 'bottom' | 'top';
+type PositionAlign = 'alternating' | 'center' | 'right' | 'left';
+
+const ZONES = [
+  { value: 'bottom' as const, label: 'Chân trang' },
+  { value: 'top' as const, label: 'Đầu trang' },
+];
+
+const ALIGNS = [
+  { value: 'alternating' as const, label: 'Đối xứng', title: 'Trang chẵn bên trái, trang lẻ bên phải (như sách)' },
+  { value: 'center' as const, label: 'Giữa', title: 'Chính giữa trang' },
+  { value: 'right' as const, label: 'Phải', title: 'Góc bên phải' },
+  { value: 'left' as const, label: 'Trái', title: 'Góc bên trái' },
+];
+
+const NUMBER_FORMATS: SelectOption<PageNumberingSettings['format']>[] = [
+  { value: 'arabic', label: '1, 2, 3…' },
+  { value: 'roman-lower', label: 'i, ii, iii…' },
+  { value: 'roman-upper', label: 'I, II, III…' },
+  { value: 'alpha-lower', label: 'a, b, c…' },
+  { value: 'alpha-upper', label: 'A, B, C…' },
+  { value: 'hyphen', label: '- 1 -, - 2 -' },
+  { value: 'page-x-of-y', label: 'Trang X / Y' },
+];
+
+const PAPER_SIZES = [
+  { id: 'custom' as const, title: 'Chuẩn ĐHQG', sub: '216 × 279 mm (8.51″ × 11″)', tag: <Tag tone="green">Mặc định</Tag> },
+  { id: 'a4' as const, title: 'A4', sub: '210 × 297 mm', tag: <Tag tone="blue">ISO 216</Tag> },
+  { id: 'letter' as const, title: 'US Letter', sub: '215.9 × 279.4 mm', tag: undefined },
+  { id: 'b5' as const, title: 'B5', sub: '182 × 257 mm', tag: undefined },
+];
 
 export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
   isOpen,
@@ -71,6 +109,9 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
     setMounted(true);
   }, []);
 
+  // The parent hands over a new `settings` object on every render, so the drawer compares by value: a re-render of the editor must not
+  // throw away what is being chosen here (every click would be undone at once).
+  const settingsKey = JSON.stringify(settings);
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
@@ -83,18 +124,30 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
       });
       setLocalJournal(journalId || 'VNUHCM-HS');
     }
-  }, [isOpen, settings, journalId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, settingsKey, journalId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!mounted) return null;
 
   const pageNum = localSettings.pageNumbering || DEFAULT_PAGE_NUMBERING;
+  const [zone, align] = pageNum.position.split('-') as [PositionZone, PositionAlign];
+  const patch = (p: Partial<LayoutSettings>) => setLocalSettings((prev) => ({ ...prev, ...p }));
 
-  const updatePageNum = (patch: Partial<PageNumberingSettings>) => {
+  const updatePageNum = (p: Partial<PageNumberingSettings>) => {
     setLocalSettings((prev) => ({
       ...prev,
       pageNumbering: {
         ...(prev.pageNumbering || DEFAULT_PAGE_NUMBERING),
-        ...patch,
+        ...p,
       },
     }));
   };
@@ -108,20 +161,9 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
     onClose();
   };
 
-  const isChanged =
-    JSON.stringify(localSettings) !== JSON.stringify(settings) ||
-    localJournal !== journalId;
-
-  const samplePage1 = formatSamplePage(
-    pageNum.startNumber || 1,
-    pageNum.format,
-    pageNum.prefixText
-  );
-  const samplePage2 = formatSamplePage(
-    (pageNum.startNumber || 1) + 1,
-    pageNum.format,
-    pageNum.prefixText
-  );
+  const samplePage1 = formatSamplePage(pageNum.startNumber || 1, pageNum.format, pageNum.prefixText);
+  const samplePage2 = formatSamplePage((pageNum.startNumber || 1) + 1, pageNum.format, pageNum.prefixText);
+  const columnLayout = localSettings.columnLayout;
 
   return createPortal(
     <AnimatePresence>
@@ -130,7 +172,7 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
           key="layout-drawer-root"
           className="fixed inset-0 z-[1000] flex justify-start px-3 pb-3 pt-[calc(var(--titlebar-height,38px)+0.75rem)] overflow-hidden pointer-events-auto"
         >
-          {/* Backdrop with smooth Eatzy-like fade and blur */}
+          {/* Backdrop with smooth fade and blur */}
           <motion.div
             key="drawer-backdrop"
             initial={{ opacity: 0 }}
@@ -141,52 +183,28 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
             onClick={onClose}
           />
 
-          {/* Drawer Panel with spring physics sliding in from left */}
+          {/* Drawer panel with spring physics sliding in from the left */}
           <motion.div
             key="drawer-panel"
+            role="dialog"
+            aria-label="Cài đặt dàn trang PDF"
             initial={{ x: 'calc(-100% - 2rem)', opacity: 0.9 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 'calc(-100% - 2rem)', opacity: 0.9 }}
             transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-            className="relative z-10 w-full max-w-[490px] h-full rounded-[32px] bg-[#FBFBFC] shadow-2xl flex flex-col border border-[#E2E4E9] overflow-hidden"
+            className="relative z-10 w-full max-w-[500px] h-full rounded-[32px] bg-[#F8F9FA] shadow-2xl flex flex-col border border-white/60 overflow-hidden"
           >
-            {/* Header */}
-            <div className="px-6 py-5 bg-gray-200/50 rounded-b-[32px] flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#D9F99D]/60 border border-[#B4E50D]/40 flex items-center justify-center text-[#14532D] shadow-2xs">
-                  <Sliders className="w-5 h-5 text-[#14532D]" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-zinc-900 tracking-tight flex items-center gap-2">
-                    Cài đặt dàn trang PDF
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 font-medium">
-                    Tùy chỉnh bố cục, đánh số trang kiểu Word & khổ giấy
-                  </p>
-                </div>
-              </div>
+            <SettingsHeader
+              icon={<Sliders className="w-5 h-5" />}
+              title="Cài đặt dàn trang PDF"
+              subtitle="Mẫu tạp chí, khổ giấy, số trang, chữ và bảng"
+              onClose={onClose}
+              closeTitle="Đóng bảng cài đặt"
+            />
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-zinc-200 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-900 flex items-center justify-center transition-colors cursor-pointer"
-                title="Đóng bảng cài đặt"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 divide-y divide-zinc-200/70 [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0 custom-scrollbar">
-              {/* 1. MẪU TẠP CHÍ ĐÍCH (VNUHCM) */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-zinc-500" />
-                    Mẫu tạp chí đích (VNUHCM)
-                  </label>
-                </div>
-
+            <div className={`flex-1 overflow-y-auto px-5 sm:px-6 py-3 custom-scrollbar ${sectionListClass}`}>
+              {/* 1. Journal template */}
+              <SettingsCard title="Mẫu tạp chí" hint="Quy tắc dàn trang của bài lấy theo tạp chí được chọn." icon={<BookOpen />}>
                 {journalsLoading ? (
                   <Shimmer className="h-9 w-full rounded-2xl" />
                 ) : (
@@ -195,500 +213,264 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
                     onChange={(val) => setLocalJournal(val)}
                     options={journalOptions}
                     size="sm"
+                    variant="clean"
                     searchable={true}
                     searchPlaceholder={`Tìm kiếm trong ${journals.length} tạp chí VNUHCM...`}
                   />
                 )}
-              </div>
+              </SettingsCard>
 
-              {/* 2. CÀI ĐẶT ĐÁNH SỐ TRANG (WORD-STYLE PAGE NUMBERING) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-                    <Hash className="w-3.5 h-3.5 text-zinc-500" />
-                    Đánh số trang (Page Numbering)
-                  </label>
+              {/* 2. Paper, orientation, columns */}
+              <SettingsCard title="Khổ giấy và bố cục" icon={<FileText />}>
+                <Field label="Khổ giấy" aside={<span className="text-[10px] text-zinc-400 font-medium">XeLaTeX</span>}>
+                  <div role="radiogroup" aria-label="Khổ giấy" className="grid grid-cols-2 gap-2.5">
+                    {PAPER_SIZES.map((s) => (
+                      <ChoiceCard
+                        key={s.id}
+                        selected={localSettings.paperSize === s.id}
+                        onClick={() => patch({ paperSize: s.id })}
+                        title={s.title}
+                        sub={s.sub}
+                        tag={s.tag}
+                      />
+                    ))}
+                  </div>
+                </Field>
 
+                <div data-testid="orientation-setting">
+                  <Field label="Hướng trang" hint="Trang đầu (khối tiêu đề) luôn để dọc." aside={<RotateCw className="w-3.5 h-3.5 text-zinc-400" />}>
+                    <SegmentedOptions
+                      ariaLabel="Hướng trang toàn bộ nội dung"
+                      value={localSettings.orientation ?? 'portrait'}
+                      onChange={(orientation) => patch({ orientation })}
+                      options={[
+                        { value: 'portrait', label: 'Dọc', testId: 'orientation-portrait' },
+                        { value: 'landscape', label: 'Ngang', testId: 'orientation-landscape' },
+                      ]}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Số cột của nội dung" aside={<Columns className="w-3.5 h-3.5 text-zinc-400" />}>
+                  <div role="radiogroup" aria-label="Số cột" className="grid grid-cols-2 gap-2.5">
+                    <ChoiceCard
+                      selected={columnLayout === '2-column'}
+                      onClick={() => patch({ columnLayout: '2-column' })}
+                      title="2 cột"
+                      sub="Chuẩn tạp chí ĐHQG-HCM"
+                      tag={<Tag tone="green">Mặc định</Tag>}
+                    >
+                      <MiniPage>
+                        <MiniLines />
+                        <MiniLines widths={['w-full', 'w-5/6', 'w-2/3']} />
+                      </MiniPage>
+                    </ChoiceCard>
+                    <ChoiceCard
+                      selected={columnLayout === '1-column'}
+                      onClick={() => patch({ columnLayout: '1-column' })}
+                      title="1 cột"
+                      sub="Nội dung trải rộng toàn trang"
+                      tag={<Tag tone="blue">Toàn trang</Tag>}
+                    >
+                      <MiniPage>
+                        <MiniLines widths={['w-full', 'w-4/5', 'w-full']} />
+                      </MiniPage>
+                    </ChoiceCard>
+                  </div>
+                </Field>
+              </SettingsCard>
+
+              {/* 3. Page numbers */}
+              <SettingsCard
+                title="Đánh số trang"
+                hint="Vị trí, kiểu số và trang bắt đầu."
+                icon={<Hash />}
+                aside={
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={pageNum.enabled}
                       onChange={(e) => updatePageNum({ enabled: e.target.checked })}
+                      aria-label="Bật đánh số trang"
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#78C841]"></div>
+                    <span className="w-9 h-5 rounded-full bg-zinc-200 peer-checked:bg-[#78C841] transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-xs after:transition-all peer-checked:after:translate-x-4" />
                   </label>
-                </div>
-
+                }
+              >
                 {pageNum.enabled && (
-                  <div className="space-y-4 animate-in fade-in pt-1">
-                    {/* Live Preview Pill */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                        <span className="text-[11px] text-zinc-600 font-medium">Mẫu hiển thị thực tế:</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 rounded-xl bg-white border border-zinc-200 text-xs font-mono font-bold text-zinc-800 shadow-2xs">
-                          {samplePage1}
-                        </span>
+                  <div className="space-y-3.5 animate-in fade-in">
+                    <div className="flex items-center justify-between gap-2 rounded-2xl bg-zinc-50 border border-zinc-200/70 px-3 py-2">
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-600">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                        Hiển thị thực tế
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono font-bold text-zinc-800">{samplePage1}</span>
                         <span className="text-zinc-300 text-xs">→</span>
-                        <span className="px-2.5 py-1 rounded-xl bg-white border border-zinc-200 text-xs font-mono font-bold text-zinc-800 shadow-2xs">
-                          {samplePage2}
-                        </span>
-                      </div>
+                        <span className="px-2.5 py-0.5 rounded-xl bg-white border border-zinc-200 text-xs font-mono font-bold text-zinc-800">{samplePage2}</span>
+                      </span>
                     </div>
 
-                    {/* Vị trí số trang (Position) */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-zinc-700 block">
-                        Vị trí đánh số trang (Position):
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { id: 'bottom-alternating' as const, label: 'Chân trang: Đối xứng', sub: 'Chẵn Trái – Lẻ Phải (Chuẩn sách)' },
-                          { id: 'bottom-center' as const, label: 'Chân trang: Giữa', sub: 'Chính giữa cuối trang' },
-                          { id: 'bottom-right' as const, label: 'Chân trang: Phải', sub: 'Góc dưới bên phải' },
-                          { id: 'bottom-left' as const, label: 'Chân trang: Trái', sub: 'Góc dưới bên trái' },
-                          { id: 'top-alternating' as const, label: 'Đầu trang: Đối xứng', sub: 'Chẵn Trái – Lẻ Phải (Header)' },
-                          { id: 'top-center' as const, label: 'Đầu trang: Giữa', sub: 'Chính giữa đầu trang' },
-                          { id: 'top-right' as const, label: 'Đầu trang: Phải', sub: 'Góc trên bên phải' },
-                          { id: 'top-left' as const, label: 'Đầu trang: Trái', sub: 'Góc trên bên trái' },
-                        ] as const).map((pos) => {
-                          const isSel = pageNum.position === pos.id;
-                          return (
-                            <button
-                              key={pos.id}
-                              type="button"
-                              onClick={() => updatePageNum({ position: pos.id })}
-                              className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                                isSel
-                                  ? 'bg-blue-50/50 border-blue-500 ring-2 ring-blue-500/20'
-                                  : 'bg-zinc-50/60 hover:bg-zinc-100/80 border-zinc-200 text-zinc-700'
-                              }`}
-                            >
-                              <div className="text-xs font-bold text-zinc-900">{pos.label}</div>
-                              <div className="text-[9.5px] text-zinc-500 truncate">{pos.sub}</div>
-                              {isSel && (
-                                <div className="absolute top-2 right-2 w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center">
-                                  <Check className="w-2 h-2 stroke-[3]" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
+                    <Field label="Vị trí">
+                      <div className="space-y-2">
+                        <SegmentedOptions
+                          ariaLabel="Số trang ở đầu hay chân trang"
+                          value={zone}
+                          onChange={(z) => updatePageNum({ position: `${z}-${align}` as PageNumberingSettings['position'] })}
+                          options={ZONES}
+                        />
+                        <SegmentedOptions
+                          ariaLabel="Căn số trang"
+                          value={align}
+                          onChange={(a) => updatePageNum({ position: `${zone}-${a}` as PageNumberingSettings['position'] })}
+                          options={ALIGNS}
+                        />
                       </div>
-                    </div>
+                    </Field>
 
-                    {/* Định dạng số trang (Format) */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-zinc-700 block">
-                        Định dạng số trang (Number Format):
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {([
-                          { id: 'arabic' as const, label: '1, 2, 3...', sample: '1' },
-                          { id: 'roman-lower' as const, label: 'i, ii, iii...', sample: 'i' },
-                          { id: 'roman-upper' as const, label: 'I, II, III...', sample: 'I' },
-                          { id: 'alpha-lower' as const, label: 'a, b, c...', sample: 'a' },
-                          { id: 'alpha-upper' as const, label: 'A, B, C...', sample: 'A' },
-                          { id: 'hyphen' as const, label: '- 1 -, - 2 -', sample: '- 1 -' },
-                          { id: 'page-x-of-y' as const, label: 'Trang X / Y', sample: '1 / 10' },
-                        ] as const).map((fmt) => {
-                          const isSel = pageNum.format === fmt.id;
-                          return (
-                            <button
-                              key={fmt.id}
-                              type="button"
-                              onClick={() => updatePageNum({ format: fmt.id })}
-                              className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                                isSel
-                                  ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs font-bold'
-                                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-transparent font-medium text-xs'
-                              }`}
-                            >
-                              <div className="text-xs font-mono">{fmt.sample}</div>
-                              <div className="text-[9px] opacity-80 truncate">{fmt.label}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Starting Page Number & Prefix Text */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="text-[11px] font-bold text-zinc-700 block mb-1">
-                          Bắt đầu từ trang số:
-                        </label>
-                        <input
-                          type="number"
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Kiểu số">
+                        <Select
+                          value={pageNum.format}
+                          onChange={(f) => updatePageNum({ format: f })}
+                          options={NUMBER_FORMATS}
+                          size="sm"
+                          variant="clean"
+                        />
+                      </Field>
+                      <Field label="Bắt đầu từ trang số" hint="Hữu ích khi đóng tập san, kỷ yếu.">
+                        <NumberInput
+                          value={pageNum.startNumber || 1}
+                          onChange={(v) => updatePageNum({ startNumber: Math.max(1, Math.round(v) || 1) })}
                           min={1}
                           max={9999}
-                          value={pageNum.startNumber || 1}
-                          onChange={(e) => updatePageNum({ startNumber: Math.max(1, parseInt(e.target.value) || 1) })}
-                          className="w-full p-2.5 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-900 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          step={1}
+                          variant="flat-white"
+                          ariaLabel="Bắt đầu từ trang số"
                         />
-                        <span className="text-[9.5px] text-zinc-400 mt-0.5 block">
-                          Hữu ích khi đóng tập san hoặc kỷ yếu
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-zinc-700 block mb-1">
-                          Tiền tố số trang (Prefix):
-                        </label>
-                        <input
-                          type="text"
-                          value={pageNum.prefixText || ''}
-                          onChange={(e) => updatePageNum({ prefixText: e.target.value })}
-                          placeholder='Ví dụ: "Trang" hoặc "Page"'
-                          className="w-full p-2.5 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-900 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-                        />
-                        <span className="text-[9.5px] text-zinc-400 mt-0.5 block">
-                          Để trống nếu chỉ cần hiện số
-                        </span>
-                      </div>
+                      </Field>
                     </div>
 
-                    {/* Different First Page Checkbox */}
-                    <div className="pt-1">
-                      <label className="flex items-start gap-2.5 py-1 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={pageNum.suppressOnFirstPage}
-                          onChange={(e) => updatePageNum({ suppressOnFirstPage: e.target.checked })}
-                          className="mt-0.5 w-4 h-4 text-blue-600 rounded border-zinc-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                            <BookmarkCheck className="w-3.5 h-3.5 text-blue-600" />
-                            Khác biệt trang đầu tiên (Different First Page)
-                          </div>
-                          <div className="text-[10px] text-zinc-500 leading-tight mt-0.5">
-                            Ẩn số trang ở trang bìa/trang đầu bài báo (Chuẩn quốc tế & bài báo ĐHQG-HCM)
-                          </div>
-                        </div>
-                      </label>
-                    </div>
+                    <Field label="Tiền tố" hint="Để trống nếu chỉ cần hiện số.">
+                      <input
+                        type="text"
+                        value={pageNum.prefixText || ''}
+                        onChange={(e) => updatePageNum({ prefixText: e.target.value })}
+                        placeholder='Ví dụ: "Trang" hoặc "Page"'
+                        className={textInputClass}
+                      />
+                    </Field>
+
+                    <ToggleRow
+                      checked={pageNum.suppressOnFirstPage}
+                      onChange={(v) => updatePageNum({ suppressOnFirstPage: v })}
+                      label="Ẩn số ở trang đầu"
+                      hint="Trang đầu của bài báo (khối tiêu đề) không in số, như bài báo ĐHQG-HCM."
+                    />
                   </div>
                 )}
-              </div>
+              </SettingsCard>
 
-              {/* 3. BỐ CỤC NỘI DUNG (1 CỘT / 2 CỘT) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-                    <Columns className="w-3.5 h-3.5 text-zinc-500" />
-                    Bố cục cột nội dung
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
-                    {localSettings.columnLayout === '2-column' ? '2 Cột chuẩn' : '1 Cột rộng'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Option: 2 Cột */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, columnLayout: '2-column' }))
-                    }
-                    className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                      localSettings.columnLayout === '2-column'
-                        ? 'bg-white border-[#78C841] shadow-sm ring-2 ring-[#78C841]/20'
-                        : 'bg-white/60 hover:bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300'
-                    }`}
-                  >
-                    {localSettings.columnLayout === '2-column' && (
-                      <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-[#78C841] text-white flex items-center justify-center shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <div className="w-full h-12 bg-zinc-50 rounded-lg border border-zinc-150 p-1.5 flex gap-1.5 mb-2">
-                        <div className="w-1/2 h-full bg-zinc-200/80 rounded flex flex-col gap-1 p-1">
-                          <div className="w-full h-1 bg-zinc-400 rounded-full" />
-                          <div className="w-3/4 h-1 bg-zinc-300 rounded-full" />
-                          <div className="w-5/6 h-1 bg-zinc-300 rounded-full" />
-                        </div>
-                        <div className="w-1/2 h-full bg-zinc-200/80 rounded flex flex-col gap-1 p-1">
-                          <div className="w-full h-1 bg-zinc-400 rounded-full" />
-                          <div className="w-5/6 h-1 bg-zinc-300 rounded-full" />
-                          <div className="w-2/3 h-1 bg-zinc-300 rounded-full" />
-                        </div>
-                      </div>
-                      <div className="font-extrabold text-xs text-zinc-900">2 Cột</div>
-                      <p className="text-[10px] text-zinc-500 leading-tight">
-                        Chuẩn định dạng tạp chí ĐHQG-HCM
-                      </p>
-                    </div>
-                    <span className="inline-block mt-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 w-fit">
-                      Mặc định
-                    </span>
-                  </button>
-
-                  {/* Option: 1 Cột */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, columnLayout: '1-column' }))
-                    }
-                    className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                      localSettings.columnLayout === '1-column'
-                        ? 'bg-white border-[#78C841] shadow-sm ring-2 ring-[#78C841]/20'
-                        : 'bg-white/60 hover:bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300'
-                    }`}
-                  >
-                    {localSettings.columnLayout === '1-column' && (
-                      <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-[#78C841] text-white flex items-center justify-center shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <div className="w-full h-12 bg-zinc-50 rounded-lg border border-zinc-150 p-1.5 flex mb-2">
-                        <div className="w-full h-full bg-zinc-200/80 rounded flex flex-col gap-1 p-1">
-                          <div className="w-full h-1 bg-zinc-400 rounded-full" />
-                          <div className="w-4/5 h-1 bg-zinc-300 rounded-full" />
-                          <div className="w-full h-1 bg-zinc-300 rounded-full" />
-                          <div className="w-2/3 h-1 bg-zinc-300 rounded-full" />
-                        </div>
-                      </div>
-                      <div className="font-extrabold text-xs text-zinc-900">1 Cột</div>
-                      <p className="text-[10px] text-zinc-500 leading-tight">
-                        Nội dung bài báo trải rộng 1 cột xuyên suốt
-                      </p>
-                    </div>
-                    <span className="inline-block mt-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 w-fit">
-                      Toàn trang
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <PageOrientationSetting
-                value={localSettings.orientation}
-                onChange={(orientation) => setLocalSettings((prev) => ({ ...prev, orientation }))}
-              />
-
-              {/* 4. KÍCH THƯỚC KHỔ GIẤY */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-zinc-500" />
-                    Kích thước khổ giấy
-                  </label>
-                  <span className="text-[10px] text-zinc-400 font-medium">XeLaTeX Geometry</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, paperSize: 'custom' }))
-                    }
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                      localSettings.paperSize === 'custom'
-                        ? 'bg-white border-[#78C841] ring-2 ring-[#78C841]/20 shadow-xs'
-                        : 'bg-white/70 hover:bg-white border-zinc-200 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-extrabold text-xs text-zinc-900">Chuẩn ĐHQG</span>
-                      {localSettings.paperSize === 'custom' && (
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#78C841] text-white flex items-center justify-center">
-                          <Check className="w-2 h-2 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-zinc-500">8.51&quot; × 11.0&quot; (216 × 279mm)</p>
-                    <span className="inline-block mt-1.5 text-[8px] font-bold px-1 py-0.2 rounded bg-zinc-100 text-zinc-600">
-                      Mặc định
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, paperSize: 'a4' }))
-                    }
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                      localSettings.paperSize === 'a4'
-                        ? 'bg-white border-[#78C841] ring-2 ring-[#78C841]/20 shadow-xs'
-                        : 'bg-white/70 hover:bg-white border-zinc-200 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-extrabold text-xs text-zinc-900">Khổ A4</span>
-                      {localSettings.paperSize === 'a4' && (
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#78C841] text-white flex items-center justify-center">
-                          <Check className="w-2 h-2 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-zinc-500">210 × 297 mm</p>
-                    <span className="inline-block mt-1.5 text-[8px] font-bold px-1 py-0.2 rounded bg-blue-50 text-blue-700">
-                      ISO 216
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, paperSize: 'letter' }))
-                    }
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                      localSettings.paperSize === 'letter'
-                        ? 'bg-white border-[#78C841] ring-2 ring-[#78C841]/20 shadow-xs'
-                        : 'bg-white/70 hover:bg-white border-zinc-200 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-extrabold text-xs text-zinc-900">US Letter</span>
-                      {localSettings.paperSize === 'letter' && (
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#78C841] text-white flex items-center justify-center">
-                          <Check className="w-2 h-2 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-zinc-500">8.5&quot; × 11.0&quot; (215.9 × 279.4mm)</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocalSettings((prev) => ({ ...prev, paperSize: 'b5' }))
-                    }
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                      localSettings.paperSize === 'b5'
-                        ? 'bg-white border-[#78C841] ring-2 ring-[#78C841]/20 shadow-xs'
-                        : 'bg-white/70 hover:bg-white border-zinc-200 text-zinc-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-extrabold text-xs text-zinc-900">Khổ B5</span>
-                      {localSettings.paperSize === 'b5' && (
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#78C841] text-white flex items-center justify-center">
-                          <Check className="w-2 h-2 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-zinc-500">182 × 257 mm</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* 5. THÔNG SỐ NÂNG CAO */}
-              <div className="space-y-3">
-                <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-                  <Type className="w-3.5 h-3.5 text-zinc-500" />
-                  Quy chuẩn phông chữ & khoảng cách
-                </label>
-
-                {/* Cỡ chữ */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-zinc-600 block">
-                    Cỡ chữ bài báo (Base font size):
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['9pt', '10pt', '11pt'] as const).map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() =>
-                          setLocalSettings((prev) => ({ ...prev, fontSize: size }))
-                        }
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          (localSettings.fontSize || '9pt') === size
-                            ? 'bg-zinc-900 text-white shadow-2xs'
-                            : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
-                        }`}
-                      >
-                        {size} {size === '9pt' ? '(Chuẩn)' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Khoảng cách 2 cột (Column Gap) - Chỉ hiện khi 2 cột */}
-                {localSettings.columnLayout === '2-column' && (
-                  <div className="space-y-1.5 animate-in fade-in">
-                    <label className="text-[11px] font-bold text-zinc-600 block">
-                      Khoảng cách giữa 2 cột (Column sep):
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['1pc', '1.5pc', '2pc'] as const).map((gap) => (
-                        <button
-                          key={gap}
-                          type="button"
-                          onClick={() =>
-                            setLocalSettings((prev) => ({ ...prev, columnSep: gap }))
-                          }
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            (localSettings.columnSep || '1pc') === gap
-                              ? 'bg-zinc-900 text-white shadow-2xs'
-                              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
-                          }`}
-                        >
-                          {gap} {gap === '1pc' ? '(Chuẩn)' : ''}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              {/* 4. Type and spacing */}
+              <SettingsCard title="Chữ và khoảng cách" hint="Cỡ chữ, giãn dòng, khoảng cách giữa hai cột và phông chữ." icon={<Type />}>
+                <Field label="Cỡ chữ bài báo">
+                  <SegmentedOptions
+                    ariaLabel="Cỡ chữ bài báo"
+                    value={localSettings.fontSize || '9pt'}
+                    onChange={(fontSize) => patch({ fontSize })}
+                    options={[
+                      { value: '9pt', label: '9pt (chuẩn)' },
+                      { value: '10pt', label: '10pt' },
+                      { value: '11pt', label: '11pt' },
+                    ]}
+                  />
+                </Field>
+                <Field label="Hệ số giãn dòng">
+                  <SegmentedOptions
+                    ariaLabel="Hệ số giãn dòng"
+                    value={localSettings.lineSpacing || '1.13'}
+                    onChange={(lineSpacing) => patch({ lineSpacing })}
+                    options={[
+                      { value: '1.13', label: '1.13× (chuẩn)' },
+                      { value: '1.2', label: '1.2×' },
+                      { value: '1.3', label: '1.3×' },
+                    ]}
+                  />
+                </Field>
+                {columnLayout === '2-column' && (
+                  <Field label="Khoảng cách giữa hai cột">
+                    <SegmentedOptions
+                      ariaLabel="Khoảng cách giữa hai cột"
+                      value={localSettings.columnSep || '1pc'}
+                      onChange={(columnSep) => patch({ columnSep })}
+                      options={[
+                        { value: '1pc', label: '1pc (chuẩn)' },
+                        { value: '1.5pc', label: '1.5pc' },
+                        { value: '2pc', label: '2pc' },
+                      ]}
+                    />
+                  </Field>
                 )}
+                <ThemeFontsFields
+                  theme={localSettings.theme}
+                  onChange={(theme) => patch({ theme })}
+                />
+              </SettingsCard>
 
-                {/* Giãn dòng */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-zinc-600 block">
-                    Hệ số giãn dòng (Line spread):
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['1.13', '1.2', '1.3'] as const).map((ls) => (
-                      <button
-                        key={ls}
-                        type="button"
-                        onClick={() =>
-                          setLocalSettings((prev) => ({ ...prev, lineSpacing: ls }))
-                        }
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          (localSettings.lineSpacing || '1.13') === ls
-                            ? 'bg-zinc-900 text-white shadow-2xs'
-                            : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
-                        }`}
-                      >
-                        {ls}x {ls === '1.13' ? '(Chuẩn)' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <ThemeMarginsCard theme={localSettings.theme} onChange={(theme) => patch({ theme })} />
+              <ThemeColorsCard theme={localSettings.theme} onChange={(theme) => patch({ theme })} />
+              <ThemeTablesCard theme={localSettings.theme} onChange={(theme) => patch({ theme })} />
+
+              {/* 5. References and last page */}
+              <div data-testid="layout-references-section">
+                <SettingsCard title="Tài liệu tham khảo và trang cuối" hint="Cách in DOI và cân đối trang cuối." icon={<BookOpen />}>
+                  <Field
+                    label="DOI ở cuối mỗi tài liệu tham khảo"
+                    hint={'Chỉ tài liệu đã có DOI mới được in. Tạp chí KH&CN (STD) in liên kết không kèm chữ "Available from:".'}
+                  >
+                    <SegmentedOptions
+                      ariaLabel="DOI ở cuối mỗi tài liệu tham khảo"
+                      value={localSettings.referenceDoi || 'journal'}
+                      onChange={(referenceDoi) => patch({ referenceDoi })}
+                      options={[
+                        { value: 'journal', label: 'Theo tạp chí', testId: 'layout-reference-doi-journal' },
+                        { value: 'available', label: '"Available from:"', testId: 'layout-reference-doi-available' },
+                        { value: 'link', label: 'Chỉ liên kết', testId: 'layout-reference-doi-link' },
+                        { value: 'none', label: 'Không in', testId: 'layout-reference-doi-none' },
+                      ]}
+                    />
+                  </Field>
+                  <ToggleRow
+                    testId="layout-balanceColumns"
+                    checked={localSettings.balanceColumns !== false}
+                    onChange={(v) => patch({ balanceColumns: v })}
+                    label="Cân bằng hai cột ở trang cuối"
+                    hint="Hai cột kết thúc ngang nhau thay vì cột trái đầy còn cột phải ngắn."
+                  />
+                  <ToggleRow
+                    testId="layout-rangeDash"
+                    checked={localSettings.rangeDash !== false}
+                    onChange={(v) => patch({ rangeDash: v })}
+                    label="Gạch ngang dài cho khoảng số"
+                    hint="Đổi 268-9 và 2016-2023 thành 268–9 và 2016–2023 như bản in của tạp chí."
+                  />
+                </SettingsCard>
               </div>
-              <ThemeSettingsSection
-                theme={localSettings.theme}
-                onChange={(theme) => setLocalSettings((prev) => ({ ...prev, theme }))}
-              />
+
+              <div className="flex justify-center pt-1 pb-1">
+                <ThemeResetButton onChange={(theme) => patch({ theme })} />
+              </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-5 bg-white border-t border-[#EAECEF] flex items-center justify-between gap-3 shadow-sm">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn-pill-subtle text-xs py-2 px-3 text-zinc-600 hover:text-zinc-900 font-bold flex items-center gap-1.5 cursor-pointer"
-                title="Khôi phục về quy chuẩn ban đầu của Tạp chí"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Mặc định</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleApply}
-                disabled={isCompiling}
-                className="btn-pill-lime text-xs py-2.5 px-5 font-bold flex items-center gap-2 shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-              >
-                <span>Áp dụng & Biên dịch PDF</span>
-              </button>
-            </div>
+            <SettingsFooter
+              onReset={handleReset}
+              resetTitle="Khôi phục về quy chuẩn ban đầu của tạp chí"
+              resetIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              primaryLabel="Áp dụng & Biên dịch PDF"
+              onPrimary={handleApply}
+              primaryDisabled={isCompiling}
+            />
           </motion.div>
         </motion.div>
       )}

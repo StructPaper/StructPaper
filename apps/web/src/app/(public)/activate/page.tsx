@@ -10,13 +10,19 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  BookOpen,
   ChevronRight,
   CheckCircle2,
   Lock,
 } from 'lucide-react';
 import { http } from '@structpaper/api-client';
 import { sileo } from '@/components/toast';
+import {
+  AuthBrand,
+  AuthHeading,
+  AuthField,
+  authPrimaryButton,
+  authLinkClass,
+} from '@/components/auth/AuthFields';
 
 function ActivateForm() {
   const router = useRouter();
@@ -124,184 +130,135 @@ function ActivateForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-6">
-      {/* Brand Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#78C841]/15 border border-[#78C841]/30 rounded-full text-[#78C841] text-[11px] font-black uppercase tracking-widest">
-          <BookOpen className="w-3.5 h-3.5" />
-          VNUHCM Scholarly Publishing
-        </div>
-        <h1 className="text-3xl font-black text-zinc-950 uppercase tracking-tight">
-          Kích hoạt <span className="text-[#78C841]">Tài khoản</span>
-        </h1>
-        <p className="text-xs text-zinc-500 font-medium max-w-sm mx-auto">
-          Nhập mật khẩu an toàn để kích hoạt phiên làm việc và bắt đầu xuất bản bản thảo.
-        </p>
-      </div>
+    <div className="w-full">
+      <AuthBrand />
+      <AuthHeading
+        title="Kích hoạt tài khoản"
+      />
 
-      {/* Success Celebration View */}
       {isSuccess ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-[32px] border border-emerald-100 shadow-xl text-center space-y-4"
+          className="space-y-4 rounded-[32px] border border-[#78C841]/40 bg-white p-8 text-center shadow-sm"
         >
-          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
-            <CheckCircle2 className="w-8 h-8" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#78C841]/40 bg-[#78C841]/15 text-[#2F7D32]">
+            <CheckCircle2 className="h-8 w-8" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-zinc-900 uppercase">Thiết lập hoàn tất!</h2>
-            <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+            <h2 className="text-lg font-bold text-[#1A1A1A]">Thiết lập hoàn tất!</h2>
+            <p className="mt-1 text-xs leading-relaxed text-[#1A1A1A]/60">
               Tài khoản của bạn đã chuyển sang trạng thái <strong>ACTIVE</strong>. Bạn có thể sử dụng mật khẩu vừa đặt để đăng nhập ngay bây giờ.
             </p>
           </div>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[#1A1A1A] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-all"
-          >
+          <Link href="/login" className={authPrimaryButton}>
             <span>Đến trang Đăng nhập</span>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </motion.div>
       ) : (
-        /* Form Card */
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="bg-white p-6 sm:p-8 rounded-[32px] border border-zinc-200/80 shadow-[0_15px_50px_rgba(0,0,0,0.03)] space-y-4"
+          className="space-y-4"
         >
-          {/* Error Banner */}
           {errorMessage && (
-            <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-3xl border border-red-100 bg-red-50 p-4 text-xs text-red-600"
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
               <div className="flex-1">
-                <span className="font-bold block uppercase tracking-wider text-[10px] text-red-400">Lỗi kích hoạt</span>
-                <p className="font-bold text-red-600 mt-0.5 leading-tight">{errorMessage}</p>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-red-400">Lỗi kích hoạt</span>
+                <p className="mt-0.5 font-bold leading-tight text-red-600">{errorMessage}</p>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Activation Token Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-700 block">
-                Mã Token Lời Mời
-              </label>
-              <div className="relative">
-                <div className="absolute left-2 top-2 bottom-2 w-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 z-10">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="tok_invitation_..."
-                  required
-                  className="w-full h-12 bg-zinc-50 border border-zinc-200 focus:border-zinc-300 focus:bg-white rounded-2xl pl-14 pr-4 text-xs font-mono font-semibold text-zinc-900 transition-all focus:ring-4 focus:ring-zinc-100"
-                />
-              </div>
-            </div>
+            <AuthField
+              label="Mã Token Lời Mời"
+              icon={<KeyRound className="h-4 w-4" />}
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="tok_invitation_..."
+              required
+              className="font-mono text-xs"
+            />
 
-            {/* New Password Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-700 block">
-                Mật khẩu mới
-              </label>
-              <div className="relative">
-                <div className="absolute left-2 top-2 bottom-2 w-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 z-10">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Tối thiểu 8 ký tự..."
-                  required
-                  className="w-full h-12 bg-zinc-50 border border-zinc-200 focus:border-zinc-300 focus:bg-white rounded-2xl pl-14 pr-12 text-sm font-semibold text-zinc-900 transition-all focus:ring-4 focus:ring-zinc-100"
-                />
+            <AuthField
+              label="Mật khẩu mới"
+              icon={<Lock className="h-4 w-4" />}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Tối thiểu 8 ký tự..."
+              required
+              trailing={
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-[#1A1A1A]/40 hover:text-[#1A1A1A]"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
 
-            {/* Confirm Password Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-700 block">
-                Xác nhận mật khẩu
-              </label>
-              <div className="relative">
-                <div className="absolute left-2 top-2 bottom-2 w-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 z-10">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu..."
-                  required
-                  className="w-full h-12 bg-zinc-50 border border-zinc-200 focus:border-zinc-300 focus:bg-white rounded-2xl pl-14 pr-12 text-sm font-semibold text-zinc-900 transition-all focus:ring-4 focus:ring-zinc-100"
-                />
+            <AuthField
+              label="Xác nhận mật khẩu"
+              icon={<ShieldCheck className="h-4 w-4" />}
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Nhập lại mật khẩu..."
+              required
+              trailing={
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-[#1A1A1A]/40 hover:text-[#1A1A1A]"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
 
             {/* Password Validation Hints */}
-            <div className="p-3 bg-zinc-50 rounded-2xl border border-zinc-200/60 text-[11px] space-y-1">
-              <div className={`flex items-center gap-1.5 font-medium ${isPasswordLongEnough ? 'text-emerald-700' : 'text-zinc-400'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isPasswordLongEnough ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+            <div className="space-y-1 rounded-3xl border border-[#1A1A1A]/10 bg-white/70 p-4 text-[11px]">
+              <div className={`flex items-center gap-1.5 font-medium ${isPasswordLongEnough ? 'text-[#2F7D32]' : 'text-[#1A1A1A]/40'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${isPasswordLongEnough ? 'bg-[#78C841]' : 'bg-zinc-300'}`} />
                 <span>Độ dài từ 8 ký tự trở lên (chuẩn Argon2id)</span>
               </div>
-              <div className={`flex items-center gap-1.5 font-medium ${isPasswordMatching ? 'text-emerald-700' : 'text-zinc-400'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isPasswordMatching ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+              <div className={`flex items-center gap-1.5 font-medium ${isPasswordMatching ? 'text-[#2F7D32]' : 'text-[#1A1A1A]/40'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${isPasswordMatching ? 'bg-[#78C841]' : 'bg-zinc-300'}`} />
                 <span>Hai mật khẩu đã khớp</span>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className={`w-full h-13 rounded-2xl font-bold transition-all duration-300 flex items-center justify-center gap-3 active:scale-[0.98] cursor-pointer ${
-                !canSubmit
-                  ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none'
-                  : 'bg-[#1A1A1A] hover:bg-black text-white hover:scale-[1.01] hover:shadow-xl shadow-[0_15px_30px_rgba(0,0,0,0.1)]'
-              }`}
-            >
+            <button type="submit" disabled={!canSubmit} className={authPrimaryButton}>
               {isLoading ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span className="text-white font-bold text-sm">Đang kích hoạt tài khoản...</span>
-                </div>
+                <span className="flex items-center gap-3">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>Đang kích hoạt tài khoản...</span>
+                </span>
               ) : (
                 <>
-                  <span className="tracking-tight text-sm uppercase">Hoàn tất kích hoạt</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <span>Hoàn tất kích hoạt</span>
+                  <ChevronRight className="h-4 w-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Back to Login Link */}
-          <div className="pt-2 text-center">
-            <Link
-              href="/login"
-              className="text-xs font-bold text-zinc-400 hover:text-zinc-800 transition-colors uppercase tracking-wider"
-            >
+          <p className="pt-2 text-center text-xs text-[#1A1A1A]/60">
+            Đã có tài khoản?{' '}
+            <Link href="/login" className={authLinkClass}>
               Quay lại Đăng nhập
             </Link>
-          </div>
+          </p>
         </motion.div>
       )}
     </div>
@@ -310,17 +267,15 @@ function ActivateForm() {
 
 export default function ActivatePage() {
   return (
-    <div className="min-h-screen w-full bg-[#fafafa] flex items-center justify-center p-4 selection:bg-[#78C841] selection:text-black">
-      <Suspense
-        fallback={
-          <div className="text-xs font-bold text-zinc-400 flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
-            <span>Đang tải thông tin kích hoạt...</span>
-          </div>
-        }
-      >
-        <ActivateForm />
-      </Suspense>
-    </div>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center gap-2 py-20 text-xs font-semibold text-[#1A1A1A]/50">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#1A1A1A]/20 border-t-[#1A1A1A]" />
+          <span>Đang tải thông tin kích hoạt...</span>
+        </div>
+      }
+    >
+      <ActivateForm />
+    </Suspense>
   );
 }

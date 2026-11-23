@@ -127,6 +127,14 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
     push({ id: 'title_normalized', severity: 'info', code: 'field.title.normalized', title: 'Tựa đề đã chuyển từ chữ HOA sang kiểu câu', message: `Bản gốc trong Word: "${md.titleOriginal}".`, suggestion: 'Có thể hoàn tác ở thẻ "Tựa đề".', fixTab: 'metadata' });
   }
 
+  (md.importNotes ?? []).forEach((note, i) => {
+    push({ id: `import_note_${i}`, severity: 'info', code: 'import.note', title: 'Ghi chú khi nhập tệp Word', message: note });
+  });
+
+  if (md.titleEnOriginal && md.titleEnOriginal !== md.titleEn) {
+    push({ id: 'title_en_normalized', severity: 'info', code: 'field.titleEn.normalized', title: 'Tựa đề tiếng Anh đã chuyển từ chữ HOA sang kiểu câu', message: `Bản gốc trong Word: "${md.titleEnOriginal}".`, suggestion: 'Kiểm tra lại cách viết hoa tên riêng ở thẻ "Tựa đề".', fixTab: 'metadata' });
+  }
+
   // Word titles are often typed in capitals; the journal prints sentence case.
   const titleLetters = (md.title || '').replace(/[^A-Za-zÀ-ỹ]/g, '');
   if (titleLetters.length >= 12 && titleLetters === titleLetters.toUpperCase()) {
@@ -151,10 +159,7 @@ function coreChecks(paper: CompletePaper, gate: ValidationGate): ValidationIssue
   if (md.abstract?.trim() && (words < 275 || words > 500)) {
     push({ id: 'abstract_words', severity: 'warning', code: 'field.abstract.length', title: `Tóm tắt có ${words} từ`, message: 'Template quy định tóm tắt dài 275–500 từ.', suggestion: words < 275 ? 'Bổ sung nội dung tóm tắt.' : 'Rút gọn tóm tắt.', fixTab: 'abstract' });
   }
-  const kw = (md.keywords || []).filter((k) => k.trim()).length;
-  if (kw > 0 && (kw < 3 || kw > 5)) {
-    push({ id: 'keywords_count', severity: 'warning', code: 'field.keywords.count', title: `Có ${kw} từ khóa`, message: 'Template quy định 3–5 từ khóa.', fixTab: 'abstract' });
-  }
+  // (the number of keywords is not checked: it does not matter to the journal)
 
   // ---- numbering (STT) ----
   const labels: Record<string, string> = { table: 'Bảng', figure: 'Hình', equation: 'Phương trình' };
