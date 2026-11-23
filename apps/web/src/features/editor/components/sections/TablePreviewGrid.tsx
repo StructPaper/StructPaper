@@ -5,6 +5,31 @@ import React, { useMemo } from 'react';
 import { PaperTable, synthesizeHeaderRows } from '@/types/paper';
 
 export const TABLE_PREVIEW_MAX_ROWS = 10;
+/** The preview is also cut by its height (px): a few very tall rows would otherwise fill the card as much as many short ones. */
+export const TABLE_PREVIEW_MAX_HEIGHT = 360;
+
+const PREVIEW_WIDTH = 560;
+const PREVIEW_CHAR = 6.4;
+const PREVIEW_LINE = 16;
+const PREVIEW_ROW_PAD = 16;
+
+/**
+ * How many rows the preview shows: at most TABLE_PREVIEW_MAX_ROWS, and no more than fit in TABLE_PREVIEW_MAX_HEIGHT as the rows are
+ * estimated from what they hold (a row of long sentences is several lines tall). At least one row is always shown.
+ */
+export function previewRowLimit(rows: string[][], columns: number, maxRows = TABLE_PREVIEW_MAX_ROWS, maxHeight = TABLE_PREVIEW_MAX_HEIGHT): number {
+  const colChars = Math.max(6, Math.floor(PREVIEW_WIDTH / Math.max(1, columns) / PREVIEW_CHAR));
+  let height = 0;
+  let n = 0;
+  for (const row of rows) {
+    if (n >= maxRows) break;
+    const lines = Math.max(1, ...row.map((t) => String(t ?? '').split(/\r?\n/).reduce((a, l) => a + Math.max(1, Math.ceil(l.length / colChars)), 0)));
+    height += lines * PREVIEW_LINE + PREVIEW_ROW_PAD;
+    if (n > 0 && height > maxHeight) break;
+    n += 1;
+  }
+  return Math.max(n, rows.length ? 1 : 0);
+}
 
 export interface TablePreviewGridProps {
   table: PaperTable;
@@ -64,11 +89,14 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
     [normalizedTable.headerRows, safeNormalizedHeaders]
   );
 
-  const isTruncated = totalRows > TABLE_PREVIEW_MAX_ROWS;
-  const hiddenCount = totalRows - TABLE_PREVIEW_MAX_ROWS;
+  const columns = Math.max(effectiveHeaderRows?.[0]?.length ?? 0, safeNormalizedHeaders.length, 1);
+  const plainRows = hasStructuredBodyRows ? rawBodyRows.map((r) => r.map((c) => c.text ?? '')) : rawFlatRows.map((r) => r.map((c) => String(c ?? '')));
+  const shown = previewRowLimit(plainRows, columns);
+  const isTruncated = totalRows > shown;
+  const hiddenCount = totalRows - shown;
 
-  const visibleBodyRows = isTruncated ? rawBodyRows.slice(0, TABLE_PREVIEW_MAX_ROWS) : rawBodyRows;
-  const visibleFlatRows = isTruncated ? rawFlatRows.slice(0, TABLE_PREVIEW_MAX_ROWS) : rawFlatRows;
+  const visibleBodyRows = isTruncated ? rawBodyRows.slice(0, shown) : rawBodyRows;
+  const visibleFlatRows = isTruncated ? rawFlatRows.slice(0, shown) : rawFlatRows;
 
   return (
     <div className="overflow-x-auto max-w-full w-full rounded-xl border border-zinc-200">
@@ -161,7 +189,7 @@ const TablePreviewGridBase: React.FC<TablePreviewGridProps> = ({
       {isTruncated && (
         <div className="sticky left-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-zinc-50/90 border-t border-zinc-200 text-[11px] text-zinc-600">
           <span>
-            Đang hiển thị {TABLE_PREVIEW_MAX_ROWS} / {totalRows} hàng — còn {hiddenCount} hàng nữa
+            Đang hiển thị {shown} / {totalRows} hàng — còn {hiddenCount} hàng nữa
           </span>
           <button
             type="button"

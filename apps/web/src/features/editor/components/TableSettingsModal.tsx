@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TablePlacementAndBreak } from './TablePlacementAndBreak';
 import { resolveBodyFill } from '@/lib/table-fill';
 import { createPortal } from 'react-dom';
@@ -21,6 +21,9 @@ interface TableSettingsModalProps {
   table: PaperTable;
   onSave: (updated: PaperTable) => void;
   onClose: () => void;
+  /** Shown beside the paper view of the table instead of as a popup: no backdrop, no Save, every change is handed over as it is made (onLive). */
+  docked?: boolean;
+  onLive?: (updated: PaperTable) => void;
 }
 
 const ROW_STRETCH = [
@@ -37,6 +40,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   table,
   onSave,
   onClose,
+  docked = false,
+  onLive,
 }) => {
   const [mounted, setMounted] = useState(false);
 
@@ -64,6 +69,8 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
   }, []);
 
   useEffect(() => {
+    // (docked beside the paper view, Esc belongs to that view)
+    if (docked) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -71,7 +78,11 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  const syncedFor = useRef<string | null>(null);
   useEffect(() => {
+    // docked, the choices follow the table only when another table is shown (the table itself changes under them as it is edited)
+    if (docked && syncedFor.current === table.id) return;
+    syncedFor.current = table.id;
     if (isOpen) {
       const span = table.columnSpan || (table.isFullWidth === false ? '1-column' : '2-column');
       setColumnSpan(span);
@@ -87,6 +98,17 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       setRowHeightTouched(false);
     }
   }, [isOpen, table]);
+
+  // docked: what is chosen is handed over at once (the hooks stand before the early return below)
+  const buildRef = useRef<() => PaperTable>(() => table);
+  const stateKey = JSON.stringify([columnSpan, isRotated, fontSize, rowStretch, bodyFill, placement, breakAcrossPages, appendix, sideColumn, look]);
+  const lastKey = useRef(stateKey);
+  useEffect(() => {
+    if (!docked || stateKey === lastKey.current) return;
+    lastKey.current = stateKey;
+    onLive?.(buildRef.current());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateKey]);
 
   if (!mounted) return null;
 
@@ -104,8 +126,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
 
   const rowCount = table.bodyRows?.length || table.rows?.length || 0;
 
-  const handleSave = () => {
-    const updated: PaperTable = {
+  const buildUpdated = (): PaperTable => ({
       ...applyLook(table, look, rowCount, rowHeightTouched),
       columnSpan,
       isFullWidth: columnSpan === '2-column',
@@ -118,10 +139,13 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       breakAcrossPages,
       sideColumn,
       appendix: appendix || undefined,
-    };
-    onSave(updated);
+  });
+  const handleSave = () => {
+    onSave(buildUpdated());
     onClose();
   };
+
+  buildRef.current = buildUpdated;
 
   // never taller than the window, and placed so the whole dialog stays on screen
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -140,20 +164,17 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
       right: '25%',
     };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-hidden pointer-events-auto">
-      {/* Transparent backdrop: a click outside closes */}
-      <div key="table-backdrop" className="fixed inset-0 bg-transparent cursor-default" onClick={onClose} />
-
+  const panel = (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
-        style={modalStyle}
-        role="dialog"
+        style={docked ? undefined : modalStyle}
+        role={docked ? 'region' : 'dialog'}
+        data-docked={docked ? 'true' : undefined}
         aria-label={`Cài đặt ${table.num ? `Bảng ${table.num}` : 'bảng'}`}
-        className="z-10 w-[400px] max-w-[calc(100vw-2rem)] rounded-[28px] border border-white/60 bg-[#F8F9FA] shadow-[0_12px_44px_rgba(0,0,0,0.20),0_4px_16px_rgba(0,0,0,0.10)] overflow-hidden flex flex-col text-left select-none pointer-events-auto"
+        className={`${docked ? 'h-full w-full' : 'z-10 w-[400px] max-w-[calc(100vw-2rem)]'} rounded-[28px] border border-white/60 bg-[#F8F9FA] shadow-[0_12px_44px_rgba(0,0,0,0.20),0_4px_16px_rgba(0,0,0,0.10)] overflow-hidden flex flex-col text-left select-none pointer-events-auto`}
       >
         <SettingsHeader
           compact
@@ -270,6 +291,7 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
           </SettingsCard>
         </div>
 
+        {!docked && (
         <SettingsFooter
           onReset={handleReset}
           resetTitle="Khôi phục tất cả cài đặt bảng về giá trị mặc định"
@@ -281,7 +303,16 @@ export const TableSettingsModal: React.FC<TableSettingsModalProps> = ({
           primaryTitle="Lưu các thông số cài đặt này cho bảng dữ liệu"
           onPrimary={handleSave}
         />
+        )}
       </motion.div>
+  );
+
+  if (docked) return panel;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-hidden pointer-events-auto">
+      {/* Transparent backdrop: a click outside closes */}
+      <div key="table-backdrop" className="fixed inset-0 bg-transparent cursor-default" onClick={onClose} />
+      {panel}
     </div>,
     document.body
   );

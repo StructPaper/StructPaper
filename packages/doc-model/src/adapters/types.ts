@@ -71,6 +71,9 @@ export interface V1TableCell {
   rowSpan?: number;
   align?: 'left' | 'center' | 'right';
   isHeader?: boolean;
+  fill?: string;
+  valign?: 'top' | 'middle' | 'bottom';
+  borders?: Record<string, string>;
 }
 
 export interface V1PaperTable {

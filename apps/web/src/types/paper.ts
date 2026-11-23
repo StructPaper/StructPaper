@@ -90,6 +90,18 @@ export interface TableCell {
   isHeader?: boolean;
   /** Background of this cell as "#RRGGBB" (over the table's own fill). */
   fill?: string;
+  /** Where the text stands in the height of the cell (default: top). */
+  valign?: 'top' | 'middle' | 'bottom';
+  /** The lines of this cell's four sides: 'line' draws one, 'none' leaves it out, whatever the table's own style says (absent: the table's style decides). */
+  borders?: CellBorders;
+}
+
+export type CellBorderMode = 'line' | 'none';
+export interface CellBorders {
+  top?: CellBorderMode;
+  bottom?: CellBorderMode;
+  left?: CellBorderMode;
+  right?: CellBorderMode;
 }
 
 /** How the lines of a table are drawn: the journal's (rules above and below), none, between rows, between columns, all, or the outline only. */
@@ -132,6 +144,10 @@ export interface PaperTable {
   rowHeights?: Array<number | null>;
   /** Least height in points of the header rows. */
   headerHeight?: number;
+  /** How much of the room (the column, the text, the page) the table takes, in percent (absent: all of it). The columns share this width. */
+  widthPercent?: number;
+  /** Where a table narrower than its room stands (absent: in the middle). */
+  tableAlign?: 'left' | 'center' | 'right';
   /** Relative width of each column (absent: worked out from the text). */
   colWeights?: number[];
   /** Colour of the header band, "#RRGGBB" (default: the theme's). */

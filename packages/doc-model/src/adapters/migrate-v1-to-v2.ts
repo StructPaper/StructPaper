@@ -389,7 +389,7 @@ export function migrateV1toV2(
             bodyFill: tbl.bodyFill,
             tblNum: tbl.num,
             // whatever else the table carries (lines, widths, source look, appendix …) rides along and comes back as it was
-            extras: extrasOf(tbl, TABLE_KNOWN),
+            extras: withCellStyles(extrasOf(tbl, TABLE_KNOWN), tbl),
           },
         };
         addBlockToCurrent(tableBlock);
@@ -492,6 +492,25 @@ export function migrateV1toV2(
  */
 const TABLE_KNOWN = new Set(['id', 'num', 'caption', 'source', 'headers', 'rows', 'headerRows', 'bodyRows', 'columnSpan', 'isFullWidth', 'isRotated', 'fontSize', 'rowStretch', 'hasZebraStripes', 'placement', 'breakAcrossPages', 'bodyFill']);
 const FIGURE_KNOWN = new Set(['id', 'num', 'caption', 'src', 'source', 'columnSpan', 'isFullWidth', 'alignment', 'scalePercent', 'placement', 'hasBorder']);
+/**
+ * What a cell carries besides its text, spans and alignment (a fill, the vertical alignment, its lines), kept by the cell's place in the
+ * grid ("row:cell", the header rows first) so that it comes back with the table.
+ */
+const CELL_STYLE_KEYS = ['fill', 'valign', 'borders'] as const;
+function withCellStyles(extras: Record<string, unknown> | undefined, tbl: any): Record<string, unknown> | undefined {
+  const styles: Record<string, Record<string, unknown>> = {};
+  const rows: any[][][] = [...(tbl.headerRows ?? []), ...(tbl.bodyRows ?? [])];
+  rows.forEach((row, r) =>
+    (row ?? []).forEach((cell: any, c: number) => {
+      const s: Record<string, unknown> = {};
+      for (const k of CELL_STYLE_KEYS) if (cell?.[k] !== undefined) s[k] = cell[k];
+      if (Object.keys(s).length > 0) styles[`${r}:${c}`] = s;
+    })
+  );
+  if (Object.keys(styles).length === 0) return extras;
+  return { ...(extras ?? {}), cellStyles: styles };
+}
+
 /** The fields of a v1 table or figure that the v2 block does not map by name (undefined ones left out). */
 function extrasOf(obj: Record<string, unknown>, known: Set<string>): Record<string, unknown> | undefined {
   const out: Record<string, unknown> = {};

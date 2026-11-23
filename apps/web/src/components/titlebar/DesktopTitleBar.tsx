@@ -25,7 +25,7 @@ import { SaveVersionButton } from './SaveVersionButton';
 import { JournalTitleBarInfo, JournalHistoryButton } from './JournalTitleBarInfo';
 import { PaperProfileInfoButton } from '@/features/journals/components/PaperProfileInfoButton';
 
-const SHOW_EDITOR_VIEW_SWITCH = false;
+const SHOW_EDITOR_VIEW_SWITCH = true;
 
 /**
  * Top-level application chrome bar.
@@ -131,7 +131,7 @@ export const DesktopTitleBar: React.FC = () => {
           </span>
         ) : null}
 
-        {/* The form / overview switch is kept out of the release for now: set to true to show it again. */}
+        {/* The form / overview switch: set SHOW_EDITOR_VIEW_SWITCH to false to keep it out of a release. */}
         {SHOW_EDITOR_VIEW_SWITCH && canEditHere && <EditorViewSwitch />}
 
         {(canEditHere || isJournalRoute) && <PdfLanguageSelect />}

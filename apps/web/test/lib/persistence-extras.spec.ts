@@ -43,3 +43,29 @@ describe('what a table, a figure and the paper carry beyond the v2 slots survive
     expect(m.primaryLanguage).toBe('en');
   });
 });
+
+describe('what a cell carries beyond its text survives saving and loading', () => {
+  it('fill, vertical alignment and the lines of a cell, in the head and in the body', () => {
+    const p: any = createEmptyPaper('VNUHCM-HS');
+    p.sections = [
+      {
+        id: 't', type: 'table', content: '',
+        table: {
+          id: 't', num: 1, caption: 'Bảng', headers: ['A', 'B'], rows: [['1', '2'], ['3', '4']],
+          headerRows: [[{ text: 'A', isHeader: true, fill: '#112233' }, { text: 'B', isHeader: true }]],
+          bodyRows: [
+            [{ text: '1', valign: 'middle' }, { text: '2', borders: { top: 'line', bottom: 'none' } }],
+            [{ text: '3', fill: '#ffeeaa', align: 'center' }, { text: '4' }],
+          ],
+        },
+      },
+    ];
+    const out: any = roundTrip(p).sections[0].table;
+    expect(out.headerRows[0][0].fill).toBe('#112233');
+    expect(out.bodyRows[0][0].valign).toBe('middle');
+    expect(out.bodyRows[0][1].borders).toEqual({ top: 'line', bottom: 'none' });
+    expect(out.bodyRows[1][0]).toMatchObject({ fill: '#ffeeaa', align: 'center' });
+    expect(out.bodyRows[1][1].fill).toBeUndefined();
+    expect(out.cellStyles).toBeUndefined();
+  });
+});

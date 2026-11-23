@@ -309,12 +309,21 @@ export function adaptV2toV1(v2Doc: Manuscript): V1CompletePaper {
             }
           }
 
+          // the fill, vertical alignment and lines of the cells (see withCellStyles in migrate-v1-to-v2)
+          const { cellStyles, ...tableExtras } = (((block.layout as any)?.extras as Record<string, any> | undefined) ?? {}) as Record<string, any>;
+          if (cellStyles) {
+            const put = (rows: V1TableCell[][], offset: number) =>
+              rows.forEach((row, r) => row.forEach((cell, c) => Object.assign(cell, cellStyles[`${offset + r}:${c}`] ?? {})));
+            put(headerRows, 0);
+            put(bodyRows, headerRows.length);
+          }
+
           sections.push({
             id: block.id,
             type: 'table',
             content: caption,
             table: {
-              ...(((block.layout as any)?.extras as Record<string, unknown> | undefined) ?? {}),
+              ...tableExtras,
               id: block.id,
               num: tblNum,
               caption,

@@ -4,6 +4,8 @@ import React from 'react';
 import { PaperSection, PaperTable, PaperFigure } from '@/types/paper';
 import { FigureSettingsModal } from '../FigureSettingsModal';
 import { TableSettingsModal } from '../TableSettingsModal';
+import { TablePaperEditor } from '../../paper-table/TablePaperEditor';
+import { usePaperTableContext } from '../../paper-table/paper-table-context';
 import { PageLayoutBadge } from './PageLayoutControl';
 import { AnimatePresence } from 'framer-motion';
 import {
@@ -18,6 +20,7 @@ import {
   Bookmark,
   Scissors,
   Settings,
+  FileText,
 } from 'lucide-react';
 
 export interface SectionCardHeaderProps {
@@ -75,6 +78,9 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
   const isHeading = sec.type === 'h1' || sec.type === 'h2' || sec.type === 'h3';
   const isParagraph = sec.type === 'paragraph';
   const isTable = sec.type === 'table';
+  // the table drawn alone on the printed sheets, to work on it there
+  const paperCtx = usePaperTableContext();
+  const [paperOpen, setPaperOpen] = React.useState(false);
   const isFigure = sec.type === 'figure';
   const isCitation = sec.type === 'citation';
   const isEquation = sec.type === 'equation';
@@ -282,6 +288,29 @@ const SectionCardHeaderBase: React.FC<SectionCardHeaderProps> = ({
         >
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
+
+        {isTable && paperCtx && sec.table && (
+          <>
+            <button
+              type="button"
+              data-edit-only
+              data-testid="table-paper-open"
+              onClick={() => setPaperOpen(true)}
+              title="Xem và chỉnh bảng trên trang giấy thật"
+              aria-label="Xem bảng trên trang giấy"
+              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-white/80 transition-colors cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5" />
+            </button>
+            {paperOpen && (
+              <TablePaperEditor
+                table={sec.table}
+                onChange={(t) => onUpdateSection(idx, { ...sec, table: t })}
+                onClose={() => setPaperOpen(false)}
+              />
+            )}
+          </>
+        )}
 
         {(isFigure || isTable) && (
           <div className="relative">

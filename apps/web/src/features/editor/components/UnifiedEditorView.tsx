@@ -17,6 +17,7 @@ import { isUuid } from '@/features/papers/components/types';
 import { PANEL_ATTR } from '@/lib/history/focus';
 import { PaperOverview, type OverviewPatch } from '../overview/PaperOverview';
 import { XrefProvider } from '../xref-context';
+import { PaperTableProvider } from '../paper-table/paper-table-context';
 import { layoutOverrides } from '@/lib/layout/profile-layout';
 import { computeQualityCheck } from '@/lib/validation/quality';
 import { getJournalTemplate } from '@/lib/templates';
@@ -504,6 +505,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     setIsDirty(true);
   }, []);
 
+  // what the paper view of a table needs of this paper (see paper-table/TablePaperEditor)
+  const paperTableContext = useMemo(
+    () => ({ paper: formData, layout: resolvePaperLayout(formData), lang: (pdfLanguage === 'en' ? 'en' : 'vi') as 'vi' | 'en' }),
+    [formData, pdfLanguage]
+  );
+
   const handleApplyLayoutSettings = (newSettings: LayoutSettings, newJournalId?: string) => {
     const journalIdToUse = newJournalId || formData.metadata.journalId || currentJournal;
     const tmpl = getJournalTemplate(journalIdToUse);
@@ -633,6 +640,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   return (
     <EditorTabStateProvider paperId={formData.id} store={tabStateStore}>
      <XrefProvider paper={formData} lang={pdfLanguage === 'en' ? 'en' : 'vi'}>
+     <PaperTableProvider value={paperTableContext}>
       <div className="h-full w-full flex flex-row p-3 min-h-0 gap-2 sm:gap-3 overflow-hidden">
       <EditorLeftDock
         homeHref="/papers"
@@ -760,6 +768,7 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
         confirmTestId="editor-save-and-exit-btn"
       />
       </div>
+     </PaperTableProvider>
      </XrefProvider>
     </EditorTabStateProvider>
   );

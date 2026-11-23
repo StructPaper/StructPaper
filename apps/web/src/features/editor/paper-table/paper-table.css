@@ -1,0 +1,270 @@
+/*
+ * A table on the printed sheet. Lengths are points (the sheet is 216 × 279 mm), so the sheet scales with `zoom` and keeps its
+ * proportions. What is drawn here follows what LaTeX sets: the columns share the width after the padding of the columns (6 pt on each
+ * side), the lines of a cell are the ones lib/table-cell-lines works out, a row is as tall as its lines and the row stretch make it.
+ */
+.tp-root {
+  --tp-title: #2b74b7;
+  --tp-head: #e5e5e5;
+  --tp-tint: #e7ecf7;
+  --tp-sans: 'Source Sans 3', 'Myriad Pro', Calibri, Arial, sans-serif;
+  --tp-serif: 'Times New Roman', Tinos, 'Liberation Serif', 'Nimbus Roman', Times, serif;
+}
+
+.tp-sheet {
+  position: relative;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 18px 48px rgba(0, 0, 0, 0.45);
+  flex: none;
+  overflow: hidden;
+}
+
+/* what is printed round the text: the running head and the page number (they belong to the upright sheet, even when it is shown turned) */
+.tp-chrome {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--tp-sans);
+}
+.tp-run-head {
+  position: absolute;
+  left: 47.8pt;
+  top: 35.5pt;
+  font: italic 700 8.5pt/1 var(--tp-sans);
+  white-space: nowrap;
+}
+.tp-run-rule {
+  position: absolute;
+  left: 184.1pt;
+  right: 36.72pt;
+  top: 45.35pt;
+  border-top: 0.5pt solid #000;
+}
+.tp-page-no {
+  position: absolute;
+  bottom: 24pt;
+  font: 700 10pt/1 var(--tp-sans);
+  color: var(--tp-title);
+}
+
+/* stand-in for the text round the table (lines of grey, not words) */
+.tp-skeleton {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.55;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 3pt, #d4d4d8 3pt, #d4d4d8 8pt, transparent 8pt, transparent 12.35pt);
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 100%);
+}
+.tp-skeleton[data-ragged='true'] {
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 3pt, #d4d4d8 3pt, #d4d4d8 8pt, transparent 8pt, transparent 12.35pt);
+}
+.tp-region-note {
+  position: absolute;
+  font: 600 7pt/1 var(--tp-sans);
+  color: #a1a1aa;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.tp-block {
+  position: absolute;
+  font-family: var(--tp-sans);
+  text-align: left;
+  --tp-w: 0.4pt;
+  --tp-color: #000;
+}
+.tp-caption {
+  font-family: var(--tp-sans);
+  font-size: 9pt;
+  line-height: 11pt;
+  font-weight: 700;
+  margin: 0 0 1.4pt;
+  min-height: 11pt;
+}
+.tp-caption .tp-label {
+  color: var(--tp-title);
+}
+.tp-source {
+  font-size: 7.5pt;
+  line-height: 9.6pt;
+  margin-top: 2.5pt;
+}
+.tp-source-line {
+  min-height: 9.6pt;
+}
+.tp-source[data-empty='true'] {
+  color: #a1a1aa;
+}
+
+.tp-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--tp-font);
+  line-height: var(--tp-line);
+  margin: 0;
+  max-width: none;
+}
+.tp-table td,
+.tp-table th {
+  position: relative;
+  padding: var(--tp-padv) 6pt;
+  vertical-align: top;
+  text-align: left;
+  font-weight: 400;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border-style: solid;
+  border-width: 0;
+  border-color: var(--tp-color);
+  font-family: var(--tp-serif);
+}
+.tp-table td[data-head='true'] {
+  font-weight: 700;
+  text-align: center;
+  background: var(--tp-head);
+}
+.tp-table tr[data-tint='true'] td {
+  background: var(--tp-tint);
+}
+.tp-table td[data-fill] {
+  background: var(--tp-cell-fill) !important;
+}
+.tp-table td[data-top='true'] {
+  border-top-width: var(--tp-w);
+}
+.tp-table td[data-bottom='true'] {
+  border-bottom-width: var(--tp-w);
+}
+.tp-table td[data-left='true'] {
+  border-left-width: var(--tp-w);
+}
+.tp-table td[data-right='true'] {
+  border-right-width: var(--tp-w);
+}
+.tp-table td[data-valign='middle'] {
+  vertical-align: middle;
+}
+.tp-table td[data-valign='bottom'] {
+  vertical-align: bottom;
+}
+.tp-table tr.tp-cont td,
+.tp-table tr.tp-foot td {
+  font-style: italic;
+  font-weight: 400;
+  background: transparent;
+}
+.tp-table tr.tp-cont td {
+  text-align: center;
+  border-top: var(--tp-w) solid var(--tp-color);
+}
+.tp-table tr.tp-foot td {
+  text-align: right;
+  border-top: var(--tp-w) solid var(--tp-color);
+}
+
+/* a cell being edited */
+.tp-cell {
+  outline: none;
+  min-height: var(--tp-line);
+  cursor: text;
+  white-space: pre-wrap;
+}
+.tp-cell:focus {
+  outline: none;
+}
+.tp-table td.tp-active {
+  box-shadow: inset 0 0 0 1.5px #3b82f6;
+}
+.tp-table td.tp-sel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.18);
+  pointer-events: none;
+}
+.tp-dragging,
+.tp-dragging * {
+  user-select: none !important;
+  cursor: cell !important;
+}
+.tp-resizing-col,
+.tp-resizing-col * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+.tp-resizing-row,
+.tp-resizing-row * {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+/* the handles on the edges of the cells that drag the columns and the rows */
+.tp-colh,
+.tp-rowh {
+  position: absolute;
+  z-index: 3;
+  background: transparent;
+}
+.tp-colh {
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+.tp-rowh {
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  cursor: row-resize;
+}
+.tp-colh:hover,
+.tp-colh[data-on='true'],
+.tp-rowh:hover,
+.tp-rowh[data-on='true'] {
+  background: #3b82f6;
+}
+.tp-table td[data-last-col='true'] .tp-colh {
+  right: -4px;
+  width: 8px;
+}
+
+/* the rules the person sees while working: the sheet's number and what the table is set as */
+.tp-tag {
+  position: absolute;
+  font: 700 8px/1 system-ui, sans-serif;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.78);
+  color: #fff;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tp-cell[data-placeholder]:empty::before,
+.tp-caption [data-placeholder]:empty::before,
+.tp-source [data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: #a1a1aa;
+  font-weight: 400;
+  pointer-events: none;
+}
+
+.tp-sheet-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.tp-sheet-label {
+  font: 600 11px/1 system-ui, sans-serif;
+  color: #a1a1aa;
+  letter-spacing: 0.03em;
+}
