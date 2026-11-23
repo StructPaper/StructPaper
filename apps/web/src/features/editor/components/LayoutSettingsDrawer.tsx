@@ -109,6 +109,9 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
     setMounted(true);
   }, []);
 
+  // The parent hands over a new `settings` object on every render, so the drawer compares by value: a re-render of the editor must not
+  // throw away what is being chosen here (every click would be undone at once).
+  const settingsKey = JSON.stringify(settings);
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
@@ -121,7 +124,8 @@ export const LayoutSettingsDrawer: React.FC<LayoutSettingsDrawerProps> = ({
       });
       setLocalJournal(journalId || 'VNUHCM-HS');
     }
-  }, [isOpen, settings, journalId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, settingsKey, journalId]);
 
   useEffect(() => {
     if (!isOpen) return;

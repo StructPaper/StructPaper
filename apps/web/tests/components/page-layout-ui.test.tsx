@@ -151,4 +151,12 @@ describe('LayoutSettingsDrawer orientation', () => {
     expect(applied.orientation).toBe('landscape');
     expect(applied.columnLayout).toBe('2-column');
   });
+
+  it('keeps the choice when the editor re-renders and hands over an equal copy of the settings', () => {
+    const el = (s: typeof DEFAULT_LAYOUT_SETTINGS) => <LayoutSettingsDrawer isOpen onClose={vi.fn()} settings={s} onApplySettings={vi.fn()} />;
+    const { rerender } = render(el({ ...DEFAULT_LAYOUT_SETTINGS }));
+    fireEvent.click(screen.getByTestId('orientation-landscape'));
+    rerender(el({ ...DEFAULT_LAYOUT_SETTINGS }));
+    expect(screen.getByTestId('orientation-landscape').getAttribute('aria-checked')).toBe('true');
+  });
 });
