@@ -370,7 +370,7 @@ export function generateFullJournalLatex(paper: CompletePaper, customSettings?: 
     .replace('TITLE_COLOR_R', String(rgb.r))
     .replace('TITLE_COLOR_G', String(rgb.g))
     .replace('TITLE_COLOR_B', String(rgb.b))
-    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.rotateTablePage || (appendixSettingsOf(paper).rotatePage && paper.sections.some(isAppendix)) ? 'pdflscape' : 'lscape'}}`)
+    .replace('\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee}', `\\usepackage{url,multirow,morefloats,floatflt,cancel,tfrupee,supertabular,array,longtable,${theme.turnSheets ? 'pdflscape' : 'lscape'}}`)
     .replace('\\definecolor{tableheadrcolor}{RGB}{229, 229, 229}', `\\definecolor{tableheadrcolor}{RGB}{${headRgb.r}, ${headRgb.g}, ${headRgb.b}}\n\\definecolor{tablezebracolor}{RGB}{${zebraRgb.r}, ${zebraRgb.g}, ${zebraRgb.b}}`)
     .replace('left=1.7cm,headsep=.2cm,right=1.3cm,top=1.8cm]', `left=${theme.margins.left}cm,headsep=.2cm,right=${theme.margins.right}cm,top=${theme.margins.top}cm,bottom=${theme.margins.bottom}cm]`)
     // xeCJK treats curly quotes (U+2018-201F) as CJK punctuation and sets them in a full-width CJK font
@@ -691,7 +691,7 @@ ${sec.figure.source ? `\\vspace{-0.3em}\\centering{\\footnotesize\\textit{${esca
   // set together on turned sheets, whatever the settings of each.
   const appendixRegion = (list: PaperSection[], indexBase: number): string => {
     if (list.length === 0) return '';
-    if (!appendixSettings.rotatePage) return `\n\\clearpage\n${renderSections(list, indexBase, false)}`;
+    if (!theme.turnSheets) return `\n\\clearpage\n${renderSections(list, indexBase, false)}`;
     const inner = renderSections(list, indexBase, true);
     return (
       `\n\\clearpage\n\\ifdefined\\spwidegeometry\\spwidegeometry\\fi\n${isOneColumn ? '' : '\\onecolumn\n'}` +

@@ -10,6 +10,7 @@ import { useGoBack, isHistoryPage } from '@/lib/app-history';
 import { Home, Layers, Sliders, FileEdit } from 'lucide-react';
 import { CompletePaper, PaperSection, LayoutSettings } from '@/types/paper';
 import { resolvePaperLayout, journalLayoutOf } from '@/lib/layout/paper-profile';
+import { resolveTheme } from '@/lib/theme-config';
 import { usePaperProfile, usePaperProfileSession, useArticleTypeSync } from '@/features/journals';
 import { useEditorHistory } from '../hooks/useEditorHistory';
 import { isUuid } from '@/features/papers/components/types';
@@ -43,6 +44,7 @@ import { EditorDocumentMenuBarSlot } from './EditorDocumentMenuBarSlot';
 import { notifyManualSaveOutcome } from '@/lib/editor/save-feedback';
 import { OpenDocumentDialog, type OpenListItem } from './OpenDocumentDialog';
 import { ExportGateModal } from './ValidationModals';
+import { PdfExportOptionsModal, type PdfExportOptions } from './PdfExportOptionsModal';
 import {
   CreatePaperModal,
   useEditorQuickEdit,
@@ -187,6 +189,8 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   // the Word file this paper was imported from: read again (on request) and compared before anything changes
   useWordSourceSession(formData, setFormData, () => setIsDirty(true));
   /** Export in progress (covers the save + compile phase before the download starts). */
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const pdfOptionsRef = useRef<PdfExportOptions | undefined>(undefined);
   const [pendingExport, setPendingExport] = useState<ExportFormat | null>(null);
 
   const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
@@ -249,8 +253,18 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       if (format === 'xml') return handleDownloadXml();
       toast.loading('Đang xuất PDF…', 'Đang dàn trang bằng XeLaTeX, thường mất 15–40 giây.', { id: 'export-pdf' });
       // Retry once when the compile was only superseded (e.g. by the automatic preview compile).
-      let url = await compileLatexToPdf(formData);
-      if (!url && lastOutcomeRef.current === 'cancelled') url = await compileLatexToPdf(formData);
+      // the sheets are turned or not as asked in the download popup; when that differs from the paper's own setting (the same one the
+      // layout settings have, "Xoay cả tờ giấy khi bảng xoay ngang") the file is made apart from the preview: the paper and the preview stay as they are.
+      // Only the sheet changes: each table and figure keeps its own settings.
+      const asked = pdfOptionsRef.current?.rotateSheets;
+      const ownLayout = resolvePaperLayout(formData);
+      const own = resolveTheme(ownLayout).turnSheets;
+      const aside = asked !== undefined && asked !== own;
+      const target: CompletePaper = aside
+        ? { ...formData, layoutSettings: { ...(formData.layoutSettings ?? {}), theme: { ...(ownLayout.theme ?? {}), turnSheets: asked } } }
+        : formData;
+      let url = await compileLatexToPdf(target, { aside });
+      if (!url && lastOutcomeRef.current === 'cancelled') url = await compileLatexToPdf(target, { aside });
       if (!url) {
         toast.error('Xuất PDF thất bại', 'Xem chi tiết lỗi biên dịch ở khung xem trước.', { id: 'export-pdf' });
         setExportGate({ format, report: validateForExport(formData, { format, pdfCompiled: false }) });
@@ -263,8 +277,13 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
   );
 
   const requestExport = useCallback(
-    async (format: ExportFormat) => {
+    async (format: ExportFormat, options?: PdfExportOptions) => {
       if (pendingExport) return;
+      if (format === 'pdf' && !options) {
+        setPdfOptionsOpen(true);
+        return;
+      }
+      pdfOptionsRef.current = format === 'pdf' ? options : undefined;
       setPendingExport(format);
       try {
         await flush();
@@ -492,7 +511,12 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
     const journalChanged = journalIdToUse !== (formData.metadata.journalId || currentJournal);
     const target: CompletePaper = {
       ...formData,
-      metadata: { ...formData.metadata, journalId: journalIdToUse, journalName: tmpl.name, journalAbbv: tmpl.shortName },
+      metadata: {
+        ...formData.metadata,
+        journalId: journalIdToUse,
+        journalName: tmpl.name,
+        journalAbbv: tmpl.shortName,
+              },
       ...(journalChanged ? { profilePin: undefined, articleTypeCode: undefined } : {}),
     };
     const updated: CompletePaper = { ...target, layoutSettings: layoutOverrides(journalLayoutOf(target), newSettings) };
@@ -690,6 +714,16 @@ export const UnifiedEditorView: React.FC<UnifiedEditorViewProps> = ({ paper, onU
       <ExtractedContentDrawer isOpen={isExtractedDrawerOpen} onClose={() => setIsExtractedDrawerOpen(false)} paper={formData} />
       <LayoutSettingsDrawer isOpen={isSettingsDrawerOpen} onClose={() => setIsSettingsDrawerOpen(false)} settings={resolvePaperLayout(formData)} journalId={formData.metadata.journalId || currentJournal} onApplySettings={handleApplyLayoutSettings} isCompiling={isCompilingPdf} />
       <OpenDocumentDialog isOpen={isOpenDialog} onClose={() => setIsOpenDialog(false)} onOpen={handleOpenItem} />
+      {pdfOptionsOpen && (
+        <PdfExportOptionsModal
+          initial={{ rotateSheets: false }}
+          onClose={() => setPdfOptionsOpen(false)}
+          onContinue={(options) => {
+            setPdfOptionsOpen(false);
+            void requestExport('pdf', options);
+          }}
+        />
+      )}
       <ExportGateModal
         isOpen={exportGate !== null}
         report={exportGate?.report ?? null}

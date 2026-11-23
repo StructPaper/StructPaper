@@ -12,7 +12,7 @@ vi.setConfig({ testTimeout: 20000 });
 const base = () => createEmptyPaper().metadata;
 
 describe('the Phụ lục tab', () => {
-  it('has a settings button in its title, and a popup with the placement, the numbering and the turned sheet', () => {
+  it('has a settings button in its title, and a popup with the placement and the numbering', () => {
     const onSettings = vi.fn();
     render(<AppendixTab sections={[]} onChange={vi.fn()} metadata={base()} settings={DEFAULT_APPENDIX} onSettings={onSettings} />);
     expect(screen.getByTestId('appendix-empty')).toBeTruthy();
@@ -23,9 +23,8 @@ describe('the Phụ lục tab', () => {
     expect(screen.getByTestId('appendix-placement-afterReferences').getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByTestId('appendix-placement-inContent'));
     fireEvent.click(screen.getByTestId('appendix-numbering-letter'));
-    fireEvent.click(screen.getByLabelText('Xoay luôn tờ giấy'));
     fireEvent.click(screen.getByText('Lưu'));
-    expect(onSettings).toHaveBeenLastCalledWith({ placement: 'inContent', numbering: 'letter', rotatePage: true });
+    expect(onSettings).toHaveBeenLastCalledWith({ placement: 'inContent', numbering: 'letter' });
   });
 
   it('a table, a figure or some text can be added to the appendices', () => {

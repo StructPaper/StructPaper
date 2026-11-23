@@ -31,7 +31,7 @@ describe('a table as the journals print it', () => {
   });
 
   it('the caption is as wide as the table and starts at its left edge', () => {
-    expect(tex(table())).toContain(String.raw`\captionsetup{width=\linewidth,justification=raggedright,singlelinecheck=false}\caption`);
+    expect(tex(table())).toContain(String.raw`\captionsetup{width=\linewidth,justification=raggedright,singlelinecheck=false,font={small,sf,bf}}\caption`);
   });
 
   it('the columns fill the width, a column of short names getting about a third of it next to long sentences', () => {

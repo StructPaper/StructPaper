@@ -194,16 +194,20 @@ export function useEditorCompilation({
   }, [customRouter]);
 
   const compileLatexToPdf = useCallback(
-    async (customPaperData?: CompletePaper): Promise<string | null> => {
+    async (customPaperData?: CompletePaper, opts?: { aside?: boolean }): Promise<string | null> => {
       const paperToCompile = customPaperData || formData;
       const settings = resolvePaperLayout(paperToCompile);
 
-      const seq = ++compileSeqRef.current;
-      const isLatest = () => seq === compileSeqRef.current;
+      // `aside`: a PDF made only to be downloaded in another form (the sheets upright, say): the preview on screen is left as it is
+      const aside = opts?.aside === true;
+      const seq = aside ? compileSeqRef.current : ++compileSeqRef.current;
+      const isLatest = () => !aside && seq === compileSeqRef.current;
       try {
-        setIsCompilingPdf(true);
-        setCompileStartedAt(Date.now());
-        setCompileErrorInfo(null);
+        if (!aside) {
+          setIsCompilingPdf(true);
+          setCompileStartedAt(Date.now());
+          setCompileErrorInfo(null);
+        }
         const texContent = exportToLatex(paperToCompile, settings, { primaryLanguage: pdfLanguage, template: latexTemplateRef.current });
         const signature = signatureOf(paperToCompile, texContent);
         const images = await extractPaperImagesAsync(paperToCompile);
@@ -233,7 +237,7 @@ export function useEditorCompilation({
             result.engine ||
             (engineKind === 'browser-wasm' ? 'XeLaTeX WASM' : 'Server XeLaTeX');
 
-          setCompileStats({
+          if (!aside) setCompileStats({
             durationMs: result.durationMs,
             sizeKb: Math.round(
               (result.pdfBlob?.size ?? result.pdfBuffer?.length ?? 0) / 1024
@@ -255,7 +259,7 @@ export function useEditorCompilation({
           lastOutcomeRef.current = 'cancelled';
           return null;
         } else {
-          if (!isLatest()) return null;
+          if (!aside && !isLatest()) return null;
           lastOutcomeRef.current = 'error';
           setCompileErrorInfo({
             error: result.error || 'Biên dịch thất bại',
@@ -278,7 +282,7 @@ export function useEditorCompilation({
           lastOutcomeRef.current = 'cancelled';
           return null;
         }
-        if (!isLatest()) return null;
+        if (!aside && !isLatest()) return null;
         lastOutcomeRef.current = 'error';
         setCompileErrorInfo({
           error: 'Lỗi kết nối máy chủ biên dịch',

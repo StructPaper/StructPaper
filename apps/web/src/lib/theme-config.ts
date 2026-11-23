@@ -15,8 +15,8 @@ export interface ResolvedTheme {
   continuedFootText: string;
   englishSummaryPage: boolean;
   keepSectionNumbers: boolean;
-  /** A table set sideways turns its whole page (landscape pages). Default false: every page stays upright and only the table is turned. */
-  rotateTablePage: boolean;
+  /** A table (or an appendix) set sideways turns its whole sheet, so it reads without turning the head. On by default; off: every sheet stays upright and only the table is turned. */
+  turnSheets: boolean;
 }
 
 /** Defaults replicate the previously hard-coded VNUHCM look. */
@@ -36,7 +36,7 @@ export const DEFAULT_THEME: ResolvedTheme = {
   continuedFootText: 'Continued on next page',
   englishSummaryPage: true,
   keepSectionNumbers: false,
-  rotateTablePage: false,
+  turnSheets: true,
 };
 
 const HEX_RE = /^#?([0-9a-fA-F]{6})$/;
@@ -99,7 +99,7 @@ export function resolveTheme(
     continuedFootText: sanitizeLabel(t.continuedFootText, base.continuedFootText),
     englishSummaryPage: t.englishSummaryPage !== false,
     keepSectionNumbers: t.keepSectionNumbers === true,
-    rotateTablePage: t.rotateTablePage === true,
+    turnSheets: t.turnSheets !== false,
   };
 }
 

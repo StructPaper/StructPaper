@@ -13,13 +13,11 @@ export type AppendixPlacement = 'afterReferences' | 'beforeReferences' | 'inCont
 
 export interface AppendixSettings {
   placement: AppendixPlacement;
-  /** The sheets of the appendices are turned on their side (as the standard PDF does), whatever each table or figure says. Off by default: only a table or figure is turned, the sheet stays upright. */
-  rotatePage: boolean;
   /** "Phụ lục 1, 2, 3" or "Phụ lục A, B, C". */
   numbering: 'number' | 'letter';
 }
 
-export const DEFAULT_APPENDIX: AppendixSettings = { placement: 'afterReferences', rotatePage: false, numbering: 'number' };
+export const DEFAULT_APPENDIX: AppendixSettings = { placement: 'afterReferences', numbering: 'number' };
 
 export const APPENDIX_PLACEMENTS: Array<{ value: AppendixPlacement; label: string; hint: string }> = [
   { value: 'afterReferences', label: 'Sau tài liệu tham khảo', hint: 'Phụ lục in sau danh mục tài liệu tham khảo (mặc định)' },

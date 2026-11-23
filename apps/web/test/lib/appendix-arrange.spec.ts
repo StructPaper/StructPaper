@@ -81,8 +81,9 @@ describe('the two lists of the editor', () => {
 });
 
 describe('what the author sets on an appendix is in the PDF (so the recompile button sees it)', () => {
-  const latexOf = (table: Partial<NonNullable<PaperSection['table']>>, metadata: Record<string, unknown> = {}) => {
+  const latexOf = (table: Partial<NonNullable<PaperSection['table']>>, metadata: Record<string, unknown> = {}, sheetTurned = true) => {
     const p: any = createEmptyPaper();
+    if (!sheetTurned) p.layoutSettings = { theme: { turnSheets: false } };
     p.metadata = { ...p.metadata, ...metadata };
     p.references = [{ id: 1, raw: 'Tác giả. Bài báo. 2020.', isCited: true, citationCount: 1 }];
     p.sections = [
@@ -92,22 +93,27 @@ describe('what the author sets on an appendix is in the PDF (so the recompile bu
     return generateFullJournalLatex(p);
   };
   it('an appendix table is turned and across the whole page by default, the sheet upright', () => {
-    const tex = latexOf({});
+    const tex = latexOf({}, {}, false);
     expect(tex).toContain('\\begin{landscape}');
     expect(tex).toContain('\\spwidegeometry');
     expect(tex).not.toContain('pdflscape');
   });
   it('turning it off, or keeping it in the text, changes the LaTeX', () => {
-    const base = latexOf({});
-    expect(latexOf({ isRotated: false })).not.toBe(base);
-    expect(latexOf({ sideColumn: 'text' })).not.toBe(base);
-    expect(latexOf({ sideColumn: 'text', isRotated: false })).not.toContain('\\begin{landscape}');
+    const base = latexOf({}, {}, false);
+    expect(latexOf({ isRotated: false }, {}, false)).not.toBe(base);
+    expect(latexOf({ sideColumn: 'text' }, {}, false)).not.toBe(base);
+    expect(latexOf({ sideColumn: 'text', isRotated: false }, {}, false)).not.toContain('\\begin{landscape}');
+  });
+  it('the sheet turns with the table (the layout setting), each table keeping its own turn', () => {
+    expect(latexOf({})).toContain('pdflscape');
+    const upright = latexOf({}, {}, false);
+    expect(upright).not.toContain('pdflscape');
+    expect(upright).toContain('\\begin{landscape}');
   });
   it('the paper settings show too: placement, letters, turned sheet', () => {
     const base = latexOf({});
     expect(latexOf({}, { appendix: { placement: 'beforeReferences' } })).not.toBe(base);
     expect(latexOf({}, { appendix: { numbering: 'letter' } })).toContain('Phụ lục A.');
-    expect(latexOf({}, { appendix: { rotatePage: true } })).toContain('pdflscape');
   });
 });
 

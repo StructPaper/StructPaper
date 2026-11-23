@@ -6,7 +6,7 @@ const roundTrip = (p: CompletePaper): CompletePaper => adaptV2toV1(migrateV1toV2
 
 describe('what a table, a figure and the paper carry beyond the v2 slots survives saving and loading', () => {
   const p: any = createEmptyPaper('VNUHCM-HS');
-  p.metadata.appendix = { placement: 'inContent', rotatePage: true, numbering: 'letter' };
+  p.metadata.appendix = { placement: 'inContent', numbering: 'letter' };
   p.metadata.primaryLanguage = 'en';
   p.sections = [
     { id: 'h', type: 'h1', title: 'KQ', content: '' },
@@ -39,7 +39,7 @@ describe('what a table, a figure and the paper carry beyond the v2 slots survive
   });
   it('the paper: appendix settings and the language of the first page', () => {
     const m: any = roundTrip(p).metadata;
-    expect(m.appendix).toEqual({ placement: 'inContent', rotatePage: true, numbering: 'letter' });
+    expect(m.appendix).toEqual({ placement: 'inContent', numbering: 'letter' });
     expect(m.primaryLanguage).toBe('en');
   });
 });

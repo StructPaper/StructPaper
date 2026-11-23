@@ -74,8 +74,8 @@ describe('LaTeX long table layouts (1 column / 2 columns / landscape)', () => {
     expect(tex).toContain('\\end{landscape}');
   });
 
-  it('short rotated table stays a sidewaystable float', () => {
-    const tex = generateFullJournalLatex(paperWithTable(3, { isRotated: true }));
+  it('short rotated table stays a sidewaystable float (sheets staying upright)', () => {
+    const tex = generateFullJournalLatex(paperWithTable(3, { isRotated: true }), { ...DEFAULT_LAYOUT_SETTINGS, theme: { turnSheets: false } });
     expect(tex).toContain('\\begin{sidewaystable');
     expect(tex).not.toContain('\\begin{longtable}');
   });

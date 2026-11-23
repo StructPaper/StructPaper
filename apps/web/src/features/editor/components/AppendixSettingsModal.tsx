@@ -23,7 +23,6 @@ export const AppendixSettingsModal: React.FC<Props> = ({ isOpen = true, triggerR
   const [mounted, setMounted] = useState(false);
   const [placement, setPlacement] = useState<AppendixPlacement>(settings.placement);
   const [numbering, setNumbering] = useState<AppendixSettings['numbering']>(settings.numbering);
-  const [rotatePage, setRotatePage] = useState<boolean>(settings.rotatePage);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -37,7 +36,6 @@ export const AppendixSettingsModal: React.FC<Props> = ({ isOpen = true, triggerR
     if (isOpen) {
       setPlacement(settings.placement);
       setNumbering(settings.numbering);
-      setRotatePage(settings.rotatePage);
     }
   }, [isOpen, settings]);
 
@@ -68,7 +66,7 @@ export const AppendixSettingsModal: React.FC<Props> = ({ isOpen = true, triggerR
         data-testid="appendix-settings"
         className="z-10 w-[400px] max-w-[calc(100vw-2rem)] rounded-[28px] border border-white/60 bg-[#F8F9FA] shadow-[0_12px_44px_rgba(0,0,0,0.20),0_4px_16px_rgba(0,0,0,0.10)] overflow-hidden flex flex-col text-left select-none pointer-events-auto"
       >
-        <SettingsHeader compact title="Cài đặt phụ lục" subtitle="Vị trí, cách đánh số và cách in các phụ lục" onClose={onClose} closeTitle="Đóng cài đặt phụ lục (Esc)" />
+        <SettingsHeader compact title="Cài đặt phụ lục" subtitle="Vị trí và cách đánh số các phụ lục" onClose={onClose} closeTitle="Đóng cài đặt phụ lục (Esc)" />
 
         <div className={`flex-1 overflow-y-auto px-5 py-3 custom-scrollbar ${sectionListClass}`}>
           <SettingsCard title="Vị trí khi in" hint="Phụ lục luôn thấy ở thẻ Phụ lục, dù in ở đâu." icon={<MapPin />}>
@@ -92,23 +90,12 @@ export const AppendixSettingsModal: React.FC<Props> = ({ isOpen = true, triggerR
               ]}
             />
           </SettingsCard>
-
-          <SettingsCard title="Trang phụ lục" hint="Mỗi bảng, hình phụ lục mặc định xoay ngang 90° và chiếm cả trang; chỉnh từng cái ở cài đặt của nó." icon={<RotateCw />}>
-            <ToggleRow
-              checked={rotatePage}
-              onChange={setRotatePage}
-              label="Xoay luôn tờ giấy"
-              hint="In các trang phụ lục thành tờ ngang (như bản chuẩn của một số tạp chí). Mặc định tắt: tờ giấy vẫn đứng, chỉ bảng và hình xoay."
-              testId="appendix-rotate-page"
-            />
-          </SettingsCard>
         </div>
 
         <SettingsFooter
           onReset={() => {
             setPlacement(DEFAULT_APPENDIX.placement);
             setNumbering(DEFAULT_APPENDIX.numbering);
-            setRotatePage(DEFAULT_APPENDIX.rotatePage);
           }}
           resetTitle="Khôi phục cài đặt phụ lục về mặc định"
           resetIcon={<RotateCcw className="w-3.5 h-3.5" />}
@@ -118,7 +105,7 @@ export const AppendixSettingsModal: React.FC<Props> = ({ isOpen = true, triggerR
           primaryIcon={<Check className="w-3.5 h-3.5" />}
           primaryTitle="Lưu cài đặt phụ lục"
           onPrimary={() => {
-            onSave({ placement, numbering, rotatePage });
+            onSave({ placement, numbering });
             onClose();
           }}
         />

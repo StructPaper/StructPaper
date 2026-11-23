@@ -20,8 +20,8 @@ export interface ThemeSettings {
   longTableRowThreshold?: number;
   /** Keep the section numbers typed in Word ("4. Kết quả"). Default false: the journal prints unnumbered headings. */
   keepSectionNumbers?: boolean;
-  /** Turn the whole page for a table set sideways (landscape pages). Default false: pages stay upright, only the table turns. */
-  rotateTablePage?: boolean;
+  /** Turn the whole sheet for a table or appendix set sideways. Default true. (Named anew: papers saved when the default was "off" stored that as false.) */
+  turnSheets?: boolean;
   /** Append the closing English summary page (English title/abstract/affiliation). Default true. */
   englishSummaryPage?: boolean;
   /** Marker printed on top of each continuation page; "{n}" is the table number. */

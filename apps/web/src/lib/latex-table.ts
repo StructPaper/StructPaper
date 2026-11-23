@@ -160,7 +160,7 @@ export function tableToLatex(
     : { width: spansOneColumn ? JOURNAL_GEOMETRY.column : JOURNAL_GEOMETRY.page, height: JOURNAL_GEOMETRY.pageHeight * 0.85 };
   const tooTall = breakMode !== 'never' && estimateHeight(measureTable({ headers, rows: paddedRows, bodyRows: table.bodyRows }, fontPt), room.width, fontPt) > room.height;
   // (a table set "across the whole page" takes pages of its own, however short)
-  const isLong = breakMode === 'always' || tooTall || table.sideColumn === 'full' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.rotateTablePage);
+  const isLong = breakMode === 'always' || tooTall || table.sideColumn === 'full' || (breakMode === 'auto' && bodyRows.length > theme.longTableRowThreshold) || (isRotated && theme.turnSheets);
 
   // ---- long table, flowing inside one column ----
   if (isLong && spansOneColumn && !isRotated && !inline) {

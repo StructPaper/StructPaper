@@ -120,10 +120,10 @@ export const ThemeTablesCard: React.FC<Props> = (props) => {
           hint={'Giữ "4. Kết quả" như trong bản Word khi in.'}
         />
         <ToggleRow
-          checked={r.rotateTablePage}
-          onChange={(v) => set({ rotateTablePage: v })}
+          checked={r.turnSheets}
+          onChange={(v) => set({ turnSheets: v })}
           label="Xoay cả tờ giấy khi bảng xoay ngang"
-          hint="Tắt: mọi trang luôn thẳng đứng (dễ in), chỉ bảng xoay. Bật: trang có bảng xoay thành trang ngang."
+          hint="Bật (mặc định): trang có bảng, hình xoay (kể cả phụ lục) thành tờ ngang, dễ đọc trên màn hình. Tắt: mọi tờ giấy thẳng đứng (dễ in), chỉ bảng và hình xoay trong trang."
         />
         <Field label="Cho phép ngắt trang khi bảng dài hơn" hint="Tính theo số hàng của bảng.">
           <NumberInput
